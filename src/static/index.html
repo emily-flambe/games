@@ -56,20 +56,11 @@
                     <button id="leave-room-btn">Leave Room</button>
                 </div>
                 
-                <div class="game-status">
-                    <div id="game-state">Waiting for players...</div>
-                    <div id="player-turn"></div>
-                </div>
-                
-                <div class="players-list">
-                    <h3>Players</h3>
-                    <div id="players-container"></div>
-                </div>
-                
                 <!-- Hello World Player Controls -->
                 <div id="hello-world-controls" class="hello-world-controls" style="display: none;">
-                    <h3>Your Player Info</h3>
-                    <div class="player-info" style="display: flex; gap: 15px; align-items: center; background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <div class="player-info-container">
+                        <h3>Who Are You?</h3>
+                        <div class="player-info" style="display: flex; gap: 15px; align-items: center; background: #f9f9f9; padding: 15px; border-radius: 8px;">
                         <div class="name-control" style="display: flex; gap: 10px; align-items: center;">
                             <label style="font-weight: bold;">Name:</label>
                             <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 150px;">
@@ -88,6 +79,15 @@
                             </div>
                         </div>
                     </div>
+                    </div>
+                </div>
+                
+                <div class="players-list">
+                    <div class="players-header">
+                        <h3>Players</h3>
+                        <button id="start-game-btn-header">Start Game</button>
+                    </div>
+                    <div id="players-container"></div>
                 </div>
                 
                 <!-- Drawing Game Specific UI -->

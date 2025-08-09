@@ -216,20 +216,21 @@ main {
     transform: translateY(-2px);
 }
 
-.game-status {
+/* game-status div removed from HTML */
+
+/* Player Info Container */
+.player-info-container {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 12px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
-    text-align: center;
     backdrop-filter: blur(10px);
 }
 
-.game-status div {
+.player-info-container h3 {
     color: #2c3e50;
-    font-size: 1.1rem;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
 }
 
 .players-list {
@@ -240,10 +241,34 @@ main {
     backdrop-filter: blur(10px);
 }
 
+.players-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
 .players-list h3 {
     color: #2c3e50;
-    margin-bottom: 1rem;
     font-size: 1.2rem;
+    margin: 0;
+}
+
+#start-game-btn-header {
+    padding: 0.5rem 1rem;
+    background: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#start-game-btn-header:hover {
+    background: #219a52;
+    transform: translateY(-2px);
 }
 
 .player {
@@ -796,6 +821,82 @@ input:focus {
         max-width: 90vw;
         max-height: 60vh;
     }
+}
+
+/* Floating Emoji Animations */
+@keyframes move-x {
+    0% { transform: translateX(0vw); }
+    100% { transform: translateX(90vw); }
+}
+
+@keyframes move-x-chaos1 {
+    0% { transform: translateX(0vw); }
+    25% { transform: translateX(70vw); }
+    50% { transform: translateX(20vw); }
+    75% { transform: translateX(80vw); }
+    100% { transform: translateX(10vw); }
+}
+
+@keyframes move-x-chaos2 {
+    0% { transform: translateX(0vw); }
+    20% { transform: translateX(30vw); }
+    40% { transform: translateX(85vw); }
+    60% { transform: translateX(15vw); }
+    80% { transform: translateX(60vw); }
+    100% { transform: translateX(5vw); }
+}
+
+@keyframes move-y {
+    0% { transform: translateY(0vh); }
+    100% { transform: translateY(80vh); }
+}
+
+@keyframes move-y-chaos1 {
+    0% { transform: translateY(0vh); }
+    25% { transform: translateY(60vh); }
+    50% { transform: translateY(20vh); }
+    75% { transform: translateY(70vh); }
+    100% { transform: translateY(10vh); }
+}
+
+@keyframes move-y-chaos2 {
+    0% { transform: translateY(0vh); }
+    20% { transform: translateY(40vh); }
+    40% { transform: translateY(75vh); }
+    60% { transform: translateY(15vh); }
+    80% { transform: translateY(55vh); }
+    100% { transform: translateY(5vh); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    25% { transform: translateY(-10px) rotate(2deg); }
+    50% { transform: translateY(5px) rotate(-2deg); }
+    75% { transform: translateY(-5px) rotate(1deg); }
+}
+
+/* Floating emoji base styles */
+.floating-emoji {
+    position: fixed !important;
+    z-index: 10000 !important;
+    pointer-events: none !important;
+    user-select: none !important;
+    font-size: 4rem !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important;
+}
+
+.floating-emoji-x {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    z-index: 10000 !important;
+    pointer-events: none !important;
+    user-select: none !important;
+}
+
+.floating-emoji-y {
+    font-size: 4rem !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important;
 }
 
 /* Smooth transitions */

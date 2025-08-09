@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Minimal games platform on Cloudflare Workers",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "node dev-server.js",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
