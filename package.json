@@ -1,39 +1,12 @@
 {
   "name": "games-platform",
   "version": "1.0.0",
-  "description": "Real-time multiplayer games platform with WebSocket support",
-  "main": "src/index.ts",
+  "description": "Minimal games platform on Cloudflare Workers",
   "scripts": {
-    "build": "node build-scripts/build-frontend.js",
-    "build:watch": "node build-scripts/build-frontend.js --watch",
-    "dev": "npm run build && wrangler dev --port 8777",
-    "dev:remote": "npm run build && wrangler dev --remote",
-    "deploy": "npm run build && wrangler deploy",
-    "test": "npm run test:unit && npm run test:integration",
-    "test:unit": "node --test tests/unit/*.test.js",
-    "test:integration": "node tests/integration/websocket.test.js",
-    "test:local": "node tests/local-test.js",
-    "lint": "echo 'Linting TypeScript files...' && tsc --noEmit",
-    "clean": "rm -rf dist && rm -rf src/static/bundle.js"
-  },
-  "keywords": [
-    "games",
-    "websocket",
-    "multiplayer",
-    "typescript",
-    "real-time",
-    "cloudflare-workers"
-  ],
-  "author": "Games Platform",
-  "license": "MIT",
-  "engines": {
-    "node": ">=18.0.0"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240806.0",
-    "esbuild": "^0.19.0",
-    "typescript": "^5.0.0",
-    "wrangler": "^4.28.1",
-    "ws": "^8.18.3"
+    "wrangler": "^4.28.1"
   }
 }

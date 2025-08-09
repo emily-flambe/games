@@ -3,7 +3,7 @@ name = "games"
 routes = [
   { pattern = "games.emilycogsdill.com/*", zone_name = "emilycogsdill.com" }
 ]
-main = "src/index.ts"
+main = "src/index-clean.ts"
 compatibility_date = "2024-12-30"
 compatibility_flags = ["nodejs_compat"]
 
