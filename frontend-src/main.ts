@@ -11,7 +11,8 @@ class WebSocketManager {
     private connectionListeners: Set<(connected: boolean) => void> = new Set();
 
     constructor() {
-        this.connect();
+        // WebSocket connection disabled for now
+        // this.connect();
     }
 
     private connect(): void {
@@ -146,6 +147,17 @@ class App {
         
         this.setupGlobalMessageHandlers();
         this.hideLoadingOverlay();
+        
+        // Update connection status to show no WebSocket
+        this.updateConnectionStatus();
+    }
+    
+    private updateConnectionStatus(): void {
+        const statusElement = document.getElementById('connection-status');
+        if (statusElement) {
+            statusElement.textContent = 'No WebSocket';
+            statusElement.className = 'status-disconnected';
+        }
     }
 
     private setupGlobalMessageHandlers(): void {
