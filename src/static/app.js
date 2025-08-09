@@ -191,6 +191,10 @@ class GameClient {
                 this.currentPlayer = message.data.player;
                 this.updateCurrentPlayerInfo();
                 break;
+            case 'host_assigned':
+                // Handle host assignment - this is just informational
+                console.log('Player assigned as host:', message.data.hostId);
+                break;
             case 'name_changed':
                 this.gameState = message.data.gameState;
                 this.updatePlayers(message.data.gameState.players);
@@ -198,7 +202,7 @@ class GameClient {
                 this.refreshEmojiPicker();
                 // Update current player info if it's our player that changed name
                 if (message.data.playerId === this.currentPlayerId) {
-                    const updatedPlayer = message.data.gameState.players.find(p => p.id === this.currentPlayerId);
+                    const updatedPlayer = message.data.gameState.players[this.currentPlayerId];
                     if (updatedPlayer) {
                         this.currentPlayer = updatedPlayer;
                         this.updateCurrentPlayerInfo();
@@ -213,7 +217,7 @@ class GameClient {
                 this.refreshEmojiPicker();
                 // Update current player info if it's our player that changed emoji
                 if (message.data.playerId === this.currentPlayerId) {
-                    const updatedPlayer = message.data.gameState.players.find(p => p.id === this.currentPlayerId);
+                    const updatedPlayer = message.data.gameState.players[this.currentPlayerId];
                     if (updatedPlayer) {
                         this.currentPlayer = updatedPlayer;
                         this.updateCurrentPlayerInfo();
@@ -259,7 +263,7 @@ class GameClient {
                 this.refreshEmojiPicker();
                 // Update current player info if it's our player that was updated
                 if (this.currentPlayerId) {
-                    const updatedPlayer = message.gameState.players.find(p => p.id === this.currentPlayerId);
+                    const updatedPlayer = message.gameState.players[this.currentPlayerId];
                     if (updatedPlayer) {
                         this.currentPlayer = updatedPlayer;
                         this.updateCurrentPlayerInfo();
@@ -582,8 +586,13 @@ class GameClient {
             return;
         }
 
-        const currentPlayerIds = Object.keys(players);
+        // Handle both array and object formats
+        const playersArray = Array.isArray(players) ? players : Object.values(players);
+        const currentPlayerIds = playersArray.map(p => p.id);
         const existingEmojis = document.querySelectorAll('.floating-emoji[data-player-id]');
+        
+        console.log('Current player IDs:', currentPlayerIds);
+        console.log('Existing emoji elements:', existingEmojis.length);
         
         // Remove emojis for players who left
         existingEmojis.forEach(emoji => {
@@ -595,16 +604,17 @@ class GameClient {
         });
         
         // Add or update emojis for current players
-        Object.values(players).forEach((player, index) => {
+        playersArray.forEach((player, index) => {
             const existingEmoji = document.querySelector(`.floating-emoji[data-player-id="${player.id}"]`);
             
             if (existingEmoji) {
                 // Update existing emoji if it changed
                 const yContainer = existingEmoji.querySelector('.floating-emoji-y');
                 if (yContainer && yContainer.textContent !== (player.emoji || '🎾')) {
-                    console.log('Updating emoji for player:', player.id);
+                    console.log('Updating emoji content for player:', player.id, 'from', yContainer.textContent, 'to', player.emoji);
                     yContainer.textContent = player.emoji || '🎾';
                 }
+                console.log('Emoji already exists for player:', player.id, '- skipping creation');
             } else {
                 // Add new emoji for new player
                 console.log('Adding floating emoji for new player:', player);
@@ -631,10 +641,6 @@ class GameClient {
                 const randomXDuration = xDurations[Math.floor(Math.random() * xDurations.length)];
                 const randomYDuration = yDurations[Math.floor(Math.random() * yDurations.length)];
                 
-                // Use much smaller delays or random starting positions in animation cycle
-                const randomXDelay = Math.random() * 1; // 0-1 second delay (much shorter)
-                const randomYDelay = Math.random() * 1; // 0-1 second delay (much shorter)
-                
                 xContainer.style.cssText = `
                     position: fixed;
                     top: 0;
@@ -643,14 +649,12 @@ class GameClient {
                     pointer-events: none;
                     user-select: none;
                     animation: ${randomXAnim} ${randomXDuration}s ease-in-out infinite alternate;
-                    animation-delay: ${randomXDelay}s;
                 `;
                 
                 yContainer.style.cssText = `
                     font-size: 4rem;
                     text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
                     animation: ${randomYAnim} ${randomYDuration}s ease-in-out infinite alternate;
-                    animation-delay: ${randomYDelay}s;
                 `;
                 
                 // Nest the elements
