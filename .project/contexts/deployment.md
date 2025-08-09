@@ -1,4 +1,4 @@
-# Games Platform - Deployment Guide
+# Deployment & Operations Guide
 
 ## Quick Deployment Checklist
 
@@ -76,7 +76,7 @@ npm run test:integration
 - ✅ TypeScript configuration
 - ✅ Static asset serving
 
-## Key Endpoints
+## API Endpoints
 
 ### HTTP API
 - `GET /` - Health check
@@ -85,44 +85,37 @@ npm run test:integration
 - `POST /api/game/:sessionId` - Create/update specific game
 - `GET /api/game/:sessionId` - Get game state
 
-### WebSocket
+### WebSocket Endpoints
 - `GET /ws` - Simple WebSocket endpoint (testing)
 - `GET /api/game/:sessionId/ws` - Game-specific WebSocket
 
-## Architecture Validation
+## Development Workflow
 
-### ✅ Core Infrastructure
-- **Cloudflare Workers**: Main runtime environment
+### Frontend Development
+1. **Make Changes**: Edit files in `frontend-src/`
+2. **Build Frontend**: `npm run build` or `npm run build:watch`
+3. **Start Backend**: `npm run dev` 
+4. **Test Integration**: `npm run test:integration`
+
+### Backend Development
+1. **Make Changes**: Edit files in `src/`
+2. **Start Development**: `npm run dev` (with hot reload)
+3. **Test Locally**: `npm run test:local`
+4. **Deploy**: `npm run deploy`
+
+### Build System Validation
+
+#### Frontend Build Process
+- **Input**: TypeScript files in `frontend-src/`
+- **Output**: Single JavaScript bundle at `src/static/bundle.js`
+- **Process**: Custom TypeScript compiler removes type annotations and bundles modules
+- **Watch Mode**: Automatic rebuilding on file changes
+
+#### Backend Build Process
+- **Runtime**: Cloudflare Workers with TypeScript support
 - **Durable Objects**: Persistent state management
-  - `GameSession`: Individual game rooms
-  - `SessionManager`: Session coordination
 - **WebSocket**: Real-time communication
-- **TypeScript**: Type-safe development
-
-### ✅ File Structure
-```
-src/
-├── index.ts                 # Worker entry point
-├── router.ts               # HTTP routing
-├── durable-objects/
-│   ├── GameSession.ts      # Game room logic
-│   └── SessionManager.ts   # Session management
-├── games/
-│   └── DrawingGame.ts      # Drawing game implementation
-└── static/                 # Web assets
-```
-
-### ✅ Build System
-- Frontend: TypeScript → JavaScript bundle
-- Backend: TypeScript → Cloudflare Workers
-- Development: Hot reload with Wrangler
-- Testing: Comprehensive integration tests
-
-## Development Workflow Verified
-
-1. **Code Changes** → Auto-rebuild (frontend) + hot reload (backend)
-2. **Local Testing** → `npm run test:integration`
-3. **Deployment** → `npm run deploy`
+- **Static Assets**: Served directly from Worker
 
 ## Performance Characteristics
 
@@ -130,6 +123,7 @@ src/
 - **Durable Objects**: ~1,000 concurrent operations per instance
 - **Latency**: Edge computing for low-latency gaming
 - **Scalability**: Auto-scaling via Cloudflare's global network
+- **Frontend Bundle**: Single 23KB JavaScript file
 
 ## Security Features
 
@@ -137,28 +131,79 @@ src/
 - Secure token validation for game sessions
 - Isolated game rooms via Durable Objects
 - Rate limiting built into Cloudflare Workers
+- Input validation for all user data
+- CORS configuration for cross-origin requests
 
 ## Monitoring & Debugging
 
-### Development
+### Development Environment
 - Console logging for WebSocket events
 - Integration tests validate functionality
 - Local server at `http://localhost:8777`
+- Hot reload for rapid development
 
-### Production
+### Production Environment
 - Cloudflare Workers analytics
 - Real-time logs via `wrangler tail`
 - Performance metrics in Cloudflare dashboard
+- Error tracking and alerting
 
----
+## Deployment Pipeline
+
+### Continuous Integration
+```bash
+# Test before deployment
+npm run test:local
+npm run test:integration
+npm run build
+
+# Deploy if tests pass
+npm run deploy
+```
+
+### Environment Management
+- **Development**: Local development with hot reload
+- **Staging**: Deploy to staging environment for testing
+- **Production**: Deploy to production after validation
+
+### Rollback Strategy
+- **Wrangler Versions**: Maintain deployment versions for rollback
+- **Configuration Backup**: Store environment variables securely
+- **Database State**: Durable Objects provide automatic state persistence
+
+## Troubleshooting
+
+### Common Issues
+- **Port 8777 in use**: Kill existing processes or change port in configuration
+- **WebSocket connection failed**: Check network connectivity and firewall settings
+- **Build failures**: Verify Node.js version and dependencies are installed
+- **Deployment errors**: Ensure Wrangler authentication and permissions
+
+### Debug Commands
+```bash
+# Check logs
+wrangler tail
+
+# Local debugging
+npm run dev --verbose
+
+# Test WebSocket connections
+npm run test:integration
+
+# Validate configuration
+npm run test:local
+```
 
 ## Ready for Production ✅
 
 The Games Platform is fully configured with:
 - ✅ Working development environment
-- ✅ Comprehensive testing suite
+- ✅ Comprehensive testing suite  
 - ✅ Production deployment pipeline
 - ✅ Real-time multiplayer infrastructure
 - ✅ Scalable architecture
+- ✅ Custom frontend build system
+- ✅ WebSocket reconnection and error handling
+- ✅ Performance monitoring and debugging tools
 
 Start developing games by running `npm run dev` and connecting to the WebSocket endpoints!

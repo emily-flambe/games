@@ -148,6 +148,8 @@ export class GameSession implements DurableObject {
 - **Null Checking**: Always check for null before DOM operations
 - **Event Handlers**: Use typed event handlers
 - **Canvas API**: Properly type canvas context operations
+- **Modular Design**: Separate concerns into GamePortal and GameRoom classes
+- **Framework-Free**: Pure vanilla JavaScript/TypeScript implementation
 
 ```typescript
 class DrawingCanvas {
@@ -179,6 +181,8 @@ class DrawingCanvas {
 ```
 
 ### WebSocket Client Implementation
+The frontend includes comprehensive WebSocket management with automatic reconnection:
+
 ```typescript
 class GameClient {
   private ws: WebSocket | null = null;
@@ -192,6 +196,7 @@ class GameClient {
     this.ws.onopen = () => {
       console.log('Connected to game session');
       this.reconnectAttempts = 0;
+      this.updateConnectionStatus('connected');
     };
     
     this.ws.onmessage = (event: MessageEvent) => {
@@ -200,14 +205,64 @@ class GameClient {
         this.handleMessage(message);
       } catch (error) {
         console.error('Failed to parse message:', error);
+        this.showError('Failed to process server message');
       }
     };
     
     this.ws.onclose = () => {
       this.handleDisconnection();
     };
+    
+    this.ws.onerror = () => {
+      this.updateConnectionStatus('error');
+    };
+  }
+  
+  private handleDisconnection(): void {
+    this.updateConnectionStatus('disconnected');
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.scheduleReconnect();
+    }
+  }
+  
+  private scheduleReconnect(): void {
+    const backoffTime = Math.pow(2, this.reconnectAttempts) * 1000;
+    setTimeout(() => {
+      this.reconnectAttempts++;
+      this.connect(this.gameType, this.sessionId);
+    }, backoffTime);
+  }
+  
+  private updateConnectionStatus(status: 'connected' | 'disconnected' | 'error'): void {
+    const statusElement = document.getElementById('connection-status');
+    if (statusElement) {
+      statusElement.textContent = status;
+      statusElement.className = `status ${status}`;
+    }
+  }
+  
+  private showError(message: string): void {
+    const toast = document.createElement('div');
+    toast.className = 'toast error';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
   }
 }
+```
+
+### Frontend Build System Standards
+- **Custom TypeScript Compiler**: No external build dependencies
+- **Single Bundle Output**: All modules compiled to `src/static/bundle.js`
+- **Import Resolution**: Automatic resolution and bundling of ES modules
+- **Type Stripping**: Remove TypeScript annotations, preserve JavaScript logic
+- **Watch Mode**: Development mode with file watching for rapid iteration
+
+### Supported Games Implementation
+- **Tic Tac Toe**: 3x3 grid with click-to-move mechanics
+- **Connect Four**: Column-based drop mechanics  
+- **Rock Paper Scissors**: Choice selection with result history
+- **Drawing Game**: HTML5 Canvas with real-time stroke synchronization
 ```
 
 ## Error Handling Standards
@@ -244,12 +299,15 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
 - **Message Handling**: Test all message types and edge cases
 - **State Transitions**: Verify correct state changes
 - **Error Conditions**: Test error handling paths
+- **Frontend Components**: Test GamePortal and GameRoom classes
+- **Build System**: Verify custom TypeScript compiler produces correct output
 
 ### Integration Tests
 - **WebSocket Flows**: End-to-end WebSocket communication tests
 - **Multi-Player Scenarios**: Test concurrent player actions
 - **Performance**: Load testing with multiple connections
-- **Browser Compatibility**: Test across different browsers
+- **Browser Compatibility**: Test across different browsers (Chrome 16+, Firefox 11+, Safari 7+, Edge 12+)
+- **Reconnection Logic**: Test automatic reconnection with exponential backoff
 
 ## Code Review Guidelines
 

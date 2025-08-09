@@ -224,9 +224,14 @@ class App {
     }
 
     private hideLoadingOverlay(): void {
+        console.log('Trying to hide loading overlay...');
         const overlay = document.getElementById('loading-overlay');
+        console.log('Found overlay:', overlay);
         if (overlay) {
             overlay.style.display = 'none';
+            console.log('Loading overlay hidden');
+        } else {
+            console.log('Loading overlay not found!');
         }
     }
 }

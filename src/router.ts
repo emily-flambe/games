@@ -249,7 +249,7 @@ router.get('/*', async (ctx) => {
         </main>
         
         <!-- Loading overlay -->
-        <div id="loading-overlay" class="overlay">
+        <div id="loading-overlay" class="overlay" style="display: none;">
             <div class="spinner"></div>
             <p>Connecting...</p>
         </div>

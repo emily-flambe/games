@@ -25,9 +25,11 @@ The multiplayer games platform is built as a single Cloudflare Worker that manag
 
 ### 4. Client Layer (Frontend)
 - **Vanilla TypeScript**: No framework dependencies
-- **WebSocket Client**: Persistent connection to game sessions
+- **WebSocket Client**: Persistent connection to game sessions with automatic reconnection
 - **HTML5 Canvas**: For drawing game rendering
 - **Responsive UI**: Mobile-first design approach
+- **Modular Components**: GamePortal.ts for game selection, GameRoom.ts for game interfaces
+- **Custom Build System**: TypeScript compiler with no external dependencies
 
 ## Durable Objects Design
 
@@ -128,11 +130,32 @@ games.yourdomain.com/
 └── /ws/{gameType}/{sessionId} (WebSocket endpoints)
 ```
 
+### Frontend Build System
+- **Custom TypeScript Compiler**: No external build dependencies
+- **Single Bundle Output**: Compiled to `src/static/bundle.js`
+- **Development Mode**: Watch mode for rapid iteration
+- **Import Resolution**: Automatic bundling of ES modules
+
+### Frontend File Structure
+```
+├── src/static/           # Static assets served by backend
+│   ├── index.html        # Main HTML template
+│   ├── styles.css        # CSS styles
+│   └── bundle.js         # Compiled JavaScript bundle
+├── frontend-src/         # TypeScript source files
+│   ├── main.ts           # Application entry point
+│   ├── GamePortal.ts     # Game selection interface
+│   └── GameRoom.ts       # Game room functionality
+├── build-scripts/        # Build tooling
+│   └── build-frontend.js # Custom TypeScript compiler
+```
+
 ### Asset Bundling Strategy
 - **Inline Assets**: Small assets embedded in Worker code
 - **Dynamic Loading**: Larger assets served as separate endpoints
 - **Caching**: Aggressive caching headers for static assets
 - **Compression**: Gzip/Brotli compression for all text assets
+- **Single Bundle**: 23KB JavaScript bundle for optimal performance
 
 ## Monitoring & Observability
 
