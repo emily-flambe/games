@@ -1,0 +1,343 @@
+#!/usr/bin/env node
+
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { WebSocketServer } = require('ws');
+const url = require('url');
+
+// Animal emojis for random player assignment
+const ANIMAL_EMOJIS = [
+  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯',
+  '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🐣',
+  '🦆', '🦅', '🦉', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋',
+  '🐌', '🐞', '🐜', '🦟', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎',
+  '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐟', '🐠', '🐡',
+  '🦈', '🐳', '🐋', '🐬', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘',
+  '🦏', '🦛', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎',
+  '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐈'
+];
+
+function getRandomAnimalEmoji() {
+  return ANIMAL_EMOJIS[Math.floor(Math.random() * ANIMAL_EMOJIS.length)];
+}
+
+const PORT = 8777;
+
+// MIME types for static files
+const mimeTypes = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon'
+};
+
+// Simple in-memory game sessions
+class GameSession {
+  constructor(sessionId) {
+    this.sessionId = sessionId;
+    this.players = new Map();
+    this.websockets = new Set();
+    this.playerSockets = new Map(); // Track player ID -> WebSocket mapping
+    this.gameState = {
+      type: 'hello-world',
+      status: 'waiting',
+      players: {},
+      hostId: null
+    };
+  }
+
+  addPlayer(playerId, ws) {
+    this.websockets.add(ws);
+    this.playerSockets.set(playerId, ws); // Track player-socket mapping
+    const playerNumber = this.players.size + 1;
+    const joinedAt = Date.now();
+    const isFirstPlayer = this.players.size === 0;
+    
+    this.players.set(playerId, {
+      id: playerId,
+      name: require('sillyname')(),
+      emoji: getRandomAnimalEmoji(),
+      connected: true,
+      joinedAt: joinedAt,
+      isHost: isFirstPlayer
+    });
+    
+    this.gameState.players[playerId] = this.players.get(playerId);
+    
+    // Set host if this is the first player
+    if (isFirstPlayer) {
+      this.gameState.hostId = playerId;
+      // Send host assignment message
+      ws.send(JSON.stringify({
+        type: 'host_assigned',
+        data: { hostId: playerId },
+        timestamp: Date.now()
+      }));
+    }
+    
+    this.broadcast({
+      type: 'playerJoined',
+      playerId: playerId,
+      player: this.players.get(playerId),
+      gameState: this.gameState
+    });
+    
+    // Send current state to new player
+    ws.send(JSON.stringify({
+      type: 'gameState',
+      gameState: this.gameState,
+      playerId: playerId
+    }));
+  }
+
+  removePlayer(playerId, ws) {
+    this.websockets.delete(ws);
+    this.playerSockets.delete(playerId); // Remove player-socket mapping
+    if (this.players.has(playerId)) {
+      const wasHost = this.gameState.hostId === playerId;
+      
+      this.players.delete(playerId);
+      delete this.gameState.players[playerId];
+      
+      // If host left, assign new host to earliest joined remaining player
+      if (wasHost && this.players.size > 0) {
+        // Find the player who joined earliest (lowest joinedAt timestamp)
+        let newHost = null;
+        let earliestJoinTime = Date.now();
+        
+        for (const [id, player] of this.players) {
+          if (player.joinedAt < earliestJoinTime) {
+            earliestJoinTime = player.joinedAt;
+            newHost = player;
+          }
+        }
+        
+        if (newHost) {
+          newHost.isHost = true;
+          this.gameState.hostId = newHost.id;
+          this.gameState.players[newHost.id] = newHost; // Update the gameState
+          
+          // Notify new host
+          const newHostWs = this.getWebSocketForPlayer(newHost.id);
+          if (newHostWs) {
+            newHostWs.send(JSON.stringify({
+              type: 'host_assigned',
+              data: { hostId: newHost.id },
+              timestamp: Date.now()
+            }));
+          }
+        } else {
+          this.gameState.hostId = null;
+        }
+      }
+      
+      this.broadcast({
+        type: 'playerLeft',
+        playerId: playerId,
+        gameState: this.gameState
+      });
+    }
+  }
+  
+  // Helper method to find WebSocket for a player
+  getWebSocketForPlayer(playerId) {
+    return this.playerSockets.get(playerId);
+  }
+
+  handleMessage(message, ws, playerId) {
+    try {
+      const data = JSON.parse(message);
+      
+      switch (data.type) {
+        case 'updateName':
+        case 'change_name':
+          if (this.players.has(playerId)) {
+            const player = this.players.get(playerId);
+            player.name = data.name || data.data?.newName || player.name;
+            this.gameState.players[playerId] = player;
+            this.broadcast({
+              type: 'name_changed',
+              playerId: playerId,
+              data: { playerId, newName: player.name, gameState: this.gameState }
+            });
+          }
+          break;
+          
+        case 'updateEmoji':
+        case 'change_emoji':
+          if (this.players.has(playerId)) {
+            const player = this.players.get(playerId);
+            player.emoji = data.emoji || data.data?.newEmoji || player.emoji;
+            this.gameState.players[playerId] = player;
+            this.broadcast({
+              type: 'emoji_changed',
+              playerId: playerId,
+              data: { playerId, newEmoji: player.emoji, gameState: this.gameState }
+            });
+          }
+          break;
+          
+        case 'ping':
+          ws.send(JSON.stringify({ type: 'pong' }));
+          break;
+          
+        default:
+          console.log('Unknown message type:', data.type);
+      }
+    } catch (error) {
+      console.error('Error handling message:', error);
+    }
+  }
+
+  broadcast(message, excludeWs = null) {
+    const messageStr = JSON.stringify(message);
+    this.websockets.forEach(ws => {
+      if (ws !== excludeWs && ws.readyState === 1) {
+        try {
+          ws.send(messageStr);
+        } catch (error) {
+          console.error('Error broadcasting message:', error);
+          this.websockets.delete(ws);
+        }
+      }
+    });
+  }
+}
+
+// Game sessions storage
+const gameSessions = new Map();
+
+// HTTP Server
+const server = http.createServer((req, res) => {
+  const parsedUrl = url.parse(req.url, true);
+  const pathname = parsedUrl.pathname;
+  
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
+
+  // API Routes
+  if (pathname === '/api/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+      status: 'ok', 
+      timestamp: Date.now(),
+      environment: 'local-development'
+    }));
+    return;
+  }
+
+  // Static file serving
+  let filePath;
+  if (pathname === '/' || pathname === '/index.html') {
+    filePath = path.join(__dirname, 'src', 'static', 'index.html');
+  } else if (pathname.startsWith('/static/')) {
+    filePath = path.join(__dirname, 'src', pathname);
+  } else {
+    // Default to index.html for SPA routing
+    filePath = path.join(__dirname, 'src', 'static', 'index.html');
+  }
+
+  // Check if file exists
+  fs.access(filePath, fs.constants.F_OK, (err) => {
+    if (err) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('File not found');
+      return;
+    }
+
+    // Get file extension and MIME type
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+    // Read and serve the file
+    fs.readFile(filePath, (err, content) => {
+      if (err) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Internal server error');
+        return;
+      }
+
+      res.writeHead(200, { 'Content-Type': contentType });
+      res.end(content);
+    });
+  });
+});
+
+// WebSocket Server
+const wss = new WebSocketServer({ server });
+
+wss.on('connection', (ws, req) => {
+  const pathname = url.parse(req.url).pathname;
+  console.log('WebSocket connection:', pathname);
+  
+  // Extract session ID from URL (e.g., /ws, /api/game/test-session/ws)
+  let sessionId = 'default-session';
+  if (pathname.includes('/api/game/') && pathname.endsWith('/ws')) {
+    const parts = pathname.split('/');
+    sessionId = parts[3]; // /api/game/{sessionId}/ws
+  } else if (pathname === '/ws') {
+    sessionId = 'test-session';
+  }
+  
+  // Get or create game session
+  if (!gameSessions.has(sessionId)) {
+    gameSessions.set(sessionId, new GameSession(sessionId));
+  }
+  const gameSession = gameSessions.get(sessionId);
+  
+  // Generate player ID
+  const playerId = 'player_' + Math.random().toString(36).substr(2, 9);
+  
+  // Add player to session
+  gameSession.addPlayer(playerId, ws);
+  
+  console.log(`Player ${playerId} joined session ${sessionId}`);
+
+  // Handle messages
+  ws.on('message', (message) => {
+    gameSession.handleMessage(message.toString(), ws, playerId);
+  });
+
+  // Handle disconnect
+  ws.on('close', () => {
+    console.log(`Player ${playerId} disconnected from session ${sessionId}`);
+    gameSession.removePlayer(playerId, ws);
+    
+    // Clean up empty sessions
+    if (gameSession.websockets.size === 0) {
+      setTimeout(() => {
+        if (gameSession.websockets.size === 0) {
+          gameSessions.delete(sessionId);
+          console.log(`Cleaned up empty session ${sessionId}`);
+        }
+      }, 30000); // Clean up after 30 seconds
+    }
+  });
+
+  // Handle errors
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+    gameSession.removePlayer(playerId, ws);
+  });
+});
+
+// Start server
+server.listen(PORT, () => {
+  console.log(`🎮 Premium Web Games Online Incorporated LLC Esq. GPT CBD running at http://localhost:${PORT}`);
+  console.log(`📡 WebSocket server ready`);
+  console.log(`🔗 Test WebSocket at ws://localhost:${PORT}/ws`);
+});

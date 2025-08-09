@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Web Games Online Incorporated LLC Esq. GPT CBD</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Premium Web Games Online Incorporated LLC Esq. GPT CBD</h1>
+        </header>
+        
+        <main>
+            <!-- Game Portal View -->
+            <div id="game-portal" class="view active">
+                <h2>Select a Game</h2>
+                <div class="games-grid">
+                    <button class="game-card" data-game="hello-world">
+                        <h3>Hello World</h3>
+                        <p>Minimal multiplayer test - just join and see messages</p>
+                    </button>
+                    <button class="game-card" data-game="tic-tac-toe">
+                        <h3>Tic Tac Toe</h3>
+                        <p>Classic 3x3 strategy game</p>
+                    </button>
+                    <button class="game-card" data-game="rock-paper-scissors">
+                        <h3>Rock Paper Scissors</h3>
+                        <p>Quick decision-based game</p>
+                    </button>
+                    <button class="game-card" data-game="connect-four">
+                        <h3>Connect Four</h3>
+                        <p>Drop chips to connect four in a row</p>
+                    </button>
+                    <button class="game-card" data-game="drawing">
+                        <h3>Drawing Game</h3>
+                        <p>Draw and guess words with friends</p>
+                    </button>
+                </div>
+                
+                <div class="join-room-section">
+                    <h3>Join Existing Room</h3>
+                    <input type="text" id="room-code-input" placeholder="Enter room code">
+                    <button id="join-room-btn">Join Room</button>
+                </div>
+            </div>
+            
+            <!-- Game Room View -->
+            <div id="game-room" class="view">
+                <div class="room-header">
+                    <div class="room-info">
+                        <h2 id="game-title">Game Room</h2>
+                        <div class="room-code">Room: <span id="room-code-display"></span></div>
+                    </div>
+                    <button id="leave-room-btn">Leave Room</button>
+                </div>
+                
+                <div class="game-status">
+                    <div id="game-state">Waiting for players...</div>
+                    <div id="player-turn"></div>
+                </div>
+                
+                <div class="players-list">
+                    <h3>Players</h3>
+                    <div id="players-container"></div>
+                </div>
+                
+                <!-- Hello World Player Controls -->
+                <div id="hello-world-controls" class="hello-world-controls" style="display: none;">
+                    <h3>Your Player Info</h3>
+                    <div class="player-info" style="display: flex; gap: 15px; align-items: center; background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                        <div class="name-control" style="display: flex; gap: 10px; align-items: center;">
+                            <label style="font-weight: bold;">Name:</label>
+                            <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 150px;">
+                            <button id="update-name-btn" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Update</button>
+                        </div>
+                        <div class="emoji-control" style="display: flex; gap: 10px; align-items: center; position: relative;">
+                            <label style="font-weight: bold;">Emoji:</label>
+                            <button id="current-emoji-btn" style="padding: 8px 12px; background: #f8f9fa; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 24px;">🐶</button>
+                            
+                            <!-- Emoji Picker Popup -->
+                            <div id="emoji-picker" style="display: none; position: absolute; top: 40px; left: 0; background: white; border: 2px solid #ccc; border-radius: 8px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 1000; width: 300px;">
+                                <h4 style="margin: 0 0 10px 0;">Choose Your Animal:</h4>
+                                <div id="emoji-grid" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; max-height: 200px; overflow-y: auto;">
+                                    <!-- Animal emojis will be populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Drawing Game Specific UI -->
+                <div id="drawing-controls" class="drawing-controls" style="display: none;">
+                    <div class="drawing-tools">
+                        <button id="clear-canvas-btn">Clear</button>
+                        <label>Color: <input type="color" id="brush-color" value="#000000"></label>
+                        <label>Size: <input type="range" id="brush-size" min="1" max="10" value="3"></label>
+                    </div>
+                    <div id="word-display" class="word-display"></div>
+                    <div id="guess-input-container" class="guess-input" style="display: none;">
+                        <input type="text" id="guess-input" placeholder="Enter your guess...">
+                        <button id="submit-guess-btn">Guess</button>
+                    </div>
+                    <div id="game-timer" class="game-timer"></div>
+                </div>
+                
+                <div class="game-controls">
+                    <button id="start-game-btn" style="display: none;">Start Game</button>
+                    <button id="restart-game-btn" style="display: none;">Restart Game</button>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Loading overlay -->
+        <div id="loading-overlay" class="overlay" style="display: none;">
+            <div class="spinner"></div>
+            <p>Connecting...</p>
+        </div>
+        
+        <!-- Error messages -->
+        <div id="error-container" class="error-container"></div>
+    </div>
+    
+    <script src="/static/app.js"></script>
+</body>
+</html>
