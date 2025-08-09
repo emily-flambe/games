@@ -40,7 +40,7 @@ npm run deploy:production
 ### Local Development
 - Node.js 18+
 - npm or yarn
-- Port 8787 available
+- Port 8777 available
 
 ### Production Requirements
 - Cloudflare account with Workers enabled
@@ -143,7 +143,7 @@ src/
 ### Development
 - Console logging for WebSocket events
 - Integration tests validate functionality
-- Local server at `http://localhost:8787`
+- Local server at `http://localhost:8777`
 
 ### Production
 - Cloudflare Workers analytics

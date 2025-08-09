@@ -36,7 +36,6 @@ export interface SessionInfo {
 // Environment bindings
 export interface Env {
   GAME_SESSION: DurableObjectNamespace;
-  SESSION_MANAGER: DurableObjectNamespace;
   ENVIRONMENT?: string;
 }
 

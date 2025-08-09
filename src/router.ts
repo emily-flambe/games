@@ -85,15 +85,18 @@ router.get('/api/health', async (ctx) => {
 
 // API routes
 router.get('/api/sessions', async (ctx) => {
-  const id = ctx.env.SESSION_MANAGER.idFromName('global');
-  const manager = ctx.env.SESSION_MANAGER.get(id);
-  return await manager.fetch(ctx.request);
+  // TODO: Implement session listing without SessionManager
+  return new Response(JSON.stringify([]), {
+    headers: { 'Content-Type': 'application/json' }
+  });
 });
 
 router.post('/api/sessions', async (ctx) => {
-  const id = ctx.env.SESSION_MANAGER.idFromName('global');
-  const manager = ctx.env.SESSION_MANAGER.get(id);
-  return await manager.fetch(ctx.request);
+  // TODO: Implement session creation without SessionManager
+  return new Response(JSON.stringify({ error: 'Not implemented' }), {
+    status: 501,
+    headers: { 'Content-Type': 'application/json' }
+  });
 });
 
 // Create or update specific game session

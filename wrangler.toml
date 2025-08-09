@@ -3,15 +3,15 @@ main = "src/index.ts"
 compatibility_date = "2025-08-09"
 compatibility_flags = ["nodejs_compat"]
 
+[dev]
+port = 8777
+local_protocol = "http"
+
 [[durable_objects.bindings]]
 name = "GAME_SESSION"
 class_name = "GameSession"
 
-[[durable_objects.bindings]]
-name = "SESSION_MANAGER"
-class_name = "SessionManager"
-
 [[migrations]]
 tag = "v1"
-new_classes = ["GameSession", "SessionManager"]
+new_sqlite_classes = ["GameSession"]
 

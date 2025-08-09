@@ -10,8 +10,8 @@ const http = require('http');
 console.log('🔌 Starting WebSocket integration tests...\n');
 
 // Configuration
-const DEV_SERVER_URL = 'http://localhost:8787';
-const WS_SERVER_URL = 'ws://localhost:8787/ws';
+const DEV_SERVER_URL = 'http://localhost:8777';
+const WS_SERVER_URL = 'ws://localhost:8777/ws';
 const TIMEOUT = 10000; // 10 seconds
 
 // Utility to wait for a condition

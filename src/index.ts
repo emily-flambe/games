@@ -1,10 +1,9 @@
 import { router } from './router';
 import { GameSession } from './durable-objects/GameSession';
-import { SessionManager } from './durable-objects/SessionManager';
 import type { Env } from '../types/shared';
 
 // Export Durable Object classes
-export { GameSession, SessionManager };
+export { GameSession };
 
 // Main Worker handler
 export default {

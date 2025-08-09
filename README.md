@@ -55,7 +55,7 @@ A real-time multiplayer games platform built with Cloudflare Workers, Durable Ob
    ```bash
    npm run dev
    ```
-   This starts the Wrangler development server on `http://localhost:8787`
+   This starts the Wrangler development server on `http://localhost:8777`
 
 3. **In another terminal, test WebSocket connections:**
    ```bash
@@ -155,7 +155,7 @@ npm run test:integration
 ### Troubleshooting Development
 
 **Server won't start:**
-- Check that port 8787 is available
+- Check that port 8777 is available
 - Verify `wrangler.toml` configuration
 - Run `npm run test:local` to check setup
 
@@ -225,7 +225,7 @@ games/
 ## WebSocket API
 
 ### Connection
-Connect to WebSocket endpoint: `ws://localhost:8787/ws` (development)
+Connect to WebSocket endpoint: `ws://localhost:8777/ws` (development)
 
 ### Message Format
 ```typescript

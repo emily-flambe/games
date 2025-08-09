@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node build-scripts/build-frontend.js",
     "build:watch": "node build-scripts/build-frontend.js --watch",
-    "dev": "npm run build && wrangler dev",
+    "dev": "npm run build && wrangler dev --port 8777",
     "dev:remote": "npm run build && wrangler dev --remote",
     "deploy": "npm run build && wrangler deploy",
     "test": "npm run test:unit && npm run test:integration",
