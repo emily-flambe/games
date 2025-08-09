@@ -798,6 +798,65 @@ input:focus {
     }
 }
 
+/* Floating emoji base styles - animations are set dynamically in JavaScript */
+.floating-emoji-x {
+    --emoji-size: 4rem;
+}
+
+.floating-emoji-y {
+    /* Y-axis animations are set dynamically */
+}
+
+/* Create multiple chaotic movement patterns */
+@keyframes move-x {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(calc(30vw - var(--emoji-size))); }
+    50% { transform: translateX(calc(80vw - var(--emoji-size))); }
+    75% { transform: translateX(calc(15vw - var(--emoji-size))); }
+    100% { transform: translateX(calc(100vw - var(--emoji-size))); }
+}
+
+@keyframes move-y {
+    0% { transform: translateY(0); }
+    20% { transform: translateY(calc(60vh - var(--emoji-size))); }
+    40% { transform: translateY(calc(20vh - var(--emoji-size))); }
+    60% { transform: translateY(calc(80vh - var(--emoji-size))); }
+    80% { transform: translateY(calc(40vh - var(--emoji-size))); }
+    100% { transform: translateY(calc(100vh - var(--emoji-size))); }
+}
+
+/* Additional chaotic movement patterns for variety */
+@keyframes move-x-chaos1 {
+    0% { transform: translateX(calc(20vw - var(--emoji-size))); }
+    33% { transform: translateX(calc(90vw - var(--emoji-size))); }
+    66% { transform: translateX(calc(5vw - var(--emoji-size))); }
+    100% { transform: translateX(calc(75vw - var(--emoji-size))); }
+}
+
+@keyframes move-y-chaos1 {
+    0% { transform: translateY(calc(40vh - var(--emoji-size))); }
+    25% { transform: translateY(calc(10vh - var(--emoji-size))); }
+    50% { transform: translateY(calc(90vh - var(--emoji-size))); }
+    75% { transform: translateY(calc(25vh - var(--emoji-size))); }
+    100% { transform: translateY(calc(70vh - var(--emoji-size))); }
+}
+
+@keyframes move-x-chaos2 {
+    0% { transform: translateX(calc(60vw - var(--emoji-size))); }
+    20% { transform: translateX(calc(10vw - var(--emoji-size))); }
+    40% { transform: translateX(calc(85vw - var(--emoji-size))); }
+    60% { transform: translateX(calc(35vw - var(--emoji-size))); }
+    80% { transform: translateX(calc(95vw - var(--emoji-size))); }
+    100% { transform: translateX(0); }
+}
+
+@keyframes move-y-chaos2 {
+    0% { transform: translateY(calc(30vh - var(--emoji-size))); }
+    30% { transform: translateY(calc(85vh - var(--emoji-size))); }
+    60% { transform: translateY(calc(15vh - var(--emoji-size))); }
+    100% { transform: translateY(calc(65vh - var(--emoji-size))); }
+}
+
 /* Smooth transitions */
 * {
     transition: opacity 0.2s ease, transform 0.2s ease;
