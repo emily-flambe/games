@@ -1,6 +1,6 @@
 name = "games"
 main = "src/index.ts"
-compatibility_date = "2024-08-09"
+compatibility_date = "2025-08-09"
 compatibility_flags = ["nodejs_compat"]
 
 [env.production]

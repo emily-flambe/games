@@ -8,8 +8,8 @@
     "build:watch": "node build-scripts/build-frontend.js --watch",
     "dev": "npm run build && wrangler dev",
     "dev:remote": "npm run build && wrangler dev --remote",
-    "deploy": "npm run build && wrangler deploy",
-    "deploy:production": "npm run build && wrangler deploy --env production",
+    "deploy": "npm run build && wrangler deploy --config wrangler.toml",
+    "deploy:production": "npm run build && wrangler deploy --env production --config wrangler.toml",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "node --test tests/unit/*.test.js",
     "test:integration": "node tests/integration/websocket.test.js",
@@ -34,7 +34,7 @@
     "@cloudflare/workers-types": "^4.20240806.0",
     "esbuild": "^0.19.0",
     "typescript": "^5.0.0",
-    "wrangler": "^3.0.0",
+    "wrangler": "^4.28.1",
     "ws": "^8.18.3"
   }
 }

@@ -1,0 +1,35 @@
+{
+  "name": "games",
+  "compatibility_date": "2025-08-09",
+  "main": "src/index.ts",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GAME_SESSION",
+        "class_name": "GameSession"
+      },
+      {
+        "name": "SESSION_MANAGER", 
+        "class_name": "SessionManager"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["GameSession", "SessionManager"]
+    }
+  ],
+  "vars": {
+    "ENVIRONMENT": "production"
+  },
+  "env": {
+    "production": {
+      "name": "games"
+    },
+    "development": {
+      "name": "games-dev"
+    }
+  }
+}
