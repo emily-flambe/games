@@ -2,6 +2,16 @@
 
 A simple multiplayer games platform built on Cloudflare Workers with real-time WebSocket support.
 
+## 🚨 **IMPORTANT: Automated Versioning**
+
+**Your commit messages control deployments!** Read [VERSIONING.md](VERSIONING.md) before committing.
+
+Quick reference:
+- `feat: description` → Minor version bump + deploy
+- `fix: description` → Patch version bump + deploy  
+- `docs: description` → No version bump
+- `feat!: description` → Major version bump + deploy
+
 ## What is this?
 
 This is a collection of browser-based multiplayer games that run on Cloudflare's edge network. Players can create game rooms, share links with friends, and play together in real-time. The platform supports games like collaborative drawing, voting, tournaments, and price guessing.
