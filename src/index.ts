@@ -538,7 +538,7 @@ export class GameSession implements DurableObject {
   }
 
   handleCheckboxToggle(data: any, playerId: string) {
-    const checkboxIndex = data.checkboxIndex || data.data?.checkboxIndex;
+    const checkboxIndex = data.checkboxIndex !== undefined ? data.checkboxIndex : data.data?.checkboxIndex;
     
     if (typeof checkboxIndex !== 'number' || checkboxIndex < 0 || checkboxIndex > 8) {
       console.error('Invalid checkbox index:', checkboxIndex);
@@ -591,30 +591,34 @@ export class GameSession implements DurableObject {
   handleGameEnd() {
     console.log('Game ended - all checkboxes checked');
     
-    // Find winner (highest score)
-    let winnerId = null;
-    let highestScore = -1;
+    // Find the highest score
+    const scores = this.gameState.playerScores;
+    const maxScore = Math.max(...Object.values(scores));
     
-    for (const [playerId, score] of Object.entries(this.gameState.playerScores)) {
-      if ((score as number) > highestScore) {
-        highestScore = score as number;
-        winnerId = playerId;
-      }
+    // Find all players with the highest score
+    const winners = Object.keys(scores).filter(playerId => scores[playerId] === maxScore);
+    
+    let resultMessage;
+    if (winners.length > 1) {
+      // Tie - everyone loses
+      resultMessage = "EVERYONE LOSES";
+    } else {
+      // Single winner
+      const winnerId = winners[0];
+      const winner = this.players.get(winnerId);
+      const winnerName = winner ? winner.name : 'Unknown';
+      resultMessage = `${winnerName.toUpperCase()} WINS!`;
     }
     
-    const winner = winnerId ? this.players.get(winnerId) : null;
-    const winnerName = winner ? winner.name : 'Unknown';
-    
-    console.log(`Game result: ${winnerName} wins!`);
-    console.log('Final scores:', this.gameState.playerScores);
+    console.log('Game result:', resultMessage);
+    console.log('Final scores:', scores);
     
     this.broadcast({
       type: 'game_ended',
       data: {
-        winner: winner,
-        winnerId: winnerId,
-        winnerName: winnerName,
-        finalScores: this.gameState.playerScores,
+        message: resultMessage,
+        winners: winners,
+        scores: scores,
         gameState: this.gameState
       },
       timestamp: Date.now()
