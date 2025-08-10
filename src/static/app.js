@@ -578,11 +578,67 @@ class GameClient {
         });
     }
 
+    /**
+     * CRITICAL: EMOJI PICKER POSITIONING - DO NOT MODIFY THIS METHOD
+     * 
+     * This method was extensively debugged to solve z-index and positioning issues.
+     * The emoji picker was being hidden under other UI elements despite high z-index values.
+     * 
+     * SOLUTION REQUIREMENTS (DO NOT CHANGE):
+     * 1. Move picker to document.body to escape parent container stacking contexts
+     * 2. Use setTimeout to ensure button is rendered before positioning
+     * 3. Use setProperty with 'important' flag to override CSS conflicts
+     * 4. Position 50px left of button and 10px below it
+     * 5. Force z-index: 999999 to appear above all other elements
+     * 
+     * DEBUGGING HISTORY:
+     * - Initially hidden under white container below
+     * - High z-index (10001, 999999) didn't work due to parent stacking context
+     * - position: absolute was clipped by parent containers
+     * - position: fixed with getBoundingClientRect() worked but CSS overrode it
+     * - Final solution: setProperty with 'important' flag forces positioning
+     * 
+     * WARNING: DO NOT MODIFY UNLESS YOU WANT TO SPEND HOURS DEBUGGING AGAIN!
+     */
     toggleEmojiPicker() {
         const emojiPicker = document.getElementById('emoji-picker');
-        if (emojiPicker) {
+        const emojiBtn = document.getElementById('current-emoji-btn');
+        
+        if (emojiPicker && emojiBtn) {
             const isVisible = emojiPicker.style.display !== 'none';
-            emojiPicker.style.display = isVisible ? 'none' : 'block';
+            
+            if (isVisible) {
+                emojiPicker.style.display = 'none';
+            } else {
+                // CRITICAL: Move picker to body to escape parent container stacking contexts
+                // This prevents any parent div from clipping or hiding the picker
+                if (emojiPicker.parentNode !== document.body) {
+                    document.body.appendChild(emojiPicker);
+                }
+                
+                // CRITICAL: Small delay to ensure button is properly rendered
+                // getBoundingClientRect() needs the button to be in the DOM and positioned
+                setTimeout(() => {
+                    // Get exact button position on screen
+                    const btnRect = emojiBtn.getBoundingClientRect();
+                    console.log('Button rect:', btnRect); // Keep for debugging
+                    
+                    // CRITICAL: Use setProperty with 'important' to force override CSS conflicts
+                    // Regular style.property assignments were being overridden by CSS rules
+                    emojiPicker.style.setProperty('position', 'fixed', 'important');
+                    emojiPicker.style.setProperty('left', Math.max(0, btnRect.left - 50) + 'px', 'important');
+                    emojiPicker.style.setProperty('top', Math.max(0, btnRect.bottom + 10) + 'px', 'important');
+                    emojiPicker.style.setProperty('right', 'auto', 'important'); // Clear conflicting properties
+                    emojiPicker.style.setProperty('bottom', 'auto', 'important'); // Clear conflicting properties
+                    emojiPicker.style.setProperty('z-index', '999999', 'important');
+                    emojiPicker.style.setProperty('display', 'block', 'important');
+                    
+                    console.log('Positioned picker at:', {
+                        left: Math.max(0, btnRect.left - 50) + 'px',
+                        top: Math.max(0, btnRect.bottom + 10) + 'px'
+                    });
+                }, 10); // 10ms delay is minimum needed for reliable positioning
+            }
         }
     }
 
@@ -831,10 +887,21 @@ class GameClient {
     // Checkbox Game specific methods
     initializeCheckboxGrid() {
         const checkboxGrid = document.getElementById('checkbox-grid');
-        if (!checkboxGrid) return;
+        if (!checkboxGrid) {
+            console.error('🐰 Checkbox grid element not found!');
+            return;
+        }
+        
+        // Ensure checkboxStates is initialized
+        if (!this.checkboxStates || this.checkboxStates.length !== 9) {
+            console.log('🐰 Initializing checkbox states array');
+            this.checkboxStates = new Array(9).fill(false);
+        }
         
         // Clear any existing content
         checkboxGrid.innerHTML = '';
+        
+        console.log('🐰 Creating 3x3 checkbox grid');
         
         // Create 3x3 grid of checkboxes (9 total)
         for (let i = 0; i < 9; i++) {
@@ -849,7 +916,10 @@ class GameClient {
             checkboxItem.appendChild(checkboxIcon);
             
             // Add click handler
-            checkboxItem.addEventListener('click', () => this.toggleCheckbox(i));
+            checkboxItem.addEventListener('click', () => {
+                console.log('🐰 Checkbox clicked:', i);
+                this.toggleCheckbox(i);
+            });
             
             checkboxGrid.appendChild(checkboxItem);
             
@@ -858,6 +928,8 @@ class GameClient {
                 checkboxItem.classList.add('checked');
             }
         }
+        
+        console.log('🐰 Checkbox grid initialized with', checkboxGrid.children.length, 'checkboxes');
     }
 
     toggleCheckbox(checkboxIndex) {
