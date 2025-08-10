@@ -45,10 +45,11 @@ class GameSession {
     this.websockets = new Set();
     this.playerSockets = new Map(); // Track player ID -> WebSocket mapping
     this.gameState = {
-      type: 'hello-world',
+      type: 'checkbox-game',
       status: 'waiting',
       players: {},
-      hostId: null
+      hostId: null,
+      checkboxStates: new Array(9).fill(false) // 3x3 grid of checkboxes, all initially unchecked
     };
   }
 
@@ -150,6 +151,43 @@ class GameSession {
     return this.playerSockets.get(playerId);
   }
 
+  // Handle checkbox toggle for the shared checkbox game
+  handleCheckboxToggle(data, playerId) {
+    try {
+      const checkboxIndex = data.checkboxIndex || data.data?.checkboxIndex;
+      
+      // Validate checkbox index (must be between 0 and 8 for 3x3 grid)
+      if (typeof checkboxIndex !== 'number' || checkboxIndex < 0 || checkboxIndex > 8) {
+        console.error('Invalid checkbox index:', checkboxIndex);
+        return;
+      }
+      
+      // Toggle the checkbox state
+      this.gameState.checkboxStates[checkboxIndex] = !this.gameState.checkboxStates[checkboxIndex];
+      
+      // Get player info for the broadcast
+      const player = this.players.get(playerId);
+      
+      console.log(`Player ${player ? player.name : playerId} toggled checkbox ${checkboxIndex} to ${this.gameState.checkboxStates[checkboxIndex]}`);
+      
+      // Broadcast the checkbox state change to all players
+      this.broadcast({
+        type: 'checkbox_toggled',
+        data: {
+          checkboxIndex: checkboxIndex,
+          newState: this.gameState.checkboxStates[checkboxIndex],
+          toggledBy: playerId,
+          player: player,
+          gameState: this.gameState
+        },
+        timestamp: Date.now()
+      });
+      
+    } catch (error) {
+      console.error('Error handling checkbox toggle:', error);
+    }
+  }
+
   handleMessage(message, ws, playerId) {
     try {
       const data = JSON.parse(message);
@@ -185,6 +223,13 @@ class GameSession {
           
         case 'ping':
           ws.send(JSON.stringify({ type: 'pong' }));
+          break;
+          
+        case 'toggle_checkbox':
+        case 'TOGGLE_CHECKBOX':
+          if (this.players.has(playerId)) {
+            this.handleCheckboxToggle(data, playerId);
+          }
           break;
           
         default:
