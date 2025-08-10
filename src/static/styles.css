@@ -315,21 +315,23 @@ main {
 }
 
 .refresh-btn {
-    background: #3498db;
+    background: transparent;
     border: none;
     border-radius: 50%;
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    color: white;
+    color: #6c757d;
+    opacity: 0.6;
 }
 
 .refresh-btn:hover {
-    background: #2980b9;
+    color: #3498db;
+    opacity: 1;
     transform: rotate(180deg);
 }
 
