@@ -9,6 +9,7 @@ class GameClient {
         this.sessionId = '';
         this.currentPlayerId = null;
         this.currentPlayer = null;
+        this.checkboxStates = new Array(9).fill(false); // 3x3 grid of checkboxes
         this.init();
     }
 
@@ -118,10 +119,13 @@ class GameClient {
         this.connectWebSocket();
         this.showGameRoom();
         
-        // Show Hello World controls if it's hello world game
-        if (gameType === 'hello-world') {
-            const controls = document.getElementById('hello-world-controls');
-            if (controls) controls.style.display = 'block';
+        // Show universal player controls for ALL games
+        const controls = document.getElementById('player-controls');
+        if (controls) controls.style.display = 'block';
+        
+        // Initialize game-specific functionality
+        if (gameType === 'checkbox-game') {
+            this.initializeCheckboxGrid();
         }
         
         // Clear the room code input
@@ -131,15 +135,20 @@ class GameClient {
 
     joinExistingRoom(roomCode) {
         console.log('Joining existing room:', roomCode);
-        this.gameType = 'hello-world'; // Default to hello world for now
+        this.gameType = 'checkbox-game'; // Default to checkbox game
         this.sessionId = roomCode;
         
         this.connectWebSocket();
         this.showGameRoom();
         
-        // Show Hello World controls
-        const controls = document.getElementById('hello-world-controls');
+        // Show universal player controls for ALL games
+        const controls = document.getElementById('player-controls');
         if (controls) controls.style.display = 'block';
+        
+        // Initialize game-specific functionality
+        if (this.gameType === 'checkbox-game') {
+            this.initializeCheckboxGrid();
+        }
         
         // Clear the room code input
         const roomCodeInput = document.getElementById('room-code-input');
@@ -158,6 +167,7 @@ class GameClient {
             
             this.ws.onopen = () => {
                 console.log('WebSocket connected');
+                this.updateConnectionStatus(true);
             };
             
             this.ws.onmessage = (event) => {
@@ -171,6 +181,7 @@ class GameClient {
             
             this.ws.onclose = () => {
                 console.log('WebSocket disconnected');
+                this.updateConnectionStatus(false);
             };
             
             this.ws.onerror = (error) => {
@@ -269,6 +280,23 @@ class GameClient {
                         this.currentPlayer = updatedPlayer;
                         this.updateCurrentPlayerInfo();
                     }
+                }
+                break;
+            case 'checkbox_toggled':
+                // Handle checkbox toggle from server
+                if (message.checkboxIndex !== undefined && message.newState !== undefined) {
+                    this.checkboxStates[message.checkboxIndex] = message.newState;
+                    this.updateCheckboxUI(message.checkboxIndex, message.newState);
+                }
+                // Update game state if provided
+                if (message.gameState) {
+                    this.gameState = message.gameState;
+                    if (message.gameState.checkboxStates) {
+                        this.checkboxStates = message.gameState.checkboxStates;
+                        this.updateAllCheckboxes();
+                    }
+                    this.updatePlayers(message.gameState.players);
+                    this.updatePlayerCount();
                 }
                 break;
             default:
@@ -399,9 +427,13 @@ class GameClient {
             this.ws.close();
         }
         
-        // Hide Hello World controls
-        const controls = document.getElementById('hello-world-controls');
+        // Hide player controls
+        const controls = document.getElementById('player-controls');
         if (controls) controls.style.display = 'none';
+        
+        // Hide any game-specific content
+        const checkboxBoard = document.getElementById('checkbox-game-board');
+        if (checkboxBoard) checkboxBoard.style.display = 'none';
         
         document.getElementById('game-room').classList.remove('active');
         document.getElementById('game-portal').classList.add('active');
@@ -782,6 +814,93 @@ class GameClient {
         if (minutes < 60) return `${minutes}m ago`;
         if (hours < 24) return `${hours}h ago`;
         return 'today';
+    }
+
+    // Checkbox Game specific methods
+    initializeCheckboxGrid() {
+        const checkboxGrid = document.getElementById('checkbox-grid');
+        if (!checkboxGrid) return;
+        
+        // Clear any existing content
+        checkboxGrid.innerHTML = '';
+        
+        // Create 3x3 grid of checkboxes (9 total)
+        for (let i = 0; i < 9; i++) {
+            const checkboxItem = document.createElement('div');
+            checkboxItem.className = 'checkbox-item';
+            checkboxItem.dataset.index = i;
+            
+            const checkboxIcon = document.createElement('span');
+            checkboxIcon.className = 'checkbox-icon';
+            checkboxIcon.textContent = this.checkboxStates[i] ? '✓' : '';
+            
+            checkboxItem.appendChild(checkboxIcon);
+            
+            // Add click handler
+            checkboxItem.addEventListener('click', () => this.toggleCheckbox(i));
+            
+            checkboxGrid.appendChild(checkboxItem);
+            
+            // Update visual state
+            if (this.checkboxStates[i]) {
+                checkboxItem.classList.add('checked');
+            }
+        }
+    }
+
+    toggleCheckbox(checkboxIndex) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            console.log('Toggling checkbox:', checkboxIndex);
+            this.ws.send(JSON.stringify({
+                type: 'TOGGLE_CHECKBOX',
+                data: { checkboxIndex: checkboxIndex }
+            }));
+        }
+    }
+
+    updateCheckboxUI(checkboxIndex, newState) {
+        const checkboxItem = document.querySelector(`.checkbox-item[data-index="${checkboxIndex}"]`);
+        if (!checkboxItem) return;
+        
+        const checkboxIcon = checkboxItem.querySelector('.checkbox-icon');
+        if (!checkboxIcon) return;
+        
+        if (newState) {
+            checkboxItem.classList.add('checked');
+            checkboxIcon.textContent = '✓';
+        } else {
+            checkboxItem.classList.remove('checked');
+            checkboxIcon.textContent = '';
+        }
+    }
+
+    updateAllCheckboxes() {
+        for (let i = 0; i < this.checkboxStates.length; i++) {
+            this.updateCheckboxUI(i, this.checkboxStates[i]);
+        }
+    }
+
+    updateConnectionStatus(connected) {
+        const indicator = document.getElementById('connection-indicator');
+        const text = document.getElementById('connection-text');
+        
+        if (indicator && text) {
+            if (connected) {
+                indicator.className = 'status-indicator connected';
+                text.textContent = 'Connected';
+            } else {
+                indicator.className = 'status-indicator disconnected';  
+                text.textContent = 'Disconnected';
+            }
+        }
+    }
+
+    updatePlayerCount() {
+        const activePlayersSpan = document.getElementById('active-players');
+        if (activePlayersSpan && this.gameState && this.gameState.players) {
+            const connectedPlayers = Object.values(this.gameState.players).filter(p => p.connected).length;
+            activePlayersSpan.textContent = connectedPlayers;
+        }
     }
 }
 
