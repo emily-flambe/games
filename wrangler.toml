@@ -15,7 +15,15 @@ port = 8777
 name = "GAME_SESSIONS"
 class_name = "GameSession"
 
+[[durable_objects.bindings]]
+name = "GAME_REGISTRY"
+class_name = "GameSessionRegistry"
+
 # Durable Object Migrations
 [[migrations]]
 tag = "v1"
 new_classes = [ "GameSession" ]
+
+[[migrations]]
+tag = "v2"
+new_classes = [ "GameSessionRegistry" ]

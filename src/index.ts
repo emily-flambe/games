@@ -8,6 +8,17 @@ import { staticAssets } from './lib/static';
 export interface Env {
   // Add any environment variables here
   GAME_SESSIONS: DurableObjectNamespace;
+  GAME_REGISTRY: DurableObjectNamespace;
+}
+
+interface SessionMetadata {
+  sessionId: string;
+  gameType: string;
+  playerCount: number;
+  players: Array<{name: string; emoji: string}>;
+  createdAt: number;
+  lastHeartbeat: number;
+  status: 'waiting' | 'in-progress' | 'finished';
 }
 
 export default {
@@ -31,6 +42,11 @@ export default {
           'Access-Control-Max-Age': '86400',
         },
       });
+    }
+
+    // Handle API routes
+    if (path === '/api/active-rooms' && request.method === 'GET') {
+      return handleActiveRoomsAPI(env);
     }
 
     // Serve static assets
@@ -85,6 +101,43 @@ async function handleWebSocket(request: Request, env: Env): Promise<Response> {
   
   // Forward the WebSocket request to the Durable Object
   return gameSession.fetch(request);
+}
+
+/**
+ * Handle Active Rooms API requests
+ */
+async function handleActiveRoomsAPI(env: Env): Promise<Response> {
+  try {
+    const registry = env.GAME_REGISTRY.get(
+      env.GAME_REGISTRY.idFromName('singleton')
+    );
+    
+    const response = await registry.fetch(
+      new Request('http://internal/list', { method: 'GET' })
+    );
+    
+    const data = await response.json();
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+    });
+  } catch (error) {
+    console.error('Active rooms API error:', error);
+    return new Response(JSON.stringify({ 
+      error: 'Failed to fetch active rooms',
+      rooms: [] 
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  }
 }
 
 /**
@@ -174,16 +227,16 @@ export class GameSession implements DurableObject {
     this.websockets.set(server, playerId);
 
     // Add player or spectator
-    this.addPlayer(playerId, server);
+    await this.addPlayer(playerId, server);
 
     // Set up message handler
-    server.addEventListener('message', (event) => {
-      this.handleMessage(event.data, server, playerId);
+    server.addEventListener('message', async (event) => {
+      await this.handleMessage(event.data, server, playerId);
     });
 
     // Set up close handler  
-    server.addEventListener('close', () => {
-      this.removePlayer(playerId, server);
+    server.addEventListener('close', async () => {
+      await this.removePlayer(playerId, server);
     });
 
     // Return the client side of the WebSocket
@@ -193,7 +246,7 @@ export class GameSession implements DurableObject {
     });
   }
 
-  addPlayer(playerId: string, ws: WebSocket) {
+  async addPlayer(playerId: string, ws: WebSocket) {
     // Check if game has already started - if so, add as spectator
     if (this.gameState.gameStarted) {
       this.addSpectator(playerId, ws);
@@ -239,6 +292,13 @@ export class GameSession implements DurableObject {
       player: player,
       gameState: this.gameState
     });
+
+    // Registry integration
+    if (isFirstPlayer && this.sessionId) {
+      await this.registerWithRegistry();
+    } else if (this.sessionId) {
+      await this.updateRegistry();
+    }
 
     console.log(`Player ${playerId} joined session ${this.sessionId}`);
   }
@@ -289,7 +349,7 @@ export class GameSession implements DurableObject {
     });
   }
 
-  removePlayer(playerId: string, ws: WebSocket) {
+  async removePlayer(playerId: string, ws: WebSocket) {
     this.websockets.delete(ws);
     
     // Check if this is a spectator
@@ -335,6 +395,15 @@ export class GameSession implements DurableObject {
         playerId: playerId,
         gameState: this.gameState
       });
+
+      // Registry integration
+      if (this.players.size === 0 && this.sessionId) {
+        // Last player left, unregister the session
+        await this.unregisterFromRegistry();
+      } else if (this.sessionId) {
+        // Update player count
+        await this.updateRegistry();
+      }
     }
 
     console.log(`Player ${playerId} disconnected from session ${this.sessionId}`);
@@ -372,7 +441,7 @@ export class GameSession implements DurableObject {
     }
   }
 
-  handleMessage(message: string, ws: WebSocket, playerId: string) {
+  async handleMessage(message: string, ws: WebSocket, playerId: string) {
     try {
       const data = JSON.parse(message);
       const isSpectator = this.spectators.has(playerId);
@@ -409,6 +478,11 @@ export class GameSession implements DurableObject {
               },
               timestamp: Date.now()
             });
+
+            // Update registry to reflect game is in progress
+            if (this.sessionId) {
+              await this.updateRegistry();
+            }
           }
           break;
 
@@ -423,6 +497,11 @@ export class GameSession implements DurableObject {
               playerId: playerId,
               data: { playerId, newName: player.name, gameState: this.gameState }
             });
+            
+            // Update registry with new player info
+            if (this.sessionId) {
+              await this.updateRegistry();
+            }
           }
           break;
 
@@ -437,6 +516,11 @@ export class GameSession implements DurableObject {
               playerId: playerId,
               data: { playerId, newEmoji: player.emoji, gameState: this.gameState }
             });
+            
+            // Update registry with new player info
+            if (this.sessionId) {
+              await this.updateRegistry();
+            }
           }
           break;
 
@@ -544,5 +628,142 @@ export class GameSession implements DurableObject {
   getRandomAnimalEmoji(): string {
     const ANIMAL_EMOJIS = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🦆', '🦅', '🦉', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦏', '🦛', '🐘', '🦒', '🐪', '🐫', '🦙', '🦘', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦌', '🐐', '🦚', '🦜', '🦢', '🦩', '🕊️', '🦝', '🦨', '🦡', '🦫'];
     return ANIMAL_EMOJIS[Math.floor(Math.random() * ANIMAL_EMOJIS.length)];
+  }
+
+  private async registerWithRegistry() {
+    try {
+      const registry = this.env.GAME_REGISTRY.get(
+        this.env.GAME_REGISTRY.idFromName('singleton')
+      );
+      
+      await registry.fetch(new Request('http://internal/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: this.sessionId,
+          gameType: 'checkbox-game',
+          playerCount: this.players.size,
+          players: Array.from(this.players.values()).map(p => ({
+            name: p.name,
+            emoji: p.emoji
+          })),
+          createdAt: Date.now(),
+          status: this.gameState.gameStarted ? 'in-progress' : 'waiting'
+        } as SessionMetadata)
+      }));
+      console.log(`Registered session ${this.sessionId} with registry`);
+    } catch (error) {
+      console.error('Failed to register with registry:', error);
+    }
+  }
+  
+  private async updateRegistry() {
+    try {
+      const registry = this.env.GAME_REGISTRY.get(
+        this.env.GAME_REGISTRY.idFromName('singleton')
+      );
+      
+      await registry.fetch(new Request(`http://internal/update/${this.sessionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerCount: this.players.size,
+          players: Array.from(this.players.values()).map(p => ({
+            name: p.name,
+            emoji: p.emoji
+          })),
+          status: this.gameState.gameStarted ? 'in-progress' : 'waiting'
+        })
+      }));
+    } catch (error) {
+      console.error('Failed to update registry:', error);
+    }
+  }
+  
+  private async unregisterFromRegistry() {
+    try {
+      const registry = this.env.GAME_REGISTRY.get(
+        this.env.GAME_REGISTRY.idFromName('singleton')
+      );
+      
+      await registry.fetch(new Request(`http://internal/unregister/${this.sessionId}`, {
+        method: 'DELETE'
+      }));
+      console.log(`Unregistered session ${this.sessionId} from registry`);
+    } catch (error) {
+      console.error('Failed to unregister from registry:', error);
+    }
+  }
+}
+
+/**
+ * GameSessionRegistry Durable Object
+ * Tracks active game sessions for room discovery
+ */
+export class GameSessionRegistry implements DurableObject {
+  private sessions: Map<string, SessionMetadata> = new Map();
+
+  constructor(private state: DurableObjectState, private env: Env) {}
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    
+    try {
+      if (request.method === 'POST' && url.pathname === '/register') {
+        const data: SessionMetadata = await request.json();
+        this.sessions.set(data.sessionId, {
+          ...data,
+          lastHeartbeat: Date.now()
+        });
+        console.log(`Registered session: ${data.sessionId} (${data.gameType})`);
+        return new Response('OK');
+      }
+      
+      if (request.method === 'PUT' && url.pathname.startsWith('/update/')) {
+        const sessionId = url.pathname.split('/')[2];
+        const updateData = await request.json();
+        
+        const existingSession = this.sessions.get(sessionId);
+        if (existingSession) {
+          this.sessions.set(sessionId, {
+            ...existingSession,
+            ...updateData,
+            lastHeartbeat: Date.now()
+          });
+          console.log(`Updated session: ${sessionId}`);
+        }
+        return new Response('OK');
+      }
+      
+      if (request.method === 'DELETE' && url.pathname.startsWith('/unregister/')) {
+        const sessionId = url.pathname.split('/')[2];
+        this.sessions.delete(sessionId);
+        console.log(`Unregistered session: ${sessionId}`);
+        return new Response('OK');
+      }
+      
+      if (request.method === 'GET' && url.pathname === '/list') {
+        this.cleanupStale();
+        const activeRooms = Array.from(this.sessions.values());
+        return Response.json({ rooms: activeRooms });
+      }
+      
+      return new Response('Not Found', { status: 404 });
+    } catch (error) {
+      console.error('GameSessionRegistry error:', error);
+      return new Response('Internal Server Error', { status: 500 });
+    }
+  }
+
+  private cleanupStale() {
+    const now = Date.now();
+    const TTL = 30 * 60 * 1000; // 30 minutes
+    
+    for (const [id, session] of this.sessions) {
+      if (now - session.lastHeartbeat > TTL) {
+        this.sessions.delete(id);
+        console.log(`Cleaned up stale session: ${id}`);
+      }
+    }
   }
 }
