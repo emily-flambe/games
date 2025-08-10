@@ -22,7 +22,7 @@ function getRandomAnimalEmoji() {
   return ANIMAL_EMOJIS[Math.floor(Math.random() * ANIMAL_EMOJIS.length)];
 }
 
-const { PORT } = require('./config');
+const { PORT } = require('../config');
 
 // MIME types for static files
 const mimeTypes = {

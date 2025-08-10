@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "Minimal games platform on Cloudflare Workers",
   "scripts": {
-    "dev": "node dev-server.js",
-    "build": "node build-static.js",
+    "dev": "node scripts/dev-server.js",
+    "build": "node scripts/build-static.js",
     "deploy": "npm run build && wrangler deploy",
-    "test": "node test.js"
+    "test": "node tests/test.js"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241230.0",

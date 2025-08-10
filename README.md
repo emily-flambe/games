@@ -1,102 +1,45 @@
 # Games Platform
 
-A real-time multiplayer games platform built with Cloudflare Workers, Durable Objects, and WebSocket support.
+A simple multiplayer games platform built on Cloudflare Workers with real-time WebSocket support.
 
-## Features
+## What is this?
 
-- **Real-time multiplayer gaming** with WebSocket connections
-- **Durable Objects** for persistent game state management
-- **Scalable architecture** using Cloudflare Workers
-- **TypeScript** for type-safe development
-- **Modular game system** supporting multiple game types
-- **Session management** with automatic cleanup
-- **Static file serving** for web-based games
-- **Spectator mode** - automatic spectator mode for late-joining players
+This is a collection of browser-based multiplayer games that run on Cloudflare's edge network. Players can create game rooms, share links with friends, and play together in real-time. The platform supports games like collaborative drawing, voting, tournaments, and price guessing.
 
-## Game Design Principles
+## Tech Stack
 
-### Spectator Mode (Global Design Choice)
+- **Cloudflare Workers** - Serverless edge computing
+- **Durable Objects** - Stateful WebSocket connections for real-time gameplay
+- **TypeScript** - Type-safe development
+- **Vanilla JS** - No frontend framework dependencies
 
-The platform implements **automatic spectator mode** as a core design principle across all games:
+## Local Development
 
-**When it activates:**
-- Players who join a game session **after the game has started** automatically become spectators
-- This prevents disruption to ongoing gameplay and maintains fair play
+```bash
+# Install dependencies
+npm install
 
-**Spectator capabilities:**
-- ✅ **View**: Full read-only access to the current game state
-- ✅ **Watch**: See all game actions and player interactions in real-time
-- ✅ **Observe**: View player scores, game progress, and outcomes
+# Build frontend assets
+npm run build
 
-**Spectator restrictions:**
-- ❌ **No name/emoji**: Spectators have no visible identity in the game
-- ❌ **No actions**: Cannot interact with game elements (checkboxes, moves, etc.)
-- ❌ **No influence**: Cannot affect game state or player scores
-- ❌ **Cannot start games**: Only active players can control game flow
+# Start dev server (runs on http://localhost:8777)
+npm run dev
+```
 
-**Implementation details:**
-- Server-side enforcement prevents spectator actions
-- Client-side UI clearly indicates spectator status
-- Spectator count is visible to all players
-- Spectators are automatically cleaned up when they disconnect
+## Deployment
 
-**Benefits:**
-- **Fair play**: Prevents mid-game joining from affecting game balance
-- **Consistent experience**: All games behave the same way for late joiners
-- **Educational**: New players can learn by watching ongoing games
-- **Scalable**: Unlimited spectators can watch without impacting performance
+This project is configured for Cloudflare Workers deployment. You'll need:
 
-This design choice ensures that **once a game starts, the playing field remains level** while still allowing newcomers to engage with the community by observing gameplay.
+1. A Cloudflare account with Workers enabled
+2. Your own domain configured in `wrangler.toml`
+3. Durable Objects enabled on your account
 
-## Architecture
+```bash
+# Deploy to Cloudflare (requires configuration)
+npm run deploy
+```
 
-- **Cloudflare Workers**: Edge computing for low-latency game logic
-- **Durable Objects**: 
-  - `GameSession`: Manages individual game rooms and player interactions
-  - `SessionManager`: Handles game session creation and discovery
-- **WebSocket**: Real-time bidirectional communication
-- **TypeScript**: Type-safe development across the entire stack
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 18+ 
-- npm or yarn
-- Cloudflare account (for deployment)
-
-### Installation
-
-1. **Clone and install dependencies:**
-   ```bash
-   git clone <repository-url>
-   cd games
-   npm install
-   ```
-
-2. **Run initial setup test:**
-   ```bash
-   npm run test:local
-   ```
-   This verifies all files are in place and properly configured.
-
-### Development
-
-1. **Build frontend assets:**
-   ```bash
-   npm run build
-   ```
-
-2. **Start development server:**
-   ```bash
-   npm run dev
-   ```
-   This starts the Wrangler development server on `http://localhost:8777`
-
-3. **In another terminal, test WebSocket connections:**
-   ```bash
-   npm run test:integration
-   ```
+**Note:** The current `wrangler.toml` contains deployment settings specific to the original domain. You'll need to update it with your own domain and zone settings before deploying.
 
 ### Available Scripts
 

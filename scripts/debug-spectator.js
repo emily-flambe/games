@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const WebSocket = require('ws');
-const { PORT, HOST } = require('./config');
+const { PORT, HOST } = require('../config');
 
 async function debugSpectator() {
     const sessionId = 'DBG' + Math.random().toString(36).substr(2, 4).toUpperCase();
