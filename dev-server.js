@@ -232,6 +232,34 @@ class GameSession {
           }
           break;
           
+        case 'START_GAME':
+          // Only allow host to start the game
+          if (this.players.has(playerId) && this.gameState.hostId === playerId) {
+            console.log(`Host ${playerId} starting game: ${data.data?.gameType}`);
+            
+            // Update game status
+            this.gameState.status = 'started';
+            
+            // Broadcast game start to all players
+            this.broadcast({
+              type: 'game_started',
+              data: {
+                gameType: data.data?.gameType || this.gameState.type,
+                startedBy: playerId,
+                gameState: this.gameState
+              },
+              timestamp: Date.now()
+            });
+          } else {
+            // Send error to non-host player who tried to start game
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Only the host can start the game',
+              timestamp: Date.now()
+            }));
+          }
+          break;
+          
         default:
           console.log('Unknown message type:', data.type);
       }

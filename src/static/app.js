@@ -320,6 +320,13 @@ class GameClient {
                     this.updatePlayerCount();
                 }
                 break;
+            case 'game_started':
+                // Handle game start notification from server
+                console.log('🐰 Game Logic Specialist: Received game_started message');
+                if (message.data && message.data.gameType) {
+                    this.handleGameStart(message.data.gameType);
+                }
+                break;
             default:
                 console.log('Unknown message type:', message.type);
         }
@@ -995,8 +1002,23 @@ class GameClient {
     startGameSession() {
         console.log('🐰 Game Logic Specialist: Starting game session for', this.gameType);
         
+        // Send start game message to server to notify all players
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+                type: 'START_GAME',
+                data: { gameType: this.gameType }
+            }));
+            console.log('🐰 Game Logic Specialist: Sent START_GAME message to server');
+        } else {
+            console.error('🐰 Game Logic Specialist: Cannot start game - WebSocket not connected');
+        }
+    }
+    
+    handleGameStart(gameType) {
+        console.log('🐰 Game Logic Specialist: Game started for all players:', gameType);
+        
         // Show the appropriate game board based on game type
-        if (this.gameType === 'checkbox-game') {
+        if (gameType === 'checkbox-game') {
             const checkboxBoard = document.getElementById('checkbox-game-board');
             if (checkboxBoard) {
                 checkboxBoard.style.display = 'block';
@@ -1005,8 +1027,8 @@ class GameClient {
         }
         
         // Could add other game types here in the future
-        // if (this.gameType === 'tic-tac-toe') { ... }
-        // if (this.gameType === 'rock-paper-scissors') { ... }
+        // if (gameType === 'tic-tac-toe') { ... }
+        // if (gameType === 'rock-paper-scissors') { ... }
     }
 
     isCurrentPlayerHost() {
