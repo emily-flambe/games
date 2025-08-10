@@ -51,6 +51,7 @@ jobs:
         name: test-failure-screenshots
         path: screenshots/
         retention-days: 7
+        if-no-files-found: ignore
       
     - name: Stop server
       run: |
