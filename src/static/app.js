@@ -9,6 +9,9 @@ class GameClient {
         this.sessionId = '';
         this.currentPlayerId = null;
         this.currentPlayer = null;
+        this.isSpectator = false;
+        this.spectatorId = null;
+        this.spectators = {}; // Track all spectators
         this.checkboxStates = new Array(9).fill(false); // 3x3 grid of checkboxes
         this.init();
     }
@@ -225,6 +228,13 @@ class GameClient {
                 this.updateCurrentPlayerInfo();
                 this.updateStartGameButton();
                 break;
+            case 'spectator_identity':
+                this.spectatorId = message.data.spectatorId;
+                this.currentPlayer = message.data.spectator; // Spectators now have player-like data
+                this.isSpectator = true;
+                this.setupSpectatorMode();
+                this.updateCurrentPlayerInfo(); // Show spectator's name and emoji
+                break;
             case 'host_assigned':
                 // Handle host assignment - this is just informational
                 console.log('Player assigned as host:', message.data.hostId);
@@ -275,27 +285,47 @@ class GameClient {
             case 'game_state':
             case 'gameState':
                 this.gameState = message.data ? message.data : message.gameState;
-                // Set current player ID if provided in the message
-                if (message.playerId && !this.currentPlayerId) {
-                    this.currentPlayerId = message.playerId;
+                
+                // Handle spectator mode
+                if (message.isSpectator) {
+                    this.spectatorId = message.spectatorId;
+                    this.isSpectator = true;
+                    this.setupSpectatorMode();
+                } else {
+                    // Set current player ID if provided in the message
+                    if (message.playerId && !this.currentPlayerId) {
+                        this.currentPlayerId = message.playerId;
+                    }
                 }
+                
                 this.updatePlayers(message.data ? message.data.players : message.gameState.players);
                 this.updateBouncingEmojis(message.data ? message.data.players : message.gameState.players);
                 this.refreshEmojiPicker();
-                // Update current player info if we have playerId and players data
-                if (this.currentPlayerId && this.gameState && this.gameState.players) {
+                
+                // Update current player info if we have playerId and players data (not for spectators)
+                if (!this.isSpectator && this.currentPlayerId && this.gameState && this.gameState.players) {
                     const currentPlayer = this.gameState.players[this.currentPlayerId];
                     if (currentPlayer) {
                         this.currentPlayer = currentPlayer;
                         this.updateCurrentPlayerInfo();
                     }
                 }
+                
+                // Load spectators from game state
+                if (this.gameState && this.gameState.spectators) {
+                    this.spectators = this.gameState.spectators;
+                    this.updateSpectatorsDisplay();
+                }
+                
                 // 🐰 Game Logic Specialist: Sync checkbox states when game state is received
                 if (this.gameType === 'checkbox-game' && this.gameState && this.gameState.checkboxStates) {
                     console.log('🐰 Game Logic Specialist: Syncing checkbox states from game state');
                     this.checkboxStates = this.gameState.checkboxStates;
                     this.updateAllCheckboxes();
                 }
+                
+                // Update spectator display
+                this.updateSpectatorDisplay();
                 break;
             case 'playerUpdated':
                 this.gameState = message.gameState;
@@ -342,6 +372,56 @@ class GameClient {
                 // Handle game end notification from server
                 console.log('Game ended:', message.data);
                 this.handleGameEnd(message.data);
+                break;
+            case 'spectator_joined':
+                // Update spectator list and display
+                if (message.data && message.data.spectator) {
+                    this.spectators[message.data.spectator.id] = message.data.spectator;
+                    this.updateSpectatorsDisplay();
+                    this.updateSpectatorCount(message.data.spectatorCount);
+                }
+                // Update game state if provided
+                if (message.data && message.data.gameState) {
+                    this.gameState = message.data.gameState;
+                }
+                break;
+            case 'spectator_left':
+                // Remove spectator from list
+                if (message.data && message.data.spectatorId) {
+                    delete this.spectators[message.data.spectatorId];
+                    this.updateSpectatorsDisplay();
+                    this.updateSpectatorCount(message.data.spectatorCount);
+                }
+                break;
+            case 'spectator_name_changed':
+                // Update spectator name
+                if (message.data && message.data.spectator) {
+                    this.spectators[message.data.spectatorId] = message.data.spectator;
+                    this.updateSpectatorsDisplay();
+                    // Update current player info if it's our spectator
+                    if (message.data.spectatorId === this.spectatorId) {
+                        this.currentPlayer = message.data.spectator;
+                        this.updateCurrentPlayerInfo();
+                        this.showSuccessMessage(`Name updated to: ${message.data.spectator.name}`);
+                    }
+                }
+                break;
+            case 'spectator_emoji_changed':
+                // Update spectator emoji
+                if (message.data && message.data.spectator) {
+                    this.spectators[message.data.spectatorId] = message.data.spectator;
+                    this.updateSpectatorsDisplay();
+                    // Update current player info if it's our spectator
+                    if (message.data.spectatorId === this.spectatorId) {
+                        this.currentPlayer = message.data.spectator;
+                        this.updateCurrentPlayerInfo();
+                    }
+                }
+                break;
+            case 'error':
+                // Handle error messages from server
+                console.log('Server error:', message.message);
+                this.showError(message.message);
                 break;
             default:
                 console.log('Unknown message type:', message.type);
@@ -477,6 +557,33 @@ class GameClient {
             this.ws.close();
         }
         
+        // GLOBAL DESIGN RULE: Remove all emoji animations when player leaves room
+        document.querySelectorAll('.floating-emoji').forEach(el => el.remove());
+        console.log('Removed emoji animations - player left room');
+        
+        // Reset spectator mode
+        this.isSpectator = false;
+        this.spectatorId = null;
+        this.spectators = {};
+        
+        // Hide spectator indicator
+        const spectatorIndicator = document.getElementById('spectator-indicator');
+        if (spectatorIndicator) {
+            spectatorIndicator.remove();
+        }
+        
+        // Hide spectator message
+        const spectatorMessage = document.getElementById('spectator-message');
+        if (spectatorMessage) {
+            spectatorMessage.remove();
+        }
+        
+        // Hide spectators section
+        const spectatorsSection = document.getElementById('spectators-section');
+        if (spectatorsSection) {
+            spectatorsSection.remove();
+        }
+        
         // Hide player controls
         const controls = document.getElementById('player-controls');
         if (controls) controls.style.display = 'none';
@@ -492,6 +599,12 @@ class GameClient {
         // Show player controls and list again (reset for next game)
         const playerControlsReset = document.getElementById('player-controls');
         if (playerControlsReset) playerControlsReset.style.display = 'block';
+        
+        // Show start game button again
+        const startGameBtn = document.getElementById('start-game-btn-header');
+        if (startGameBtn) {
+            startGameBtn.style.display = 'block';
+        }
         
         const playersList = document.querySelector('.players-list');
         if (playersList) playersList.style.display = 'block';
@@ -708,9 +821,16 @@ class GameClient {
     updateBouncingEmojis(players) {
         console.log('updateBouncingEmojis called with:', players);
         
-        if (!players) {
-            // If no players, remove all emojis
+        // GLOBAL DESIGN RULE: Emoji animations should ONLY appear in waiting rooms
+        // They should NOT appear when a game has started or if player leaves the room
+        const gameHasStarted = this.gameState && this.gameState.gameStarted;
+        
+        if (!players || gameHasStarted) {
+            // Remove all emoji animations if no players OR if game has started
             document.querySelectorAll('.floating-emoji').forEach(el => el.remove());
+            if (gameHasStarted) {
+                console.log('Game has started - hiding emoji animations as per global design rule');
+            }
             return;
         }
 
@@ -972,6 +1092,12 @@ class GameClient {
     }
 
     toggleCheckbox(checkboxIndex) {
+        // Prevent spectators from taking actions
+        if (this.isSpectator) {
+            this.showError('Spectators cannot interact with the game');
+            return;
+        }
+        
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             console.log('🐰 Game Logic Specialist: Toggling checkbox', checkboxIndex);
             
@@ -1064,6 +1190,10 @@ class GameClient {
     handleGameStart(gameType) {
         console.log('🐰 Game Logic Specialist: Game started for all players:', gameType);
         
+        // GLOBAL DESIGN RULE: Remove all emoji animations when game starts
+        document.querySelectorAll('.floating-emoji').forEach(el => el.remove());
+        console.log('Removed emoji animations - game has started');
+        
         // Hide player controls ("Who are you?" section)
         const playerControls = document.getElementById('player-controls');
         if (playerControls) {
@@ -1094,7 +1224,8 @@ class GameClient {
     }
 
     isCurrentPlayerHost() {
-        if (!this.currentPlayerId || !this.gameState || !this.gameState.players) {
+        // Spectators can never be host
+        if (this.isSpectator || !this.currentPlayerId || !this.gameState || !this.gameState.players) {
             return false;
         }
         
@@ -1238,6 +1369,191 @@ class GameClient {
 
         // Show the end game screen
         endGameScreen.style.display = 'flex';
+    }
+
+    // Setup spectator mode UI
+    setupSpectatorMode() {
+        console.log('Setting up spectator mode');
+        
+        // Show spectator indicator
+        this.showSpectatorIndicator();
+        
+        // Hide start game button for spectators
+        const startGameBtn = document.getElementById('start-game-btn-header');
+        if (startGameBtn) {
+            startGameBtn.style.display = 'none';
+        }
+        
+        // Show the game board if game is already started
+        if (this.gameState && this.gameState.gameStarted) {
+            this.handleGameStart(this.gameState.type || 'checkbox-game');
+        }
+        
+        // Update UI elements to show spectator status
+        this.updateSpectatorDisplay();
+    }
+    
+    showSpectatorIndicator() {
+        // Add spectator indicator to the room header
+        const roomInfo = document.querySelector('.room-info');
+        if (!roomInfo) return;
+        
+        let spectatorIndicator = document.getElementById('spectator-indicator');
+        if (!spectatorIndicator) {
+            spectatorIndicator = document.createElement('div');
+            spectatorIndicator.id = 'spectator-indicator';
+            spectatorIndicator.style.cssText = `
+                background: #17a2b8;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 12px;
+                margin-top: 5px;
+                display: inline-block;
+            `;
+            spectatorIndicator.textContent = '👁️ SPECTATOR MODE';
+            roomInfo.appendChild(spectatorIndicator);
+        }
+        spectatorIndicator.style.display = 'inline-block';
+        
+        // Add spectator explanation message in the middle area
+        this.showSpectatorMessage();
+    }
+    
+    showSpectatorMessage() {
+        // Find the players-list area to add the message
+        const playersList = document.querySelector('.players-list');
+        if (!playersList) return;
+        
+        let spectatorMessage = document.getElementById('spectator-message');
+        if (!spectatorMessage) {
+            spectatorMessage = document.createElement('div');
+            spectatorMessage.id = 'spectator-message';
+            spectatorMessage.style.cssText = `
+                background: rgba(23, 162, 184, 0.1);
+                border: 2px solid #17a2b8;
+                border-radius: 8px;
+                padding: 20px;
+                text-align: center;
+                margin: 20px 0;
+                color: #17a2b8;
+                font-weight: bold;
+                font-size: 16px;
+            `;
+            spectatorMessage.innerHTML = 'The game has already started. You can look, but you can\'t touch :O';
+            
+            // Insert after players header
+            const playersHeader = playersList.querySelector('.players-header');
+            if (playersHeader) {
+                playersHeader.insertAdjacentElement('afterend', spectatorMessage);
+            } else {
+                playersList.appendChild(spectatorMessage);
+            }
+        }
+        spectatorMessage.style.display = 'block';
+    }
+    
+    updateSpectatorDisplay() {
+        // This method is for general spectator info updates
+        this.updateSpectatorsDisplay();
+    }
+    
+    updateSpectatorCount(count) {
+        // Update spectator count display
+        const spectatorCount = document.getElementById('spectator-count');
+        if (spectatorCount) {
+            spectatorCount.textContent = count;
+        }
+    }
+    
+    updateSpectatorsDisplay() {
+        // Create or update spectators section under the scoreboard
+        let spectatorsSection = document.getElementById('spectators-section');
+        
+        // Find the scoreboard to append spectators section after it
+        const scoreboard = document.getElementById('scoreboard');
+        if (!scoreboard) return;
+        
+        if (!spectatorsSection) {
+            spectatorsSection = document.createElement('div');
+            spectatorsSection.id = 'spectators-section';
+            spectatorsSection.style.cssText = `
+                margin-top: 20px;
+                padding: 15px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+            `;
+            
+            const title = document.createElement('h4');
+            title.textContent = 'Spectators';
+            title.style.cssText = `
+                margin: 0 0 10px 0;
+                color: #17a2b8;
+                font-size: 16px;
+                text-align: center;
+            `;
+            
+            const list = document.createElement('div');
+            list.id = 'spectators-list';
+            
+            spectatorsSection.appendChild(title);
+            spectatorsSection.appendChild(list);
+            scoreboard.appendChild(spectatorsSection);
+        }
+        
+        const spectatorsList = document.getElementById('spectators-list');
+        spectatorsList.innerHTML = '';
+        
+        const spectatorCount = Object.keys(this.spectators).length;
+        if (spectatorCount === 0) {
+            spectatorsList.innerHTML = '<div style="color: #6c757d; font-style: italic; text-align: center;">No spectators</div>';
+            return;
+        }
+        
+        Object.values(this.spectators).forEach(spectator => {
+            const spectatorDiv = document.createElement('div');
+            spectatorDiv.className = 'spectator-item';
+            spectatorDiv.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 6px;
+                margin-bottom: 4px;
+                background: rgba(23, 162, 184, 0.1);
+                border-radius: 4px;
+                border-left: 3px solid #17a2b8;
+            `;
+            
+            const emojiSpan = document.createElement('span');
+            emojiSpan.textContent = spectator.emoji || '👀';
+            emojiSpan.style.fontSize = '16px';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = spectator.name || 'Anonymous';
+            nameSpan.style.cssText = `
+                font-weight: bold;
+                font-size: 12px;
+                flex: 1;
+            `;
+            
+            const statusSpan = document.createElement('span');
+            statusSpan.textContent = 'WATCHING';
+            statusSpan.style.cssText = `
+                color: #17a2b8;
+                font-size: 9px;
+                font-weight: bold;
+                background: rgba(23, 162, 184, 0.2);
+                padding: 2px 4px;
+                border-radius: 2px;
+            `;
+            
+            spectatorDiv.appendChild(emojiSpan);
+            spectatorDiv.appendChild(nameSpan);
+            spectatorDiv.appendChild(statusSpan);
+            
+            spectatorsList.appendChild(spectatorDiv);
+        });
     }
 
     // Return to home screen (leave the room)
