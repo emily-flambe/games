@@ -6,12 +6,16 @@
     "dev": "node scripts/dev-server.js",
     "build": "node scripts/build-static.js",
     "deploy": "npm run build && wrangler deploy",
-    "test": "node tests/test.js"
+    "test": "jest",
+    "test:unit": "jest tests/unit",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241230.0",
     "@types/jest": "^30.0.0",
     "jest": "^30.0.5",
+    "jsdom": "^26.1.0",
     "typescript": "^5.7.3",
     "wrangler": "^4.28.1"
   },

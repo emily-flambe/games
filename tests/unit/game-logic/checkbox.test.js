@@ -214,7 +214,7 @@ describe('Checkbox Game Logic', () => {
   });
 
   describe('UI Interactions', () => {
-    test('should apply visual feedback when toggling checkbox', () => {
+    test('should send WebSocket message when toggling checkbox', () => {
       const checkboxItem = document.createElement('div');
       checkboxItem.className = 'checkbox-item';
       checkboxItem.setAttribute('data-index', '0');
@@ -222,7 +222,13 @@ describe('Checkbox Game Logic', () => {
       
       gameClient.toggleCheckbox(0);
       
-      expect(checkboxItem.style.transform).toBe('scale(0.9)');
+      // Verify WebSocket message was sent
+      expect(gameClient.ws.send).toHaveBeenCalledWith(
+        JSON.stringify({
+          type: 'TOGGLE_CHECKBOX',
+          data: { checkboxIndex: 0 }
+        })
+      );
     });
 
     test('should handle missing checkbox elements gracefully', () => {

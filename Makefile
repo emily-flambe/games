@@ -1,4 +1,4 @@
-.PHONY: install build dev run test deploy clean
+.PHONY: install build dev run test test-coverage test-watch deploy clean
 
 # Install dependencies
 install:
@@ -21,8 +21,18 @@ run: dev
 
 # Run all tests
 test:
-	@echo "🧪 Running tests..."
-	npm test
+	@echo "🧪 Running unit tests..."
+	npm run test:unit
+
+# Run tests with coverage
+test-coverage:
+	@echo "🧪 Running tests with coverage..."
+	npm run test:coverage
+
+# Run tests in watch mode
+test-watch:
+	@echo "🧪 Running tests in watch mode..."
+	npm run test:watch
 
 # Deploy to Cloudflare Workers
 deploy:
