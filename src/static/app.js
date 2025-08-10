@@ -113,7 +113,14 @@ class GameClient {
         // Start Game button functionality
         const startGameBtnHeader = document.getElementById('start-game-btn-header');
         if (startGameBtnHeader) {
-            startGameBtnHeader.addEventListener('click', () => this.startGameSession());
+            startGameBtnHeader.addEventListener('click', () => {
+                // Only allow host to start the game
+                if (this.isCurrentPlayerHost()) {
+                    this.startGameSession();
+                } else {
+                    this.showError('Only the host can start the game');
+                }
+            });
         }
     }
 
@@ -208,10 +215,12 @@ class GameClient {
                 this.currentPlayerId = message.data.playerId;
                 this.currentPlayer = message.data.player;
                 this.updateCurrentPlayerInfo();
+                this.updateStartGameButton();
                 break;
             case 'host_assigned':
                 // Handle host assignment - this is just informational
                 console.log('Player assigned as host:', message.data.hostId);
+                this.updateStartGameButton();
                 break;
             case 'name_changed':
                 this.gameState = message.data.gameState;
@@ -296,18 +305,18 @@ class GameClient {
                 break;
             case 'checkbox_toggled':
                 // Handle checkbox toggle from server
-                if (message.checkboxIndex !== undefined && message.newState !== undefined) {
-                    this.checkboxStates[message.checkboxIndex] = message.newState;
-                    this.updateCheckboxUI(message.checkboxIndex, message.newState);
+                if (message.data && message.data.checkboxIndex !== undefined && message.data.newState !== undefined) {
+                    this.checkboxStates[message.data.checkboxIndex] = message.data.newState;
+                    this.updateCheckboxUI(message.data.checkboxIndex, message.data.newState);
                 }
-                // Update game state if provided
-                if (message.gameState) {
-                    this.gameState = message.gameState;
-                    if (message.gameState.checkboxStates) {
-                        this.checkboxStates = message.gameState.checkboxStates;
+                // Update game state if provided in data
+                if (message.data && message.data.gameState) {
+                    this.gameState = message.data.gameState;
+                    if (message.data.gameState.checkboxStates) {
+                        this.checkboxStates = message.data.gameState.checkboxStates;
                         this.updateAllCheckboxes();
                     }
-                    this.updatePlayers(message.gameState.players);
+                    this.updatePlayers(message.data.gameState.players);
                     this.updatePlayerCount();
                 }
                 break;
@@ -382,6 +391,9 @@ class GameClient {
 
             container.appendChild(playerDiv);
         });
+        
+        // Update start game button state based on host status
+        this.updateStartGameButton();
     }
 
     updateName(name) {
@@ -432,6 +444,9 @@ class GameClient {
         if (roomCode) {
             roomCode.textContent = this.sessionId;
         }
+        
+        // Initialize the start game button state (will be disabled until we know host status)
+        this.updateStartGameButton();
     }
 
     leaveGame() {
@@ -992,6 +1007,40 @@ class GameClient {
         // Could add other game types here in the future
         // if (this.gameType === 'tic-tac-toe') { ... }
         // if (this.gameType === 'rock-paper-scissors') { ... }
+    }
+
+    isCurrentPlayerHost() {
+        if (!this.currentPlayerId || !this.gameState || !this.gameState.players) {
+            return false;
+        }
+        
+        const currentPlayer = this.gameState.players[this.currentPlayerId];
+        return currentPlayer && currentPlayer.isHost;
+    }
+
+    updateStartGameButton() {
+        const startGameBtn = document.getElementById('start-game-btn-header');
+        if (!startGameBtn) return;
+
+        const isHost = this.isCurrentPlayerHost();
+        
+        if (isHost) {
+            startGameBtn.disabled = false;
+            startGameBtn.style.opacity = '1';
+            startGameBtn.style.cursor = 'pointer';
+            startGameBtn.style.backgroundColor = '#28a745';
+            startGameBtn.style.color = 'white';
+            startGameBtn.textContent = 'Start Game';
+            startGameBtn.title = 'Start the game for all players';
+        } else {
+            startGameBtn.disabled = true;
+            startGameBtn.style.opacity = '0.5';
+            startGameBtn.style.cursor = 'not-allowed';
+            startGameBtn.style.backgroundColor = '#6c757d';
+            startGameBtn.style.color = '#ccc';
+            startGameBtn.textContent = 'only the host may start the game :<';
+            startGameBtn.title = 'Only the host can start the game';
+        }
     }
 }
 
