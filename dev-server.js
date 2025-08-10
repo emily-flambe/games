@@ -55,8 +55,11 @@ class GameSession {
       checkboxPlayers: new Array(9).fill(null), // Track which player checked each checkbox
       playerScores: {}, // Track points per player (1 point per checkbox checked)
       gameStarted: false, // Track if game is in session
+      gameFinished: false, // Track if game has ended
       spectatorCount: 0, // Track number of spectators
-      spectators: {} // Track spectator data
+      spectators: {}, // Track spectator data
+      roomStatus: 'active', // Room can be active even if game is over
+      gameStatus: 'waiting' // Separate game status: 'waiting', 'in-progress', 'finished'
     };
   }
 
@@ -376,6 +379,8 @@ class GameSession {
       // Update game status
       this.gameState.status = 'ended';
       this.gameState.gameStarted = false;
+      this.gameState.gameFinished = true;
+      this.gameState.gameStatus = 'finished';
       
       console.log('Game result:', resultMessage);
       console.log('Final scores:', scores);
@@ -476,6 +481,7 @@ class GameSession {
             // Update game status
             this.gameState.status = 'started';
             this.gameState.gameStarted = true;
+            this.gameState.gameStatus = 'in-progress';
             
             // Broadcast game start to all players and spectators
             this.broadcast({
@@ -568,7 +574,8 @@ const server = http.createServer((req, res) => {
     const activeRooms = [];
     
     gameSessions.forEach((session, sessionId) => {
-      if (session.websockets.size > 0) {
+      // Only show rooms with active connections AND games that are not finished
+      if (session.websockets.size > 0 && session.gameState.gameStatus !== 'finished') {
         const players = Object.values(session.gameState.players);
         activeRooms.push({
           sessionId: sessionId,
@@ -576,7 +583,8 @@ const server = http.createServer((req, res) => {
           playerCount: players.length,
           players: players.map(p => ({ name: p.name, emoji: p.emoji })),
           createdAt: session.gameState.createdAt || Date.now(),
-          status: session.gameState.status || 'waiting'
+          roomStatus: session.gameState.roomStatus || 'active',
+          gameStatus: session.gameState.gameStatus || 'waiting'
         });
       }
     });
