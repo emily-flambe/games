@@ -122,6 +122,14 @@ class GameClient {
                 }
             });
         }
+
+        // OK button functionality (end game screen)
+        const okBtn = document.getElementById('ok-btn');
+        if (okBtn) {
+            okBtn.addEventListener('click', () => {
+                this.returnToHome();
+            });
+        }
     }
 
     startGame(gameType) {
@@ -307,7 +315,8 @@ class GameClient {
                 // Handle checkbox toggle from server
                 if (message.data && message.data.checkboxIndex !== undefined && message.data.newState !== undefined) {
                     this.checkboxStates[message.data.checkboxIndex] = message.data.newState;
-                    this.updateCheckboxUI(message.data.checkboxIndex, message.data.newState);
+                    const playerId = message.data.toggledBy;
+                    this.updateCheckboxUI(message.data.checkboxIndex, message.data.newState, playerId);
                 }
                 // Update game state if provided in data
                 if (message.data && message.data.gameState) {
@@ -318,6 +327,8 @@ class GameClient {
                     }
                     this.updatePlayers(message.data.gameState.players);
                     this.updatePlayerCount();
+                    // Update scoreboard if scores changed
+                    this.updateScoreboard();
                 }
                 break;
             case 'game_started':
@@ -326,6 +337,11 @@ class GameClient {
                 if (message.data && message.data.gameType) {
                     this.handleGameStart(message.data.gameType);
                 }
+                break;
+            case 'game_ended':
+                // Handle game end notification from server
+                console.log('Game ended:', message.data);
+                this.handleGameEnd(message.data);
                 break;
             default:
                 console.log('Unknown message type:', message.type);
@@ -468,6 +484,17 @@ class GameClient {
         // Hide any game-specific content
         const checkboxBoard = document.getElementById('checkbox-game-board');
         if (checkboxBoard) checkboxBoard.style.display = 'none';
+        
+        // Hide end game screen if visible
+        const endGameScreen = document.getElementById('end-game-screen');
+        if (endGameScreen) endGameScreen.style.display = 'none';
+        
+        // Show player controls and list again (reset for next game)
+        const playerControlsReset = document.getElementById('player-controls');
+        if (playerControlsReset) playerControlsReset.style.display = 'block';
+        
+        const playersList = document.querySelector('.players-list');
+        if (playersList) playersList.style.display = 'block';
         
         document.getElementById('game-room').classList.remove('active');
         document.getElementById('game-portal').classList.add('active');
@@ -911,7 +938,19 @@ class GameClient {
             
             const checkboxIcon = document.createElement('span');
             checkboxIcon.className = 'checkbox-icon';
-            checkboxIcon.textContent = this.checkboxStates[i] ? '✓' : '';
+            
+            // Determine the icon to show (player emoji or checkmark)
+            if (this.checkboxStates[i]) {
+                const playerId = this.gameState && this.gameState.checkboxPlayers ? this.gameState.checkboxPlayers[i] : null;
+                if (playerId && this.gameState && this.gameState.players && this.gameState.players[playerId]) {
+                    const player = this.gameState.players[playerId];
+                    checkboxIcon.textContent = player.emoji || '✓';
+                } else {
+                    checkboxIcon.textContent = '✓';
+                }
+            } else {
+                checkboxIcon.textContent = '';
+            }
             
             checkboxItem.appendChild(checkboxIcon);
             
@@ -954,7 +993,7 @@ class GameClient {
         }
     }
 
-    updateCheckboxUI(checkboxIndex, newState) {
+    updateCheckboxUI(checkboxIndex, newState, playerId = null) {
         const checkboxItem = document.querySelector(`.checkbox-item[data-index="${checkboxIndex}"]`);
         if (!checkboxItem) return;
         
@@ -963,7 +1002,14 @@ class GameClient {
         
         if (newState) {
             checkboxItem.classList.add('checked');
-            checkboxIcon.textContent = '✓';
+            
+            // Show the player's emoji if we know who checked it
+            if (playerId && this.gameState && this.gameState.players && this.gameState.players[playerId]) {
+                const player = this.gameState.players[playerId];
+                checkboxIcon.textContent = player.emoji || '✓';
+            } else {
+                checkboxIcon.textContent = '✓';
+            }
         } else {
             checkboxItem.classList.remove('checked');
             checkboxIcon.textContent = '';
@@ -972,7 +1018,8 @@ class GameClient {
 
     updateAllCheckboxes() {
         for (let i = 0; i < this.checkboxStates.length; i++) {
-            this.updateCheckboxUI(i, this.checkboxStates[i]);
+            const playerId = this.gameState && this.gameState.checkboxPlayers ? this.gameState.checkboxPlayers[i] : null;
+            this.updateCheckboxUI(i, this.checkboxStates[i], playerId);
         }
     }
 
@@ -1017,12 +1064,27 @@ class GameClient {
     handleGameStart(gameType) {
         console.log('🐰 Game Logic Specialist: Game started for all players:', gameType);
         
+        // Hide player controls ("Who are you?" section)
+        const playerControls = document.getElementById('player-controls');
+        if (playerControls) {
+            playerControls.style.display = 'none';
+        }
+        
+        // Hide player list
+        const playersList = document.querySelector('.players-list');
+        if (playersList) {
+            playersList.style.display = 'none';
+        }
+        
         // Show the appropriate game board based on game type
         if (gameType === 'checkbox-game') {
             const checkboxBoard = document.getElementById('checkbox-game-board');
             if (checkboxBoard) {
                 checkboxBoard.style.display = 'block';
                 console.log('🐰 Game Logic Specialist: Checkbox game board is now visible');
+                
+                // Update scoreboard
+                this.updateScoreboard();
             }
         }
         
@@ -1063,6 +1125,140 @@ class GameClient {
             startGameBtn.textContent = 'only the host may start the game :<';
             startGameBtn.title = 'Only the host can start the game';
         }
+    }
+
+    // Update the scoreboard with current scores
+    updateScoreboard() {
+        const scoreList = document.getElementById('score-list');
+        if (!scoreList || !this.gameState || !this.gameState.playerScores) {
+            return;
+        }
+
+        scoreList.innerHTML = '';
+
+        // Get players and their scores, sorted by score (descending)
+        const playersWithScores = Object.keys(this.gameState.players).map(playerId => {
+            const player = this.gameState.players[playerId];
+            const score = this.gameState.playerScores[playerId] || 0;
+            return { playerId, player, score };
+        }).sort((a, b) => b.score - a.score);
+
+        playersWithScores.forEach(({ playerId, player, score }) => {
+            const scoreItem = document.createElement('div');
+            scoreItem.className = 'score-item';
+            
+            const playerDiv = document.createElement('div');
+            playerDiv.className = 'score-player';
+            
+            const emojiSpan = document.createElement('span');
+            emojiSpan.className = 'score-player-emoji';
+            emojiSpan.textContent = player.emoji || '🐶';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = player.name || 'Unknown';
+            
+            playerDiv.appendChild(emojiSpan);
+            playerDiv.appendChild(nameSpan);
+            
+            const pointsDiv = document.createElement('div');
+            pointsDiv.className = 'score-points';
+            pointsDiv.textContent = score;
+            
+            scoreItem.appendChild(playerDiv);
+            scoreItem.appendChild(pointsDiv);
+            scoreList.appendChild(scoreItem);
+        });
+    }
+
+    // Handle game end event from server
+    handleGameEnd(data) {
+        console.log('Handling game end:', data);
+        
+        // Hide the game board
+        const checkboxBoard = document.getElementById('checkbox-game-board');
+        if (checkboxBoard) {
+            checkboxBoard.style.display = 'none';
+        }
+        
+        // Show the end game screen
+        this.showEndGameScreen(data.message, data.scores);
+    }
+
+    // Show the end game screen with results
+    showEndGameScreen(resultMessage, finalScores) {
+        const endGameScreen = document.getElementById('end-game-screen');
+        const gameResultMessage = document.getElementById('game-result-message');
+        const finalScoresDiv = document.getElementById('final-scores');
+
+        if (!endGameScreen || !gameResultMessage || !finalScoresDiv) {
+            console.error('End game screen elements not found');
+            return;
+        }
+
+        // Set the result message
+        gameResultMessage.textContent = resultMessage;
+
+        // Clear and populate final scores
+        finalScoresDiv.innerHTML = '<h4>Final Scores</h4>';
+
+        if (finalScores && this.gameState && this.gameState.players) {
+            // Get players and their scores, sorted by score (descending)
+            const playersWithScores = Object.keys(this.gameState.players).map(playerId => {
+                const player = this.gameState.players[playerId];
+                const score = finalScores[playerId] || 0;
+                return { playerId, player, score };
+            }).sort((a, b) => b.score - a.score);
+
+            playersWithScores.forEach(({ playerId, player, score }) => {
+                const scoreItem = document.createElement('div');
+                scoreItem.className = 'final-score-item';
+                
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'final-score-player';
+                
+                const emojiSpan = document.createElement('span');
+                emojiSpan.className = 'final-score-emoji';
+                emojiSpan.textContent = player.emoji || '🐶';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = player.name || 'Unknown';
+                
+                playerDiv.appendChild(emojiSpan);
+                playerDiv.appendChild(nameSpan);
+                
+                const pointsDiv = document.createElement('div');
+                pointsDiv.className = 'final-score-points';
+                pointsDiv.textContent = `${score} point${score !== 1 ? 's' : ''}`;
+                
+                scoreItem.appendChild(playerDiv);
+                scoreItem.appendChild(pointsDiv);
+                finalScoresDiv.appendChild(scoreItem);
+            });
+        }
+
+        // Show the end game screen
+        endGameScreen.style.display = 'flex';
+    }
+
+    // Return to home screen (leave the room)
+    returnToHome() {
+        console.log('Returning to home screen');
+        
+        // Send message to server to leave the room
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+                type: 'RETURN_TO_HOME'
+            }));
+        }
+        
+        // Hide the end game screen
+        const endGameScreen = document.getElementById('end-game-screen');
+        if (endGameScreen) {
+            endGameScreen.style.display = 'none';
+        }
+        
+        // Call existing leaveGame method to handle cleanup and UI reset
+        this.leaveGame();
     }
 }
 

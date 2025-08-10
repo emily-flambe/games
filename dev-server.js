@@ -49,7 +49,10 @@ class GameSession {
       status: 'waiting',
       players: {},
       hostId: null,
-      checkboxStates: new Array(9).fill(false) // 3x3 grid of checkboxes, all initially unchecked
+      checkboxStates: new Array(9).fill(false), // 3x3 grid of checkboxes, all initially unchecked
+      checkboxPlayers: new Array(9).fill(null), // Track which player checked each checkbox
+      playerScores: {}, // Track points per player (1 point per checkbox checked)
+      gameStarted: false // Track if game is in session
     };
   }
 
@@ -70,6 +73,9 @@ class GameSession {
     });
     
     this.gameState.players[playerId] = this.players.get(playerId);
+    
+    // Initialize player score to 0
+    this.gameState.playerScores[playerId] = 0;
     
     // Set host if this is the first player
     if (isFirstPlayer) {
@@ -105,6 +111,7 @@ class GameSession {
       
       this.players.delete(playerId);
       delete this.gameState.players[playerId];
+      delete this.gameState.playerScores[playerId];
       
       // If host left, assign new host to earliest joined remaining player
       if (wasHost && this.players.size > 0) {
@@ -163,28 +170,111 @@ class GameSession {
       }
       
       // Toggle the checkbox state
-      this.gameState.checkboxStates[checkboxIndex] = !this.gameState.checkboxStates[checkboxIndex];
+      const newState = !this.gameState.checkboxStates[checkboxIndex];
+      this.gameState.checkboxStates[checkboxIndex] = newState;
+      
+      // Track which player checked/unchecked this checkbox and update scores
+      const previousPlayer = this.gameState.checkboxPlayers[checkboxIndex];
+      
+      if (newState) {
+        // Player is checking the box - record their player ID and add point
+        this.gameState.checkboxPlayers[checkboxIndex] = playerId;
+        
+        // Add point to current player
+        if (!this.gameState.playerScores[playerId]) {
+          this.gameState.playerScores[playerId] = 0;
+        }
+        this.gameState.playerScores[playerId]++;
+        
+        // Remove point from previous player if there was one
+        if (previousPlayer && this.gameState.playerScores[previousPlayer] > 0) {
+          this.gameState.playerScores[previousPlayer]--;
+        }
+      } else {
+        // Player is unchecking the box - clear the player ID and remove point
+        this.gameState.checkboxPlayers[checkboxIndex] = null;
+        
+        // Remove point from player who unchecked
+        if (this.gameState.playerScores[playerId] > 0) {
+          this.gameState.playerScores[playerId]--;
+        }
+      }
       
       // Get player info for the broadcast
       const player = this.players.get(playerId);
       
-      console.log(`Player ${player ? player.name : playerId} toggled checkbox ${checkboxIndex} to ${this.gameState.checkboxStates[checkboxIndex]}`);
+      console.log(`Player ${player ? player.name : playerId} toggled checkbox ${checkboxIndex} to ${newState}`);
+      console.log('Updated scores:', this.gameState.playerScores);
       
-      // Broadcast the checkbox state change to all players
+      // Check for win condition - all boxes checked
+      const allBoxesChecked = this.gameState.checkboxStates.every(state => state === true);
+      
+      if (allBoxesChecked && this.gameState.gameStarted) {
+        // Game is over - determine winner
+        this.handleGameEnd();
+      } else {
+        // Broadcast the checkbox state change to all players
+        this.broadcast({
+          type: 'checkbox_toggled',
+          data: {
+            checkboxIndex: checkboxIndex,
+            newState: this.gameState.checkboxStates[checkboxIndex],
+            toggledBy: playerId,
+            player: player,
+            gameState: this.gameState
+          },
+          timestamp: Date.now()
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error handling checkbox toggle:', error);
+    }
+  }
+
+  // Handle game end - determine winner and broadcast results
+  handleGameEnd() {
+    try {
+      console.log('Game ended - all checkboxes checked');
+      
+      // Find the highest score
+      const scores = this.gameState.playerScores;
+      const maxScore = Math.max(...Object.values(scores));
+      
+      // Find all players with the highest score
+      const winners = Object.keys(scores).filter(playerId => scores[playerId] === maxScore);
+      
+      let resultMessage;
+      if (winners.length > 1) {
+        // Tie - everyone loses
+        resultMessage = "EVERYONE LOSES";
+      } else {
+        // Single winner
+        const winnerPlayer = this.players.get(winners[0]);
+        resultMessage = `${winnerPlayer.name} wins!`;
+      }
+      
+      // Update game status
+      this.gameState.status = 'ended';
+      this.gameState.gameStarted = false;
+      
+      console.log('Game result:', resultMessage);
+      console.log('Final scores:', scores);
+      
+      // Broadcast game end to all players
       this.broadcast({
-        type: 'checkbox_toggled',
+        type: 'game_ended',
         data: {
-          checkboxIndex: checkboxIndex,
-          newState: this.gameState.checkboxStates[checkboxIndex],
-          toggledBy: playerId,
-          player: player,
+          message: resultMessage,
+          winners: winners,
+          scores: scores,
           gameState: this.gameState
         },
         timestamp: Date.now()
       });
       
     } catch (error) {
-      console.error('Error handling checkbox toggle:', error);
+      console.error('Error handling game end:', error);
     }
   }
 
@@ -239,6 +329,7 @@ class GameSession {
             
             // Update game status
             this.gameState.status = 'started';
+            this.gameState.gameStarted = true;
             
             // Broadcast game start to all players
             this.broadcast({
@@ -258,6 +349,13 @@ class GameSession {
               timestamp: Date.now()
             }));
           }
+          break;
+
+        case 'RETURN_TO_HOME':
+          // Handle player returning to home screen after game ends
+          console.log(`Player ${playerId} returning to home screen`);
+          // This will trigger the disconnect logic which removes the player
+          ws.close();
           break;
           
         default:
