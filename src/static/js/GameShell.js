@@ -336,8 +336,455 @@ class GameShell {
         }
     }
 
-    // ... Additional shell methods will be implemented in next commits
-    
+    /**
+     * Join room by entering room code
+     */
+    joinRoomByCode() {
+        const roomCodeInput = document.getElementById('room-code-input');
+        const roomCode = roomCodeInput.value.trim().toUpperCase();
+        
+        if (roomCode) {
+            this.joinExistingRoom(roomCode);
+        } else {
+            this.showError('Please enter a room code');
+        }
+    }
+
+    /**
+     * Join an existing room
+     */
+    async joinExistingRoom(roomCode) {
+        try {
+            this.gameType = 'checkbox-game'; // Default for now
+            this.sessionId = roomCode;
+            this.showLoadingOverlay();
+            this.stopActiveRoomsRefresh();
+            await this.connectToGame();
+        } catch (error) {
+            console.error('Failed to join room:', error);
+            this.showError('Failed to join room: ' + error.message);
+            this.hideLoadingOverlay();
+        }
+    }
+
+    /**
+     * Format room code input
+     */
+    formatRoomCodeInput(e) {
+        let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (value.length > 6) {
+            value = value.substring(0, 6);
+        }
+        e.target.value = value;
+    }
+
+    /**
+     * Handle WebSocket close
+     */
+    handleWebSocketClose() {
+        console.log('WebSocket connection closed');
+        this.isConnected = false;
+        this.ws = null;
+    }
+
+    /**
+     * Handle player update messages
+     */
+    handlePlayerUpdate(message) {
+        if (message.gameState) {
+            this.players = message.gameState.players || {};
+            this.updatePlayersList();
+        }
+    }
+
+    /**
+     * Handle spectator update messages
+     */
+    handleSpectatorUpdate(message) {
+        console.log('Spectator update:', message.type, message);
+        
+        if (message.type === 'spectator_identity') {
+            this.isSpectator = true;
+            this.spectatorId = message.data.spectator.id;
+            this.showSpectatorUI();
+        }
+        
+        if (message.data && message.data.spectators) {
+            this.spectators = message.data.spectators;
+            this.updateSpectatorsDisplay();
+        }
+    }
+
+    /**
+     * Start game session (host only)
+     */
+    startGameSession() {
+        if (this.ws && this.isConnected) {
+            this.ws.send(JSON.stringify({
+                type: 'START_GAME',
+                data: { gameType: this.gameType }
+            }));
+        }
+    }
+
+    /**
+     * Update player name
+     */
+    updatePlayerName(name) {
+        if (this.ws && this.isConnected) {
+            this.ws.send(JSON.stringify({
+                type: 'change_name',
+                data: { newName: name }
+            }));
+        }
+    }
+
+    /**
+     * Show emoji picker
+     */
+    showEmojiPicker() {
+        const picker = document.getElementById('emoji-picker');
+        if (picker) {
+            picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+            
+            // Initialize emoji grid if not already done
+            const emojiGrid = document.getElementById('emoji-grid');
+            if (emojiGrid && emojiGrid.children.length === 0) {
+                this.initializeEmojiGrid();
+            }
+        }
+    }
+
+    /**
+     * Initialize emoji picker grid
+     */
+    initializeEmojiGrid() {
+        const emojiGrid = document.getElementById('emoji-grid');
+        if (!emojiGrid) return;
+
+        const animalEmojis = [
+            '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼',
+            '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔',
+            '🐧', '🐦', '🐤', '🐣', '🐺', '🐗', '🐴', '🦄',
+            '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗',
+            '🐢', '🐍', '🦎', '🐙', '🦑', '🦐', '🦀', '🐡'
+        ];
+
+        animalEmojis.forEach(emoji => {
+            const emojiBtn = document.createElement('button');
+            emojiBtn.textContent = emoji;
+            emojiBtn.style.cssText = 'border: none; background: none; font-size: 24px; cursor: pointer; padding: 5px; border-radius: 4px;';
+            emojiBtn.addEventListener('click', () => {
+                this.selectEmoji(emoji);
+            });
+            emojiBtn.addEventListener('mouseover', () => {
+                emojiBtn.style.background = '#f0f0f0';
+            });
+            emojiBtn.addEventListener('mouseout', () => {
+                emojiBtn.style.background = 'none';
+            });
+            emojiGrid.appendChild(emojiBtn);
+        });
+    }
+
+    /**
+     * Select emoji
+     */
+    selectEmoji(emoji) {
+        if (this.ws && this.isConnected) {
+            this.ws.send(JSON.stringify({
+                type: 'change_emoji',
+                data: { newEmoji: emoji }
+            }));
+        }
+        
+        // Update button immediately for feedback
+        const emojiBtn = document.getElementById('current-emoji-btn');
+        if (emojiBtn) {
+            emojiBtn.textContent = emoji;
+        }
+        
+        // Hide picker
+        const picker = document.getElementById('emoji-picker');
+        if (picker) {
+            picker.style.display = 'none';
+        }
+    }
+
+    /**
+     * Update room info display
+     */
+    updateRoomInfo() {
+        if (this.sessionId) {
+            this.currentView = 'room';
+            
+            const gameTitle = document.getElementById('game-title');
+            if (gameTitle) {
+                gameTitle.textContent = this.formatGameName(this.gameType);
+            }
+            
+            const roomCode = document.getElementById('room-code-display');
+            if (roomCode) {
+                roomCode.textContent = this.sessionId;
+            }
+        }
+    }
+
+    /**
+     * Update players list display
+     */
+    updatePlayersList() {
+        const container = document.getElementById('players-container');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        Object.values(this.players).forEach(player => {
+            const playerDiv = document.createElement('div');
+            playerDiv.className = 'player-item';
+            playerDiv.dataset.playerId = player.id;
+
+            const isHost = this.roomState.hostId === player.id;
+            const isCurrentPlayer = player.id === this.currentPlayerId;
+
+            playerDiv.innerHTML = `
+                <span class="player-emoji">${player.emoji}</span>
+                <span class="player-name">${player.name}</span>
+                <span class="player-status">
+                    ${isHost ? '👑 Host' : ''}
+                    ${isCurrentPlayer ? '(You)' : ''}
+                </span>
+            `;
+
+            container.appendChild(playerDiv);
+        });
+
+        this.updateStartGameButton();
+        this.updateCurrentPlayerInfo();
+    }
+
+    /**
+     * Update start game button state
+     */
+    updateStartGameButton() {
+        const startButton = document.getElementById('start-game-btn-header');
+        if (!startButton) return;
+
+        const isHost = this.roomState.hostId === this.currentPlayerId;
+        const gameNotStarted = this.gameState === 'waiting';
+
+        if (isHost && gameNotStarted) {
+            startButton.style.display = 'block';
+            startButton.disabled = false;
+        } else {
+            startButton.style.display = 'none';
+        }
+    }
+
+    /**
+     * Update current player info displays
+     */
+    updateCurrentPlayerInfo() {
+        if (!this.currentPlayer) return;
+
+        const nameInput = document.getElementById('player-name-input');
+        if (nameInput) {
+            nameInput.value = this.currentPlayer.name;
+        }
+
+        const emojiBtn = document.getElementById('current-emoji-btn');
+        if (emojiBtn) {
+            emojiBtn.textContent = this.currentPlayer.emoji;
+        }
+    }
+
+    /**
+     * Update game controls based on game state
+     */
+    updateGameControls() {
+        const gameArea = document.getElementById('game-area');
+        const playerControls = document.getElementById('player-controls');
+        const playersList = document.querySelector('.players-list');
+
+        if (this.gameState === 'playing') {
+            if (gameArea) gameArea.style.display = 'block';
+            if (playerControls) playerControls.style.display = 'block';
+            if (playersList) playersList.style.display = 'block';
+        } else if (this.gameState === 'waiting') {
+            if (gameArea) gameArea.style.display = 'none';
+            if (playerControls) playerControls.style.display = 'block';
+            if (playersList) playersList.style.display = 'block';
+        }
+    }
+
+    /**
+     * Show spectator UI
+     */
+    showSpectatorUI() {
+        // Add spectator indicator if not already present
+        let spectatorIndicator = document.getElementById('spectator-indicator');
+        if (!spectatorIndicator) {
+            spectatorIndicator = document.createElement('div');
+            spectatorIndicator.id = 'spectator-indicator';
+            spectatorIndicator.className = 'spectator-indicator';
+            spectatorIndicator.innerHTML = '👀 Spectator Mode';
+            
+            const roomInfo = document.querySelector('.room-info');
+            if (roomInfo) {
+                roomInfo.appendChild(spectatorIndicator);
+            }
+        }
+    }
+
+    /**
+     * Update spectators display
+     */
+    updateSpectatorsDisplay() {
+        const spectatorCount = Object.keys(this.spectators).length;
+        if (spectatorCount > 0) {
+            // Show spectator count somewhere in UI
+            console.log(`${spectatorCount} spectators watching`);
+        }
+    }
+
+    /**
+     * Show game end screen
+     */
+    showGameEndScreen(gameEndData) {
+        const endScreen = document.getElementById('end-game-screen');
+        const resultMessage = document.getElementById('game-result-message');
+        const finalScores = document.getElementById('final-scores');
+        
+        if (endScreen && resultMessage && finalScores) {
+            // Update message
+            resultMessage.textContent = 'Game Complete!';
+            
+            // Show final scores
+            if (gameEndData.finalScores) {
+                finalScores.innerHTML = '';
+                Object.entries(gameEndData.finalScores).forEach(([playerId, score]) => {
+                    const player = this.players[playerId];
+                    if (player) {
+                        const scoreItem = document.createElement('div');
+                        scoreItem.className = 'final-score-item';
+                        scoreItem.innerHTML = `${player.emoji} ${player.name}: ${score}`;
+                        finalScores.appendChild(scoreItem);
+                    }
+                });
+            }
+            
+            endScreen.style.display = 'block';
+            
+            // Handle OK button
+            const okBtn = document.getElementById('ok-btn');
+            if (okBtn) {
+                okBtn.onclick = () => {
+                    endScreen.style.display = 'none';
+                };
+            }
+        }
+    }
+
+    /**
+     * Leave game and return to portal
+     */
+    leaveGame() {
+        if (this.ws) {
+            this.ws.close();
+        }
+        
+        // Clean up game module
+        if (this.gameModule) {
+            this.gameModule.cleanup();
+            this.gameModule = null;
+        }
+        
+        // Reset all state
+        this.currentPlayerId = null;
+        this.currentPlayer = null;
+        this.players = {};
+        this.sessionId = '';
+        this.gameType = '';
+        this.gameState = 'waiting';
+        this.roomState = {};
+        this.isSpectator = false;
+        this.spectatorId = null;
+        this.spectators = {};
+        
+        // Clean up UI
+        this.cleanupGameUI();
+        
+        // Return to portal
+        this.currentView = 'portal';
+        this.updateView();
+        this.loadActiveRooms();
+        this.startActiveRoomsRefresh();
+    }
+
+    /**
+     * Clean up game-specific UI elements
+     */
+    cleanupGameUI() {
+        // Hide game area
+        const gameArea = document.getElementById('game-area');
+        if (gameArea) {
+            gameArea.style.display = 'none';
+            gameArea.innerHTML = '';
+        }
+        
+        // Hide end game screen
+        const endScreen = document.getElementById('end-game-screen');
+        if (endScreen) endScreen.style.display = 'none';
+        
+        // Remove spectator indicator
+        const spectatorIndicator = document.getElementById('spectator-indicator');
+        if (spectatorIndicator) spectatorIndicator.remove();
+        
+        // Clear players
+        const playersContainer = document.getElementById('players-container');
+        if (playersContainer) playersContainer.innerHTML = '';
+        
+        // Clear name input
+        const nameInput = document.getElementById('player-name-input');
+        if (nameInput) nameInput.value = '';
+        
+        // Remove floating emojis
+        document.querySelectorAll('.floating-emoji').forEach(el => el.remove());
+    }
+
+    /**
+     * Load active rooms (placeholder - integrate with existing logic)
+     */
+    loadActiveRooms() {
+        // This will integrate with the existing active rooms logic
+        console.log('Loading active rooms...');
+    }
+
+    /**
+     * Start/stop active rooms refresh
+     */
+    startActiveRoomsRefresh() {
+        // Integrate with existing refresh logic
+        console.log('Starting active rooms refresh...');
+    }
+
+    stopActiveRoomsRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
+    }
+
+    /**
+     * Format game name for display
+     */
+    formatGameName(gameType) {
+        return gameType
+            .split('-')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    }
+
     /**
      * Utility: Generate session ID
      */
