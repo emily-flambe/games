@@ -273,6 +273,12 @@ class GameClient {
                         this.updateCurrentPlayerInfo();
                     }
                 }
+                // 🐰 Game Logic Specialist: Sync checkbox states when game state is received
+                if (this.gameType === 'checkbox-game' && this.gameState && this.gameState.checkboxStates) {
+                    console.log('🐰 Game Logic Specialist: Syncing checkbox states from game state');
+                    this.checkboxStates = this.gameState.checkboxStates;
+                    this.updateAllCheckboxes();
+                }
                 break;
             case 'playerUpdated':
                 this.gameState = message.gameState;
@@ -856,11 +862,23 @@ class GameClient {
 
     toggleCheckbox(checkboxIndex) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            console.log('Toggling checkbox:', checkboxIndex);
+            console.log('🐰 Game Logic Specialist: Toggling checkbox', checkboxIndex);
+            
+            // Add temporary visual feedback while waiting for server response
+            const checkboxItem = document.querySelector(`.checkbox-item[data-index="${checkboxIndex}"]`);
+            if (checkboxItem) {
+                checkboxItem.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    checkboxItem.style.transform = '';
+                }, 150);
+            }
+            
             this.ws.send(JSON.stringify({
                 type: 'TOGGLE_CHECKBOX',
                 data: { checkboxIndex: checkboxIndex }
             }));
+        } else {
+            console.error('🐰 Game Logic Specialist: WebSocket not connected - cannot toggle checkbox');
         }
     }
 
