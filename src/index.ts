@@ -183,22 +183,66 @@ export class GameSession implements DurableObject {
   private spectators: Map<string, any> = new Map(); 
   private gameState: any;
   private sessionId: string = '';
+  private initialized: boolean = false;
 
   constructor(private state: DurableObjectState, private env: Env) {
-    // Initialize game state
-    this.gameState = {
-      type: 'checkbox-game',
-      status: 'waiting',
-      players: {},
-      hostId: null,
-      checkboxStates: new Array(9).fill(false),
-      checkboxPlayers: new Array(9).fill(null),
-      playerScores: {},
-      gameStarted: false,
-      gameFinished: false,
-      spectatorCount: 0,
-      spectators: {}
-    };
+    // Game state will be loaded lazily in initializeGameState()
+    this.gameState = null;
+  }
+
+  /**
+   * Initialize or load existing game state from Durable Object storage
+   */
+  private async initializeGameState() {
+    if (this.initialized) return;
+    
+    // Try to load existing game state from storage
+    const storedState = await this.state.storage.get('gameState');
+    const storedPlayers = await this.state.storage.get('players');
+    const storedSpectators = await this.state.storage.get('spectators');
+    
+    if (storedState) {
+      // Load existing game state
+      this.gameState = storedState;
+      console.log(`🔄 Loaded existing game state - gameStarted: ${this.gameState.gameStarted}`);
+    } else {
+      // Initialize fresh game state
+      this.gameState = {
+        type: 'checkbox-game',
+        status: 'waiting',
+        players: {},
+        hostId: null,
+        checkboxStates: new Array(9).fill(false),
+        checkboxPlayers: new Array(9).fill(null),
+        playerScores: {},
+        gameStarted: false,
+        gameFinished: false,
+        spectatorCount: 0,
+        spectators: {}
+      };
+      console.log('🆕 Initialized fresh game state');
+    }
+    
+    // Restore players and spectators maps
+    if (storedPlayers) {
+      this.players = new Map(storedPlayers);
+    }
+    if (storedSpectators) {
+      this.spectators = new Map(storedSpectators);
+    }
+    
+    this.initialized = true;
+  }
+
+  /**
+   * Save current game state to Durable Object storage
+   */
+  private async saveGameState() {
+    await this.state.storage.put({
+      gameState: this.gameState,
+      players: Array.from(this.players.entries()),
+      spectators: Array.from(this.spectators.entries())
+    });
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -209,6 +253,9 @@ export class GameSession implements DurableObject {
     if (pathMatch) {
       this.sessionId = pathMatch[1];
     }
+
+    // Initialize game state before processing any requests
+    await this.initializeGameState();
 
     // Check for WebSocket upgrade
     const upgradeHeader = request.headers.get('Upgrade');
@@ -251,7 +298,8 @@ export class GameSession implements DurableObject {
   async addPlayer(playerId: string, ws: WebSocket, sessionId?: string) {
     // Check if game has already started - if so, add as spectator
     if (this.gameState.gameStarted) {
-      this.addSpectator(playerId, ws);
+      console.log(`\ud83d\udc40 Game already started - adding ${playerId} as spectator`);
+      await this.addSpectator(playerId, ws);
       return;
     }
 
@@ -269,6 +317,9 @@ export class GameSession implements DurableObject {
     this.players.set(playerId, player);
     this.gameState.players[playerId] = player;
     this.gameState.playerScores[playerId] = 0;
+
+    // Save state after adding player
+    await this.saveGameState();
 
     // Set host if this is the first player
     if (isFirstPlayer) {
@@ -308,8 +359,8 @@ export class GameSession implements DurableObject {
     console.log(`Player ${playerId} joined session ${this.sessionId}`);
   }
 
-  addSpectator(spectatorId: string, ws: WebSocket) {
-    console.log(`Adding spectator ${spectatorId} to game in progress`);
+  async addSpectator(spectatorId: string, ws: WebSocket) {
+    console.log(`\ud83d\udc40 Adding spectator ${spectatorId} to game in progress`);
     
     const spectator = {
       id: spectatorId,
@@ -323,6 +374,9 @@ export class GameSession implements DurableObject {
     this.spectators.set(spectatorId, spectator);
     this.gameState.spectatorCount = this.spectators.size;
     this.gameState.spectators[spectatorId] = spectator;
+    
+    // Save state after adding spectator
+    await this.saveGameState();
     
     // Send spectator identity
     ws.send(JSON.stringify({
@@ -471,9 +525,12 @@ export class GameSession implements DurableObject {
 
         case 'START_GAME':
           if (this.players.has(playerId) && !isSpectator && this.gameState.hostId === playerId) {
-            console.log(`Host ${playerId} starting game`);
+            console.log(`\ud83c\udfc1 Host ${playerId} starting game`);
             this.gameState.status = 'started';
             this.gameState.gameStarted = true;
+            
+            // Save state immediately after starting game
+            await this.saveGameState();
             
             // Update registry to mark game as in-progress
             this.updateRegistryStatus('in-progress');
@@ -577,7 +634,7 @@ export class GameSession implements DurableObject {
     const allBoxesChecked = this.gameState.checkboxStates.every(state => state === true);
     
     if (allBoxesChecked && this.gameState.gameStarted) {
-      this.handleGameEnd();
+      await this.handleGameEnd();
     } else {
       this.broadcast({
         type: 'checkbox_toggled',
@@ -593,13 +650,16 @@ export class GameSession implements DurableObject {
     }
   }
 
-  handleGameEnd() {
-    console.log('Game ended - all checkboxes checked');
+  async handleGameEnd() {
+    console.log('\ud83c\udfc6 Game ended - all checkboxes checked');
     
     // Update game state to mark game as finished
     this.gameState.gameStarted = false;  // Game is no longer in progress
     this.gameState.gameFinished = true;  // Game is finished
     this.gameState.status = 'finished';  // Update status
+    
+    // Save state after game ends
+    await this.saveGameState();
     
     // Find the highest score
     const scores = this.gameState.playerScores;

@@ -230,17 +230,28 @@ class GameShell {
      * Handle game state updates from server
      */
     handleGameStateUpdate(message) {
-        this.currentPlayerId = message.playerId;
+        // Check if this is a spectator message
+        if (message.isSpectator || message.spectatorId) {
+            this.isSpectator = true;
+            this.spectatorId = message.spectatorId;
+            console.log('📺 Received game state as spectator');
+        } else {
+            this.currentPlayerId = message.playerId;
+            this.currentPlayer = this.players[this.currentPlayerId];
+        }
+        
         this.roomState = message.gameState;
         this.players = message.gameState.players || {};
         
-        // Update current player reference
-        this.currentPlayer = this.players[this.currentPlayerId];
+        // Update spectators if present
+        if (message.gameState.spectators) {
+            this.spectators = message.gameState.spectators;
+        }
         
         // Update game state based on server status
         if (message.gameState.gameStatus === 'finished') {
             this.gameState = 'finished';
-        } else if (message.gameState.gameStatus === 'in-progress') {
+        } else if (message.gameState.gameStatus === 'in-progress' || message.gameState.gameStarted) {
             this.gameState = 'playing';
         } else {
             this.gameState = 'waiting';
@@ -253,6 +264,25 @@ class GameShell {
         
         this.updateUI();
         this.hideLoadingOverlay();
+        
+        // If spectator and game is in progress, load the game module
+        if (this.isSpectator && this.gameState === 'playing' && !this.gameModule) {
+            console.log('🎮 Loading game module for spectator');
+            this.loadGameModule(this.gameType || 'checkbox-game').then(() => {
+                if (this.gameModule) {
+                    this.gameModule.currentPlayerId = null; // No player ID for spectator
+                    this.gameModule.isSpectator = true;
+                    
+                    this.gameModule.init(
+                        this.gameAreaElement,
+                        this.players,
+                        message.gameState,
+                        (action) => this.sendPlayerAction(action),
+                        (state) => this.onGameStateChange(state)
+                    );
+                }
+            });
+        }
         
         // Pass both updated players and game-specific state to module
         if (this.gameModule) {
@@ -472,13 +502,27 @@ class GameShell {
         
         if (message.type === 'spectator_identity') {
             this.isSpectator = true;
-            this.spectatorId = message.data.spectator.id;
+            this.spectatorId = message.data.spectatorId;
+            
+            // CRITICAL: Ensure view stays on room for spectators
+            this.currentView = 'room';
+            
+            // Update UI to show spectator mode
             this.showSpectatorUI();
+            this.updateView();
+            this.hideLoadingOverlay();
+            
+            console.log('✅ Spectator mode activated - maintaining room view');
         }
         
         if (message.data && message.data.spectators) {
             this.spectators = message.data.spectators;
             this.updateSpectatorsDisplay();
+        }
+        
+        // Update game controls for spectator
+        if (this.isSpectator) {
+            this.updateGameControls();
         }
     }
 
@@ -673,6 +717,21 @@ class GameShell {
         const playerControls = document.getElementById('player-controls');
         const playersList = document.querySelector('.players-list');
 
+        // Special handling for spectators
+        if (this.isSpectator) {
+            if (this.gameState === 'playing') {
+                if (gameArea) gameArea.style.display = 'block';
+                if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
+                if (playersList) playersList.style.display = 'none'; // Hide during gameplay
+            } else {
+                if (gameArea) gameArea.style.display = 'none';
+                if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
+                if (playersList) playersList.style.display = 'block'; // Show player list
+            }
+            return;
+        }
+
+        // Normal player controls
         if (this.gameState === 'playing') {
             if (gameArea) gameArea.style.display = 'block';
             if (playerControls) playerControls.style.display = 'none'; // Hide during gameplay

@@ -89,6 +89,11 @@ class GameApp {
 
     /**
      * Display active rooms in the UI
+     * CRITICAL: This function creates the room display with:
+     * - Proper CSS class 'join-room-btn' (NOT 'join-room-button')
+     * - Player emojis from room.players array
+     * - Styled room information layout
+     * DO NOT REMOVE player emoji display or change button CSS class!
      */
     displayActiveRooms(rooms) {
         const roomsList = document.getElementById('active-rooms-list');
@@ -108,24 +113,32 @@ class GameApp {
             const playerCount = room.playerCount || 0;
             const maxPlayers = room.maxPlayers || 8;
             const gameType = this.formatGameName(room.gameType || 'Unknown');
-            const status = room.status || 'waiting';
+            const status = room.gameStatus || 'waiting';
+            
+            // Generate player emojis display
+            const playerEmojis = room.players && room.players.length > 0 
+                ? room.players.map(player => player.emoji).join(' ')
+                : '';
             
             roomDiv.innerHTML = \`
                 <div class="room-info">
+                    <div class="room-title">\${gameType}</div>
                     <div class="room-code">\${room.sessionId}</div>
-                    <div class="room-details">
-                        <span class="game-type">\${gameType}</span>
-                        <span class="player-count">\${playerCount}/\${maxPlayers} players</span>
-                        <span class="room-status status-\${status}">\${this.formatStatus(status)}</span>
-                    </div>
+                    <div class="room-players">\${playerCount}/\${maxPlayers} players</div>
+                    \${playerEmojis ? \`<div class="room-emojis">\${playerEmojis}</div>\` : ''}
+                    <div class="room-time">Status: \${this.formatStatus(status)}</div>
                 </div>
-                <button class="join-room-button" data-room-code="\${room.sessionId}">
+                <button class="join-room-btn" data-room-code="\${room.sessionId}">
                     Join
                 </button>
+                <!--
+                CRITICAL: Button MUST use class 'join-room-btn' for proper green styling!
+                Do NOT change to 'join-room-button' or other class names.
+                -->
             \`;
             
             // Add click handler for join button
-            const joinBtn = roomDiv.querySelector('.join-room-button');
+            const joinBtn = roomDiv.querySelector('.join-room-btn');
             if (joinBtn) {
                 joinBtn.addEventListener('click', () => {
                     this.gameShell.joinExistingRoom(room.sessionId);
@@ -744,17 +757,28 @@ class GameShell {
      * Handle game state updates from server
      */
     handleGameStateUpdate(message) {
-        this.currentPlayerId = message.playerId;
+        // Check if this is a spectator message
+        if (message.isSpectator || message.spectatorId) {
+            this.isSpectator = true;
+            this.spectatorId = message.spectatorId;
+            console.log('📺 Received game state as spectator');
+        } else {
+            this.currentPlayerId = message.playerId;
+            this.currentPlayer = this.players[this.currentPlayerId];
+        }
+        
         this.roomState = message.gameState;
         this.players = message.gameState.players || {};
         
-        // Update current player reference
-        this.currentPlayer = this.players[this.currentPlayerId];
+        // Update spectators if present
+        if (message.gameState.spectators) {
+            this.spectators = message.gameState.spectators;
+        }
         
         // Update game state based on server status
         if (message.gameState.gameStatus === 'finished') {
             this.gameState = 'finished';
-        } else if (message.gameState.gameStatus === 'in-progress') {
+        } else if (message.gameState.gameStatus === 'in-progress' || message.gameState.gameStarted) {
             this.gameState = 'playing';
         } else {
             this.gameState = 'waiting';
@@ -767,6 +791,25 @@ class GameShell {
         
         this.updateUI();
         this.hideLoadingOverlay();
+        
+        // If spectator and game is in progress, load the game module
+        if (this.isSpectator && this.gameState === 'playing' && !this.gameModule) {
+            console.log('🎮 Loading game module for spectator');
+            this.loadGameModule(this.gameType || 'checkbox-game').then(() => {
+                if (this.gameModule) {
+                    this.gameModule.currentPlayerId = null; // No player ID for spectator
+                    this.gameModule.isSpectator = true;
+                    
+                    this.gameModule.init(
+                        this.gameAreaElement,
+                        this.players,
+                        message.gameState,
+                        (action) => this.sendPlayerAction(action),
+                        (state) => this.onGameStateChange(state)
+                    );
+                }
+            });
+        }
         
         // Pass both updated players and game-specific state to module
         if (this.gameModule) {
@@ -986,13 +1029,27 @@ class GameShell {
         
         if (message.type === 'spectator_identity') {
             this.isSpectator = true;
-            this.spectatorId = message.data.spectator.id;
+            this.spectatorId = message.data.spectatorId;
+            
+            // CRITICAL: Ensure view stays on room for spectators
+            this.currentView = 'room';
+            
+            // Update UI to show spectator mode
             this.showSpectatorUI();
+            this.updateView();
+            this.hideLoadingOverlay();
+            
+            console.log('✅ Spectator mode activated - maintaining room view');
         }
         
         if (message.data && message.data.spectators) {
             this.spectators = message.data.spectators;
             this.updateSpectatorsDisplay();
+        }
+        
+        // Update game controls for spectator
+        if (this.isSpectator) {
+            this.updateGameControls();
         }
     }
 
@@ -1187,6 +1244,21 @@ class GameShell {
         const playerControls = document.getElementById('player-controls');
         const playersList = document.querySelector('.players-list');
 
+        // Special handling for spectators
+        if (this.isSpectator) {
+            if (this.gameState === 'playing') {
+                if (gameArea) gameArea.style.display = 'block';
+                if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
+                if (playersList) playersList.style.display = 'none'; // Hide during gameplay
+            } else {
+                if (gameArea) gameArea.style.display = 'none';
+                if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
+                if (playersList) playersList.style.display = 'block'; // Show player list
+            }
+            return;
+        }
+
+        // Normal player controls
         if (this.gameState === 'playing') {
             if (gameArea) gameArea.style.display = 'block';
             if (playerControls) playerControls.style.display = 'none'; // Hide during gameplay
@@ -2187,6 +2259,14 @@ main {
     font-weight: 500;
 }
 
+/* CRITICAL: Player emoji display in active rooms - DO NOT REMOVE */
+.room-emojis {
+    font-size: 1.2rem;
+    line-height: 1.5;
+    margin: 0.5rem 0;
+    letter-spacing: 0.2em;
+}
+
 .room-time {
     font-size: 0.8rem;
     color: #6c757d;
@@ -2347,6 +2427,17 @@ main {
     color: #2c3e50;
     font-size: 1.2rem;
     margin: 0;
+}
+
+/* Game Area - Where specific game modules render */
+.game-area {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(52, 152, 219, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
 #start-game-btn-header {
@@ -3613,9 +3704,9 @@ main {
   "version": "1.0.0-alpha",
   "baseVersion": "1.0.0",
   "branch": "game-shell-architecture",
-  "commit": "639fb89",
-  "timestamp": "2025-08-10T21:47:07.975Z",
-  "deployedAt": "Aug 10, 2025, 03:47 PM MDT"
+  "commit": "25833f7",
+  "timestamp": "2025-08-10T22:22:56.064Z",
+  "deployedAt": "Aug 10, 2025, 04:22 PM MDT"
 }`
 };
 
