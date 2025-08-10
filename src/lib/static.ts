@@ -1284,7 +1284,16 @@ class GameShell {
             spectatorIndicator = document.createElement('div');
             spectatorIndicator.id = 'spectator-indicator';
             spectatorIndicator.className = 'spectator-indicator';
-            spectatorIndicator.innerHTML = '👀 Spectator Mode';
+            spectatorIndicator.innerHTML = '👁️👄👁️ you are a spectator. enjoy the show 👁️👄👁️';
+            spectatorIndicator.style.cssText = \`
+                background: #17a2b8;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-weight: bold;
+                margin: 10px 0;
+                text-align: center;
+            \`;
             
             const roomInfo = document.querySelector('.room-info');
             if (roomInfo) {
@@ -3704,9 +3713,9 @@ main {
   "version": "1.0.0-alpha",
   "baseVersion": "1.0.0",
   "branch": "game-shell-architecture",
-  "commit": "25833f7",
-  "timestamp": "2025-08-10T22:22:56.064Z",
-  "deployedAt": "Aug 10, 2025, 04:22 PM MDT"
+  "commit": "0681cc9",
+  "timestamp": "2025-08-10T22:26:21.177Z",
+  "deployedAt": "Aug 10, 2025, 04:26 PM MDT"
 }`
 };
 
