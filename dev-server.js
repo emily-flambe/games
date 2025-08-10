@@ -240,6 +240,28 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (pathname === '/api/active-rooms') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    const activeRooms = [];
+    
+    gameSessions.forEach((session, sessionId) => {
+      if (session.websockets.size > 0) {
+        const players = Object.values(session.gameState.players);
+        activeRooms.push({
+          sessionId: sessionId,
+          gameType: session.gameState.type || 'hello-world',
+          playerCount: players.length,
+          players: players.map(p => ({ name: p.name, emoji: p.emoji })),
+          createdAt: session.gameState.createdAt || Date.now(),
+          status: session.gameState.status || 'waiting'
+        });
+      }
+    });
+    
+    res.end(JSON.stringify({ rooms: activeRooms }));
+    return;
+  }
+
   // Static file serving
   let filePath;
   if (pathname === '/' || pathname === '/index.html') {

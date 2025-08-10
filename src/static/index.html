@@ -41,8 +41,25 @@
                 
                 <div class="join-room-section">
                     <h3>Join Existing Room</h3>
-                    <input type="text" id="room-code-input" placeholder="Enter room code">
-                    <button id="join-room-btn">Join Room</button>
+                    
+                    <div class="join-layout">
+                        <div class="manual-join-section">
+                            <div class="join-method">
+                                <h4>Enter Room Code</h4>
+                                <div class="manual-join">
+                                    <input type="text" id="room-code-input" placeholder="ENTER CODE">
+                                    <button id="join-room-btn">Join Room</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="active-rooms">
+                            <h4>Active Rooms</h4>
+                            <div id="active-rooms-list" class="rooms-list">
+                                <div class="loading-rooms">Loading rooms...</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             

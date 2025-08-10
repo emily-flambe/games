@@ -14,6 +14,7 @@ class GameClient {
 
     init() {
         this.setupEventListeners();
+        this.loadActiveRooms();
         console.log('Game client initialized');
     }
 
@@ -718,6 +719,69 @@ class GameClient {
                 }
             }, 300);
         }
+    }
+
+    async loadActiveRooms() {
+        try {
+            const response = await fetch('/api/active-rooms');
+            const data = await response.json();
+            this.displayActiveRooms(data.rooms);
+        } catch (error) {
+            console.error('Failed to load active rooms:', error);
+            this.displayActiveRooms([]);
+        }
+    }
+
+    displayActiveRooms(rooms) {
+        const container = document.getElementById('active-rooms-list');
+        if (!container) return;
+
+        if (rooms.length === 0) {
+            container.innerHTML = '<div class="no-rooms">No active rooms available</div>';
+            return;
+        }
+
+        container.innerHTML = '';
+        rooms.forEach(room => {
+            const roomElement = document.createElement('div');
+            roomElement.className = 'room-item';
+            roomElement.setAttribute('data-session-id', room.sessionId);
+            
+            const playersList = room.players.map(p => `${p.emoji} ${p.name}`).join(', ');
+            const timeAgo = this.getTimeAgo(room.createdAt);
+            
+            roomElement.innerHTML = `
+                <div class="room-info">
+                    <div class="room-title">${room.gameType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                    <div class="room-code">${room.sessionId}</div>
+                    <div class="room-players">${room.playerCount} player${room.playerCount !== 1 ? 's' : ''}: ${playersList}</div>
+                    <div class="room-time">Created ${timeAgo}</div>
+                </div>
+                <button class="join-room-btn" data-session-id="${room.sessionId}">Join</button>
+            `;
+            
+            container.appendChild(roomElement);
+        });
+
+        // Add click handlers for join buttons
+        container.querySelectorAll('.join-room-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const sessionId = e.target.getAttribute('data-session-id');
+                this.joinExistingRoom(sessionId);
+            });
+        });
+    }
+
+    getTimeAgo(timestamp) {
+        const now = Date.now();
+        const diff = now - timestamp;
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        
+        if (minutes < 1) return 'just now';
+        if (minutes < 60) return `${minutes}m ago`;
+        if (hours < 24) return `${hours}h ago`;
+        return 'today';
     }
 }
 
