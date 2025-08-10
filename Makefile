@@ -1,4 +1,4 @@
-.PHONY: install build dev run deploy clean
+.PHONY: install build dev run test deploy clean
 
 # Install dependencies
 install:
@@ -18,6 +18,11 @@ dev:
 
 # Run the development server
 run: dev
+
+# Run all tests
+test:
+	@echo "🧪 Running tests..."
+	npm test
 
 # Deploy to Cloudflare Workers
 deploy:
