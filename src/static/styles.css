@@ -297,13 +297,55 @@ main {
     box-shadow: 0 4px 20px rgba(52, 152, 219, 0.15);
 }
 
+.active-rooms-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.2rem;
+    position: relative;
+}
+
 .active-rooms h4 {
     color: #2c3e50;
-    margin-bottom: 1.2rem;
+    margin: 0;
     font-size: 1.2rem;
     font-weight: 600;
-    text-align: center;
     position: relative;
+}
+
+.refresh-btn {
+    background: #3498db;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: white;
+}
+
+.refresh-btn:hover {
+    background: #2980b9;
+    transform: rotate(180deg);
+}
+
+.refresh-btn:active {
+    transform: rotate(180deg) scale(0.95);
+}
+
+.refresh-btn.refreshing {
+    animation: spin 1s linear infinite;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 .active-rooms h4::before {

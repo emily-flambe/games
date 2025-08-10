@@ -12,12 +12,15 @@ class GameClient {
         this.spectatorId = null;
         this.spectators = {}; // Track all spectators
         this.checkboxStates = new Array(9).fill(false); // 3x3 grid of checkboxes
+        this.refreshInterval = null; // For auto-refresh
+        this.isRefreshing = false; // Prevent concurrent refreshes
         this.init();
     }
 
     init() {
         this.setupEventListeners();
         this.loadActiveRooms();
+        this.startActiveRoomsRefresh();
     }
 
     setupEventListeners() {
@@ -137,11 +140,22 @@ class GameClient {
                 this.returnToHome();
             });
         }
+
+        // Refresh rooms button
+        const refreshRoomsBtn = document.getElementById('refresh-rooms-btn');
+        if (refreshRoomsBtn) {
+            refreshRoomsBtn.addEventListener('click', () => {
+                this.loadActiveRooms(true); // true indicates manual refresh
+            });
+        }
     }
 
     startGame(gameType) {
         this.gameType = gameType;
         this.sessionId = Math.random().toString(36).substr(2, 6).toUpperCase();
+        
+        // Stop auto-refresh when entering a game
+        this.stopActiveRoomsRefresh();
         
         this.connectWebSocket();
         this.showGameRoom();
@@ -163,6 +177,9 @@ class GameClient {
     joinExistingRoom(roomCode) {
         this.gameType = 'checkbox-game'; // Default to checkbox game
         this.sessionId = roomCode;
+        
+        // Stop auto-refresh when joining a game
+        this.stopActiveRoomsRefresh();
         
         this.connectWebSocket();
         this.showGameRoom();
@@ -622,6 +639,33 @@ class GameClient {
         
         document.getElementById('game-room').classList.remove('active');
         document.getElementById('game-portal').classList.add('active');
+        
+        // Refresh rooms list when returning to portal to remove stale rooms
+        this.loadActiveRooms();
+        
+        // Restart auto-refresh when returning to portal
+        this.startActiveRoomsRefresh();
+    }
+
+    startActiveRoomsRefresh() {
+        // Clear any existing interval to prevent duplicates
+        this.stopActiveRoomsRefresh();
+        
+        // Only start auto-refresh if we're on the portal view
+        this.refreshInterval = setInterval(() => {
+            // Only refresh if we're on the portal view and not in a game
+            const portalView = document.getElementById('game-portal');
+            if (portalView && portalView.classList.contains('active') && !this.sessionId) {
+                this.loadActiveRooms();
+            }
+        }, 5000); // Refresh every 5 seconds
+    }
+    
+    stopActiveRoomsRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
     }
 
     formatGameName(gameType) {
@@ -967,7 +1011,20 @@ class GameClient {
         }
     }
 
-    async loadActiveRooms() {
+    async loadActiveRooms(isManualRefresh = false) {
+        // Prevent concurrent refreshes
+        if (this.isRefreshing && !isManualRefresh) {
+            return;
+        }
+        
+        this.isRefreshing = true;
+        
+        // Update refresh button UI for manual refreshes
+        const refreshBtn = document.getElementById('refresh-rooms-btn');
+        if (isManualRefresh && refreshBtn) {
+            refreshBtn.classList.add('refreshing');
+        }
+        
         try {
             const response = await fetch('/api/active-rooms');
             const data = await response.json();
@@ -975,6 +1032,15 @@ class GameClient {
         } catch (error) {
             console.error('Failed to load active rooms:', error);
             this.displayActiveRooms([]);
+        } finally {
+            this.isRefreshing = false;
+            
+            // Reset refresh button UI
+            if (isManualRefresh && refreshBtn) {
+                setTimeout(() => {
+                    refreshBtn.classList.remove('refreshing');
+                }, 500); // Small delay to show the animation
+            }
         }
     }
 
@@ -1571,6 +1637,12 @@ class GameClient {
         
         // Call existing leaveGame method to handle cleanup and UI reset
         this.leaveGame();
+        
+        // Refresh rooms list when returning home to ensure stale rooms are removed
+        this.loadActiveRooms();
+        
+        // Restart auto-refresh when returning to portal
+        this.startActiveRoomsRefresh();
     }
 }
 
