@@ -328,3 +328,16 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
 - [ ] CORS configuration
 - [ ] No sensitive data in logs
 - [ ] Proper authentication checks
+
+## Critical Implementation Notes
+
+### Emoji Picker Positioning (PROTECTED CODE)
+**Location**: `src/static/app.js` - `toggleEmojiPicker()` method
+
+**CRITICAL**: This method uses specific positioning logic to solve z-index stacking issues:
+- Moves picker to `document.body` to escape parent container stacking contexts
+- Uses `setProperty` with `'important'` flag to override CSS conflicts
+- Requires `setTimeout` delay for reliable `getBoundingClientRect()` positioning
+- Forces `z-index: 999999` to appear above all UI elements
+
+**Do not modify this positioning logic** - it was extensively debugged to solve emoji picker being hidden under UI elements.

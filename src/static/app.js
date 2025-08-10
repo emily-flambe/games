@@ -578,28 +578,6 @@ class GameClient {
         });
     }
 
-    /**
-     * CRITICAL: EMOJI PICKER POSITIONING - DO NOT MODIFY THIS METHOD
-     * 
-     * This method was extensively debugged to solve z-index and positioning issues.
-     * The emoji picker was being hidden under other UI elements despite high z-index values.
-     * 
-     * SOLUTION REQUIREMENTS (DO NOT CHANGE):
-     * 1. Move picker to document.body to escape parent container stacking contexts
-     * 2. Use setTimeout to ensure button is rendered before positioning
-     * 3. Use setProperty with 'important' flag to override CSS conflicts
-     * 4. Position 50px left of button and 10px below it
-     * 5. Force z-index: 999999 to appear above all other elements
-     * 
-     * DEBUGGING HISTORY:
-     * - Initially hidden under white container below
-     * - High z-index (10001, 999999) didn't work due to parent stacking context
-     * - position: absolute was clipped by parent containers
-     * - position: fixed with getBoundingClientRect() worked but CSS overrode it
-     * - Final solution: setProperty with 'important' flag forces positioning
-     * 
-     * WARNING: DO NOT MODIFY UNLESS YOU WANT TO SPEND HOURS DEBUGGING AGAIN!
-     */
     toggleEmojiPicker() {
         const emojiPicker = document.getElementById('emoji-picker');
         const emojiBtn = document.getElementById('current-emoji-btn');
