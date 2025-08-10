@@ -226,8 +226,8 @@ export class GameSession implements DurableObject {
     // Add to our connections
     this.websockets.set(server, playerId);
 
-    // Add player or spectator
-    await this.addPlayer(playerId, server);
+    // Add player or spectator (pass sessionId)
+    await this.addPlayer(playerId, server, this.sessionId);
 
     // Set up message handler
     server.addEventListener('message', async (event) => {
@@ -246,7 +246,7 @@ export class GameSession implements DurableObject {
     });
   }
 
-  async addPlayer(playerId: string, ws: WebSocket) {
+  async addPlayer(playerId: string, ws: WebSocket, sessionId?: string) {
     // Check if game has already started - if so, add as spectator
     if (this.gameState.gameStarted) {
       this.addSpectator(playerId, ws);
@@ -294,6 +294,9 @@ export class GameSession implements DurableObject {
     });
 
     // Registry integration
+    if (sessionId) {
+      this.sessionId = sessionId; // Ensure sessionId is set
+    }
     if (isFirstPlayer && this.sessionId) {
       await this.registerWithRegistry();
     } else if (this.sessionId) {
