@@ -202,7 +202,7 @@ class CheckboxGameModule extends GameModule {
             }
             
             // Send toggle action to server via shell
-            this.onPlayerAction('checkbox_toggle', {
+            this.onPlayerAction({
                 type: 'toggle_checkbox',
                 data: { checkboxIndex: checkboxIndex }
             });

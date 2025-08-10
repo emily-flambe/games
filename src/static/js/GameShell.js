@@ -244,11 +244,15 @@ class GameShell {
         // Load and initialize the appropriate game module
         this.loadGameModule(this.gameType).then(() => {
             if (this.gameModule) {
+                // Pass current player context to module
+                this.gameModule.currentPlayerId = this.currentPlayerId;
+                this.gameModule.isSpectator = this.isSpectator;
+                
                 this.gameModule.init(
                     this.gameAreaElement,
                     this.players,
                     message.data?.gameSpecificState,
-                    (playerId, action) => this.sendPlayerAction(action),
+                    (action) => this.sendPlayerAction(action),
                     (state) => this.onGameStateChange(state)
                 );
             }
@@ -277,11 +281,16 @@ class GameShell {
      */
     async loadGameModule(gameType) {
         try {
-            // For now, we'll implement checkbox game
-            // Later this will be a dynamic module loading system
+            console.log(`Loading game module: ${gameType}`);
+            
             if (gameType === 'checkbox-game') {
-                // We'll create this in the next step
-                this.gameModule = new CheckboxGameModule();
+                if (typeof CheckboxGameModule !== 'undefined') {
+                    this.gameModule = new CheckboxGameModule();
+                    console.log('✅ CheckboxGameModule loaded successfully');
+                } else {
+                    console.error('CheckboxGameModule class not found - check script loading');
+                    this.gameModule = null;
+                }
             } else {
                 console.warn(`Game module not implemented: ${gameType}`);
                 this.gameModule = null;
@@ -297,7 +306,10 @@ class GameShell {
      */
     sendPlayerAction(action) {
         if (this.ws && this.isConnected) {
+            console.log('Sending player action:', action);
             this.ws.send(JSON.stringify(action));
+        } else {
+            console.error('Cannot send action - WebSocket not connected');
         }
     }
 
