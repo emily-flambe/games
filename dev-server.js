@@ -22,7 +22,7 @@ function getRandomAnimalEmoji() {
   return ANIMAL_EMOJIS[Math.floor(Math.random() * ANIMAL_EMOJIS.length)];
 }
 
-const PORT = 8777;
+const { PORT } = require('./config');
 
 // MIME types for static files
 const mimeTypes = {
@@ -42,8 +42,10 @@ class GameSession {
   constructor(sessionId) {
     this.sessionId = sessionId;
     this.players = new Map();
+    this.spectators = new Map(); // Track spectators separately
     this.websockets = new Set();
     this.playerSockets = new Map(); // Track player ID -> WebSocket mapping
+    this.spectatorSockets = new Map(); // Track spectator ID -> WebSocket mapping
     this.gameState = {
       type: 'checkbox-game',
       status: 'waiting',
@@ -52,12 +54,21 @@ class GameSession {
       checkboxStates: new Array(9).fill(false), // 3x3 grid of checkboxes, all initially unchecked
       checkboxPlayers: new Array(9).fill(null), // Track which player checked each checkbox
       playerScores: {}, // Track points per player (1 point per checkbox checked)
-      gameStarted: false // Track if game is in session
+      gameStarted: false, // Track if game is in session
+      spectatorCount: 0, // Track number of spectators
+      spectators: {} // Track spectator data
     };
   }
 
   addPlayer(playerId, ws) {
     this.websockets.add(ws);
+    
+    // Check if game has already started - if so, add as spectator
+    if (this.gameState.gameStarted) {
+      this.addSpectator(playerId, ws);
+      return;
+    }
+    
     this.playerSockets.set(playerId, ws); // Track player-socket mapping
     const playerNumber = this.players.size + 1;
     const joinedAt = Date.now();
@@ -103,8 +114,63 @@ class GameSession {
     }));
   }
 
+  addSpectator(spectatorId, ws) {
+    console.log(`Adding spectator ${spectatorId} to game in progress`);
+    this.spectatorSockets.set(spectatorId, ws);
+    
+    // Create spectator with name and emoji like regular players
+    const spectator = {
+      id: spectatorId,
+      name: require('sillyname')(),
+      emoji: getRandomAnimalEmoji(),
+      isSpectator: true,
+      connected: true,
+      joinedAt: Date.now()
+    };
+    
+    this.spectators.set(spectatorId, spectator);
+    this.gameState.spectatorCount = this.spectators.size;
+    this.gameState.spectators[spectatorId] = spectator; // Add to game state
+    
+    // Send spectator identity to the joining spectator
+    ws.send(JSON.stringify({
+      type: 'spectator_identity',
+      data: { 
+        spectatorId: spectatorId,
+        spectator: spectator,
+        isSpectator: true 
+      },
+      timestamp: Date.now()
+    }));
+    
+    // Send current game state to spectator (read-only)
+    ws.send(JSON.stringify({
+      type: 'gameState',
+      gameState: this.gameState,
+      spectatorId: spectatorId,
+      isSpectator: true
+    }));
+    
+    // Notify all users that a spectator joined
+    this.broadcast({
+      type: 'spectator_joined',
+      data: {
+        spectator: spectator,
+        spectatorCount: this.gameState.spectatorCount,
+        gameState: this.gameState
+      }
+    });
+  }
+
   removePlayer(playerId, ws) {
     this.websockets.delete(ws);
+    
+    // Check if this is a spectator
+    if (this.spectators.has(playerId)) {
+      this.removeSpectator(playerId, ws);
+      return;
+    }
+    
     this.playerSockets.delete(playerId); // Remove player-socket mapping
     if (this.players.has(playerId)) {
       const wasHost = this.gameState.hostId === playerId;
@@ -152,10 +218,63 @@ class GameSession {
       });
     }
   }
+
+  removeSpectator(spectatorId, ws) {
+    console.log(`Removing spectator ${spectatorId}`);
+    const spectator = this.spectators.get(spectatorId);
+    this.spectatorSockets.delete(spectatorId);
+    this.spectators.delete(spectatorId);
+    delete this.gameState.spectators[spectatorId]; // Remove from game state
+    this.gameState.spectatorCount = this.spectators.size;
+    
+    // Notify all users that a spectator left
+    this.broadcast({
+      type: 'spectator_left',
+      data: {
+        spectatorId: spectatorId,
+        spectator: spectator,
+        spectatorCount: this.gameState.spectatorCount,
+        gameState: this.gameState
+      }
+    });
+  }
   
   // Helper method to find WebSocket for a player
   getWebSocketForPlayer(playerId) {
     return this.playerSockets.get(playerId);
+  }
+
+  // Helper method to find WebSocket for a spectator
+  getWebSocketForSpectator(spectatorId) {
+    return this.spectatorSockets.get(spectatorId);
+  }
+
+  // Broadcast to players only (not spectators)
+  broadcastToPlayers(message, excludeWs = null) {
+    const messageStr = JSON.stringify(message);
+    this.playerSockets.forEach(ws => {
+      if (ws !== excludeWs && ws.readyState === 1) {
+        try {
+          ws.send(messageStr);
+        } catch (error) {
+          console.error('Error broadcasting message to player:', error);
+        }
+      }
+    });
+  }
+
+  // Broadcast to spectators only
+  broadcastToSpectators(message, excludeWs = null) {
+    const messageStr = JSON.stringify(message);
+    this.spectatorSockets.forEach(ws => {
+      if (ws !== excludeWs && ws.readyState === 1) {
+        try {
+          ws.send(messageStr);
+        } catch (error) {
+          console.error('Error broadcasting message to spectator:', error);
+        }
+      }
+    });
   }
 
   // Handle checkbox toggle for the shared checkbox game
@@ -282,6 +401,9 @@ class GameSession {
     try {
       const data = JSON.parse(message);
       
+      // Check if this is a spectator - spectators can't perform most actions
+      const isSpectator = this.spectators.has(playerId);
+      
       switch (data.type) {
         case 'updateName':
         case 'change_name':
@@ -293,6 +415,15 @@ class GameSession {
               type: 'name_changed',
               playerId: playerId,
               data: { playerId, newName: player.name, gameState: this.gameState }
+            });
+          } else if (isSpectator && this.spectators.has(playerId)) {
+            const spectator = this.spectators.get(playerId);
+            spectator.name = data.name || data.data?.newName || spectator.name;
+            this.gameState.spectators[playerId] = spectator; // Update in game state
+            this.broadcast({
+              type: 'spectator_name_changed',
+              spectatorId: playerId,
+              data: { spectatorId: playerId, newName: spectator.name, spectator: spectator }
             });
           }
           break;
@@ -308,6 +439,15 @@ class GameSession {
               playerId: playerId,
               data: { playerId, newEmoji: player.emoji, gameState: this.gameState }
             });
+          } else if (isSpectator && this.spectators.has(playerId)) {
+            const spectator = this.spectators.get(playerId);
+            spectator.emoji = data.emoji || data.data?.newEmoji || spectator.emoji;
+            this.gameState.spectators[playerId] = spectator; // Update in game state
+            this.broadcast({
+              type: 'spectator_emoji_changed',
+              spectatorId: playerId,
+              data: { spectatorId: playerId, newEmoji: spectator.emoji, spectator: spectator }
+            });
           }
           break;
           
@@ -317,21 +457,27 @@ class GameSession {
           
         case 'toggle_checkbox':
         case 'TOGGLE_CHECKBOX':
-          if (this.players.has(playerId)) {
+          if (this.players.has(playerId) && !isSpectator) {
             this.handleCheckboxToggle(data, playerId);
+          } else if (isSpectator) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Spectators cannot interact with the game',
+              timestamp: Date.now()
+            }));
           }
           break;
           
         case 'START_GAME':
-          // Only allow host to start the game
-          if (this.players.has(playerId) && this.gameState.hostId === playerId) {
+          // Only allow host to start the game (spectators can't be host)
+          if (this.players.has(playerId) && !isSpectator && this.gameState.hostId === playerId) {
             console.log(`Host ${playerId} starting game: ${data.data?.gameType}`);
             
             // Update game status
             this.gameState.status = 'started';
             this.gameState.gameStarted = true;
             
-            // Broadcast game start to all players
+            // Broadcast game start to all players and spectators
             this.broadcast({
               type: 'game_started',
               data: {
@@ -341,6 +487,12 @@ class GameSession {
               },
               timestamp: Date.now()
             });
+          } else if (isSpectator) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Spectators cannot start the game',
+              timestamp: Date.now()
+            }));
           } else {
             // Send error to non-host player who tried to start game
             ws.send(JSON.stringify({
@@ -352,9 +504,9 @@ class GameSession {
           break;
 
         case 'RETURN_TO_HOME':
-          // Handle player returning to home screen after game ends
-          console.log(`Player ${playerId} returning to home screen`);
-          // This will trigger the disconnect logic which removes the player
+          // Handle player/spectator returning to home screen after game ends
+          console.log(`${isSpectator ? 'Spectator' : 'Player'} ${playerId} returning to home screen`);
+          // This will trigger the disconnect logic which removes the player/spectator
           ws.close();
           break;
           
@@ -507,10 +659,11 @@ wss.on('connection', (ws, req) => {
 
   // Handle disconnect
   ws.on('close', () => {
-    console.log(`Player ${playerId} disconnected from session ${sessionId}`);
+    const isSpectator = gameSession.spectators.has(playerId);
+    console.log(`${isSpectator ? 'Spectator' : 'Player'} ${playerId} disconnected from session ${sessionId}`);
     gameSession.removePlayer(playerId, ws);
     
-    // Clean up empty sessions
+    // Clean up empty sessions (only if no players or spectators)
     if (gameSession.websockets.size === 0) {
       setTimeout(() => {
         if (gameSession.websockets.size === 0) {

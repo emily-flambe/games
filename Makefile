@@ -1,8 +1,13 @@
-.PHONY: install dev run clean
+.PHONY: install build dev run deploy clean
 
 # Install dependencies
 install:
 	npm install
+
+# Build static assets for Cloudflare Worker
+build:
+	@echo "🔨 Building static assets..."
+	npm run build
 
 # Run the development server (alias for dev)
 dev:
@@ -14,6 +19,12 @@ dev:
 # Run the development server
 run: dev
 
+# Deploy to Cloudflare Workers
+deploy:
+	@echo "🚀 Deploying to Cloudflare Workers..."
+	npm run deploy
+
 # Clean build artifacts
 clean:
 	rm -rf node_modules/
+	rm -rf src/lib/

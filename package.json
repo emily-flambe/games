@@ -4,9 +4,16 @@
   "description": "Minimal games platform on Cloudflare Workers",
   "scripts": {
     "dev": "node dev-server.js",
-    "deploy": "wrangler deploy"
+    "build": "node build-static.js",
+    "deploy": "npm run build && wrangler deploy"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241230.0",
+    "typescript": "^5.7.3",
     "wrangler": "^4.28.1"
+  },
+  "dependencies": {
+    "puppeteer": "^24.16.0",
+    "sillyname": "^0.1.0"
   }
 }

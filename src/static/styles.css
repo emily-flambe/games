@@ -125,6 +125,51 @@ main {
     font-size: 0.9rem;
 }
 
+/* Coming Soon Game Cards */
+.game-card.coming-soon {
+    background: 
+        repeating-linear-gradient(
+            45deg,
+            #f1f3f4,
+            #f1f3f4 4px,
+            #e8eaed 4px,
+            #e8eaed 8px
+        );
+    color: #9aa0a6;
+    cursor: not-allowed;
+    position: relative;
+    opacity: 0.6;
+    filter: grayscale(0.3);
+}
+
+.game-card.coming-soon:hover {
+    transform: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.game-card.coming-soon h3 {
+    color: #80868b;
+}
+
+.game-card.coming-soon p {
+    color: #9aa0a6;
+}
+
+.coming-soon-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: linear-gradient(135deg, #ff6b35, #e74c3c);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+}
+
 .join-room-section {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 16px;

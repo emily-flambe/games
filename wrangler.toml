@@ -9,3 +9,13 @@ compatibility_flags = ["nodejs_compat"]
 
 [dev]
 port = 8777
+
+# Durable Objects
+[[durable_objects.bindings]]
+name = "GAME_SESSIONS"
+class_name = "GameSession"
+
+# Durable Object Migrations
+[[migrations]]
+tag = "v1"
+new_classes = [ "GameSession" ]
