@@ -394,6 +394,217 @@ node test-spectator-proper.js
 DEBUG=puppeteer:* node test-multiplayer.js
 ```
 
+## Advanced Debugging Strategies
+
+### WebSocket Testing with Raw Connections
+
+For testing WebSocket functionality directly without the UI layer:
+
+```javascript
+const WebSocket = require('ws');
+
+async function debugWebSocketFlow() {
+    const sessionId = 'DEBUG' + Math.random().toString(36).substr(2, 4).toUpperCase();
+    console.log('Testing session:', sessionId);
+    
+    // Connect as host
+    const host = new WebSocket(`ws://localhost:8777/api/game/${sessionId}/ws`);
+    await new Promise(resolve => host.once('open', resolve));
+    
+    // Start game
+    host.send(JSON.stringify({
+        type: 'START_GAME',
+        data: { gameType: 'checkbox-game' }
+    }));
+    
+    // Connect as spectator (after game started)
+    const spectator = new WebSocket(`ws://localhost:8777/api/game/${sessionId}/ws`);
+    
+    spectator.on('message', (data) => {
+        const msg = JSON.parse(data.toString());
+        console.log(`Spectator received: ${msg.type}`);
+        
+        if (msg.type === 'spectator_identity') {
+            console.log(`Spectator assigned: ${msg.data.spectator.emoji} ${msg.data.spectator.name}`);
+        }
+    });
+    
+    await new Promise(resolve => spectator.once('open', resolve));
+}
+```
+
+### Checkbox Game State Debugging
+
+Test checkbox synchronization and game end conditions:
+
+```javascript
+async function debugCheckboxGame() {
+    const ws = new WebSocket('ws://localhost:8777/api/game/TEST123/ws');
+    let playerId = null;
+    
+    ws.on('message', (data) => {
+        const message = JSON.parse(data.toString());
+        
+        switch (message.type) {
+            case 'gameState':
+                playerId = message.playerId;
+                if (message.gameState.hostId === playerId) {
+                    // Start game if host
+                    ws.send(JSON.stringify({
+                        type: 'START_GAME',
+                        data: { gameType: 'checkbox-game' }
+                    }));
+                }
+                break;
+                
+            case 'game_started':
+                // Test checkbox toggles with detailed logging
+                setTimeout(() => {
+                    ws.send(JSON.stringify({
+                        type: 'toggle_checkbox',
+                        checkboxIndex: 0
+                    }));
+                }, 500);
+                break;
+                
+            case 'checkbox_toggled':
+                const { checkboxIndex, newState, playerScores } = message.data;
+                console.log(`Checkbox ${checkboxIndex} → ${newState}`);
+                console.log('Scores:', playerScores);
+                
+                // Check game end condition
+                if (message.data.gameState?.checkboxStates) {
+                    const states = message.data.gameState.checkboxStates;
+                    const checkedCount = states.filter(s => s === true).length;
+                    console.log(`Progress: ${checkedCount}/9 boxes checked`);
+                }
+                break;
+                
+            case 'game_ended':
+                console.log('Game ended!', message.data);
+                ws.close();
+                break;
+        }
+    });
+}
+```
+
+### Environment Comparison Testing
+
+Test differences between local and production environments:
+
+```javascript
+async function compareEnvironments() {
+    const environments = [
+        { name: 'local', url: 'http://localhost:8777' },
+        { name: 'production', url: 'https://games.emilycogsdill.com' }
+    ];
+    
+    const results = [];
+    
+    for (const env of environments) {
+        const page = await browser.newPage();
+        
+        // Capture console errors
+        const consoleErrors = [];
+        page.on('console', msg => {
+            if (msg.type() === 'error') {
+                consoleErrors.push(msg.text());
+            }
+        });
+        
+        await page.goto(env.url);
+        await page.click('[data-game="checkbox-game"]');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        // Check Start Game button state
+        const startGameEnabled = await page.evaluate(() => {
+            const btn = document.querySelector('#start-game-btn-header, #start-game-btn');
+            return btn && !btn.disabled && btn.style.display !== 'none';
+        });
+        
+        // Check WebSocket state
+        const wsState = await page.evaluate(() => {
+            if (window.gameClient?.ws) {
+                return {
+                    readyState: window.gameClient.ws.readyState,
+                    url: window.gameClient.ws.url,
+                    isHost: window.gameClient.gameState?.hostId === window.gameClient.currentPlayerId
+                };
+            }
+            return 'no connection';
+        });
+        
+        results.push({
+            environment: env.name,
+            startGameEnabled,
+            wsState,
+            consoleErrors
+        });
+        
+        // Take screenshot for comparison
+        await page.screenshot({ 
+            path: `debug-${env.name}-state.png`, 
+            fullPage: true 
+        });
+    }
+    
+    // Compare results
+    console.log('\n=== ENVIRONMENT COMPARISON ===');
+    results.forEach(result => {
+        console.log(`${result.environment.toUpperCase()}:`);
+        console.log(`  Start Game Button: ${result.startGameEnabled ? '✅ ENABLED' : '❌ DISABLED'}`);
+        console.log(`  WebSocket State:`, result.wsState);
+        console.log(`  Console Errors:`, result.consoleErrors.length);
+    });
+    
+    return results;
+}
+```
+
+### Host Assignment and Player State Debugging
+
+Debug common issues with host assignment and player roles:
+
+```javascript
+async function debugHostAssignment() {
+    // Test the flow: join as host → leave → new player becomes host
+    const sessionId = 'HOST' + Math.random().toString(36).substr(2, 4).toUpperCase();
+    
+    // Player 1 joins (becomes host)
+    const player1 = new WebSocket(`ws://localhost:8777/api/game/${sessionId}/ws`);
+    await new Promise(resolve => player1.once('open', resolve));
+    
+    // Player 2 joins (regular player)  
+    const player2 = new WebSocket(`ws://localhost:8777/api/game/${sessionId}/ws`);
+    await new Promise(resolve => player2.once('open', resolve));
+    
+    // Monitor host assignment messages
+    [player1, player2].forEach((ws, index) => {
+        ws.on('message', (data) => {
+            const msg = JSON.parse(data.toString());
+            
+            if (msg.type === 'host_assigned') {
+                console.log(`Player ${index + 1} received host assignment:`, msg.data.hostId);
+            }
+            
+            if (msg.type === 'gameState') {
+                console.log(`Player ${index + 1} game state - Host ID:`, msg.gameState.hostId);
+            }
+        });
+    });
+    
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Host leaves
+    console.log('Host (Player 1) leaving...');
+    player1.close();
+    
+    // Wait and check if Player 2 becomes host
+    await new Promise(resolve => setTimeout(resolve, 2000));
+}
+```
+
 ## Integration with Development Workflow
 
 1. **Start development server**: `npm run dev`
@@ -402,4 +613,22 @@ DEBUG=puppeteer:* node test-multiplayer.js
 4. **Manual inspection**: Leave browsers open to inspect state
 5. **Iterate**: Modify code and re-run tests
 
-This testing approach ensures robust multiplayer functionality and helps catch issues early in development.
+### Production vs Development Debugging
+
+When debugging issues that only occur in production:
+
+1. **Use environment comparison scripts** to identify differences
+2. **Check WebSocket connection states** in both environments
+3. **Monitor console errors** for environment-specific issues
+4. **Screenshot comparison** to visually identify UI differences
+5. **Test host assignment logic** across environments
+
+### Common Debug Patterns
+
+- **Spectator Mode Testing**: Connect after game starts, verify read-only behavior
+- **Rapid Interaction Testing**: Send multiple quick actions to test race conditions
+- **Connection State Monitoring**: Track WebSocket readyState and connection timing
+- **UI Synchronization**: Verify all clients show same game state
+- **Host Transfer Testing**: Test host reassignment when original host leaves
+
+This comprehensive debugging approach ensures robust multiplayer functionality and helps catch issues early in development.

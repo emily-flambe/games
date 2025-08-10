@@ -3,13 +3,19 @@
   "version": "1.0.0",
   "description": "Minimal games platform on Cloudflare Workers",
   "scripts": {
-    "dev": "node dev-server.js",
-    "build": "node build-static.js",
+    "dev": "node scripts/dev-server.js",
+    "build": "node scripts/build-static.js",
     "deploy": "npm run build && wrangler deploy",
-    "test": "node test.js"
+    "test": "jest",
+    "test:unit": "jest tests/unit",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241230.0",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.0.5",
+    "jsdom": "^26.1.0",
     "typescript": "^5.7.3",
     "wrangler": "^4.28.1"
   },
