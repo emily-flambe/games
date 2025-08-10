@@ -632,3 +632,130 @@ When debugging issues that only occur in production:
 - **Host Transfer Testing**: Test host reassignment when original host leaves
 
 This comprehensive debugging approach ensures robust multiplayer functionality and helps catch issues early in development.
+
+## Architecture Refactor Debugging Principles
+
+### Lessons from GameShell/GameModule Refactor
+
+During the GameShell architecture refactor, we encountered a regression where player emojis weren't displaying in checkbox games. This debugging exercise revealed several key principles:
+
+#### 1. **Data Flow Mapping in Modular Architectures**
+
+**Problem**: When separating monolithic code into modules, data dependencies can break silently.
+
+**Solution**: Map data flow explicitly:
+```
+Server → WebSocket → GameShell → GameModule → UI
+```
+
+**Debugging Strategy**:
+- Add targeted logs at each boundary
+- Verify data structure at each step  
+- Check for missing data transformation
+
+#### 2. **Message Structure Validation**
+
+**Problem**: WebSocket message handlers assume consistent message structures, but server may vary formats.
+
+**Solution**: Handle message structure variations explicitly:
+```javascript
+// ❌ Fragile - assumes playerId always exists
+this.gameModule.handlePlayerAction(message.playerId, message);
+
+// ✅ Robust - handles multiple possible structures  
+const playerId = message.data?.toggledBy || message.playerId || message.data?.playerId;
+this.gameModule.handlePlayerAction(playerId, message);
+```
+
+**Debugging Strategy**:
+- Log actual message structures received
+- Add fallback extraction logic
+- Handle null/undefined cases gracefully
+
+#### 3. **State Synchronization Between Components**
+
+**Problem**: Game modules need continuous state updates, not just initial state.
+
+**Root Cause**: GameShell updated its internal player state but didn't propagate changes to GameModule.
+
+**Solution**: Create explicit update methods:
+```javascript
+// In GameModule base class
+updatePlayers(players) {
+    this.players = players;
+    this.render(); // Re-render with new player data
+}
+
+// In GameShell
+handleGameStateUpdate(message) {
+    this.players = message.gameState.players;
+    
+    // Propagate to module
+    if (this.gameModule) {
+        this.gameModule.updatePlayers(this.players);
+    }
+}
+```
+
+#### 4. **Systematic Debug Logging**
+
+**Strategy**: Add debug logs at data flow boundaries to trace exactly where information gets lost.
+
+**Pattern**:
+```javascript
+// At message receipt
+console.log('📨 Message received:', message.type, message);
+
+// At data extraction  
+console.log('🔄 Extracted data:', { playerId, players, exists: !!players[playerId] });
+
+// At UI update
+console.log('🖼️ Updating UI:', { checkboxIndex, playerId, emoji: players[playerId]?.emoji });
+```
+
+**Result**: Pinpoint exactly where `playerId` becomes null or `players[playerId]` becomes undefined.
+
+#### 5. **Regression Testing for Architecture Changes**
+
+**Testing Pattern**:
+1. **Before refactor**: Document expected behavior (player emojis show in checkboxes)
+2. **After refactor**: Verify same behavior still works
+3. **On regression**: Systematic comparison between old and new data flows
+
+#### 6. **Message Type Handling Consistency**
+
+**Problem**: New architecture may handle different message types than original monolithic code.
+
+**Solution**: Map all message types explicitly:
+```javascript
+// Add specific handlers for game-specific message types
+case 'checkbox_toggled':
+    if (this.gameModule && message.data) {
+        const playerId = message.data.toggledBy || message.playerId;
+        this.gameModule.handlePlayerAction(playerId, message);
+    }
+    break;
+```
+
+### General Debugging Principles for Multiplayer Games
+
+1. **Always verify WebSocket message structures** - log complete messages when debugging
+2. **Trace data flow through architectural boundaries** - GameShell ↔ GameModule communication
+3. **Test with multiple simultaneous connections** - issues often only appear with >1 player
+4. **Check both client-side and server-side logs** simultaneously  
+5. **Add temporary debug UI** to visualize internal state during development
+6. **Use systematic elimination** - isolate each component to find the failure point
+
+### Architecture Change Checklist
+
+When refactoring game architecture:
+
+- [ ] **Map all data dependencies** between old and new components
+- [ ] **Verify WebSocket message handling** matches expected message structures  
+- [ ] **Test state synchronization** between shell and game modules
+- [ ] **Check player-specific data flows** (emojis, names, scores)
+- [ ] **Validate with multiple concurrent players**
+- [ ] **Compare behavior before/after refactor** systematically
+- [ ] **Clean up debug logs** before committing
+
+This systematic debugging approach prevented a subtle but visible regression from reaching production.

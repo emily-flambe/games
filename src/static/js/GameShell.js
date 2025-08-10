@@ -159,18 +159,22 @@ class GameShell {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/api/game/${this.sessionId}/ws`;
             
+            console.log('Attempting to connect to WebSocket:', wsUrl);
             this.ws = new WebSocket(wsUrl);
             
             this.ws.onopen = () => {
-                console.log('Connected to game session:', this.sessionId);
+                console.log('✅ Connected to game session:', this.sessionId);
                 this.isConnected = true;
                 resolve();
             };
             
             this.ws.onmessage = (event) => this.handleWebSocketMessage(event);
-            this.ws.onclose = () => this.handleWebSocketClose();
+            this.ws.onclose = (event) => {
+                console.log('❌ WebSocket closed with code:', event.code, 'reason:', event.reason);
+                this.handleWebSocketClose();
+            };
             this.ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
+                console.error('💥 WebSocket error:', error);
                 reject(error);
             };
         });
@@ -182,7 +186,6 @@ class GameShell {
     handleWebSocketMessage(event) {
         try {
             const message = JSON.parse(event.data);
-            console.log('Received message:', message.type, message);
 
             switch (message.type) {
                 case 'gameState':
@@ -204,7 +207,15 @@ class GameShell {
                 case 'spectator_left':
                     this.handleSpectatorUpdate(message);
                     break;
+                case 'checkbox_toggled':
+                    // Handle checkbox specific messages
+                    if (this.gameModule && message.data) {
+                        const playerId = message.data.toggledBy || message.playerId;
+                        this.gameModule.handlePlayerAction(playerId, message);
+                    }
+                    break;
                 default:
+                    
                     // Pass unknown messages to game module
                     if (this.gameModule) {
                         this.gameModule.handlePlayerAction(message.playerId, message);
@@ -226,12 +237,32 @@ class GameShell {
         // Update current player reference
         this.currentPlayer = this.players[this.currentPlayerId];
         
+        // Update game state based on server status
+        if (message.gameState.gameStatus === 'finished') {
+            this.gameState = 'finished';
+        } else if (message.gameState.gameStatus === 'in-progress') {
+            this.gameState = 'playing';
+        } else {
+            this.gameState = 'waiting';
+        }
+        
+        // Ensure view switches to room when we have a session
+        if (this.sessionId && this.currentView === 'portal') {
+            this.currentView = 'room';
+        }
+        
         this.updateUI();
         this.hideLoadingOverlay();
         
-        // Pass game-specific state to module
-        if (this.gameModule && message.gameState.gameSpecificState) {
-            this.gameModule.handleStateUpdate(message.gameState.gameSpecificState);
+        // Pass both updated players and game-specific state to module
+        if (this.gameModule) {
+            // Update players in the module
+            this.gameModule.updatePlayers(this.players);
+            
+            // Pass game-specific state to module
+            if (message.gameState.gameSpecificState) {
+                this.gameModule.handleStateUpdate(message.gameState.gameSpecificState);
+            }
         }
     }
 
@@ -340,12 +371,17 @@ class GameShell {
         const portalView = document.getElementById('game-portal');
         const roomView = document.getElementById('game-room');
         
+        console.log('🔄 updateView called - currentView:', this.currentView, 'sessionId:', this.sessionId);
+        console.log('🔍 DOM elements found - portal:', !!portalView, 'room:', !!roomView);
+        
         if (this.currentView === 'portal') {
             portalView?.classList.add('active');
             roomView?.classList.remove('active');
+            console.log('📱 Switched to PORTAL view');
         } else {
             portalView?.classList.remove('active');
             roomView?.classList.add('active');
+            console.log('🏠 Switched to ROOM view');
         }
     }
 
@@ -395,9 +431,21 @@ class GameShell {
      * Handle WebSocket close
      */
     handleWebSocketClose() {
-        console.log('WebSocket connection closed');
+        console.log('❌ WebSocket connection closed - currentView:', this.currentView, 'sessionId:', this.sessionId);
         this.isConnected = false;
         this.ws = null;
+        
+        // Don't automatically return to portal on unexpected disconnections
+        // Only do this if we're intentionally leaving (sessionId is cleared)
+        if (!this.sessionId) {
+            console.log('🏠 Intentional disconnect - returning to portal');
+            this.currentView = 'portal';
+            this.updateView();
+        } else {
+            console.log('⚠️ Unexpected disconnect - maintaining room view');
+            // Keep the room view active even without connection
+            // This allows users to see the room state even if connection drops
+        }
     }
 
     /**
@@ -406,6 +454,12 @@ class GameShell {
     handlePlayerUpdate(message) {
         if (message.gameState) {
             this.players = message.gameState.players || {};
+            
+            // Update players in the game module too
+            if (this.gameModule) {
+                this.gameModule.updatePlayers(this.players);
+            }
+            
             this.updatePlayersList();
         }
     }

@@ -40,6 +40,16 @@ class GameModule {
     }
 
     /**
+     * Update players data from shell
+     * @param {Object} players - Updated players object
+     */
+    updatePlayers(players) {
+        this.players = players;
+        // Re-render if needed to reflect player changes (like emojis)
+        this.render();
+    }
+
+    /**
      * Handle player actions (from other players via WebSocket)
      * @param {string} playerId - ID of player who performed action
      * @param {Object} action - The action data

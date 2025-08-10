@@ -32,6 +32,7 @@ class CheckboxGameModule extends GameModule {
     handleStateUpdate(gameSpecificState) {
         super.handleStateUpdate(gameSpecificState);
         
+        
         if (gameSpecificState.checkboxStates) {
             this.checkboxStates = gameSpecificState.checkboxStates;
         }
@@ -41,6 +42,7 @@ class CheckboxGameModule extends GameModule {
         if (gameSpecificState.playerScores) {
             this.playerScores = gameSpecificState.playerScores;
         }
+        
         
         this.render();
     }
@@ -221,6 +223,7 @@ class CheckboxGameModule extends GameModule {
         
         if (newState) {
             checkboxItem.classList.add('checked');
+            
             
             // Show the player's emoji if we know who checked it
             if (playerId && this.players[playerId]) {
