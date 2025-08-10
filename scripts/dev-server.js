@@ -593,15 +593,16 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Static file serving
+  // Static file serving  
   let filePath;
+  const projectRoot = path.join(__dirname, '..');
   if (pathname === '/' || pathname === '/index.html') {
-    filePath = path.join(__dirname, 'src', 'static', 'index.html');
+    filePath = path.join(projectRoot, 'src', 'static', 'index.html');
   } else if (pathname.startsWith('/static/')) {
-    filePath = path.join(__dirname, 'src', pathname);
+    filePath = path.join(projectRoot, 'src', pathname);
   } else {
     // Default to index.html for SPA routing
-    filePath = path.join(__dirname, 'src', 'static', 'index.html');
+    filePath = path.join(projectRoot, 'src', 'static', 'index.html');
   }
 
   // Check if file exists
