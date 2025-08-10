@@ -640,6 +640,17 @@ main {
     margin: 0;
 }
 
+/* Game Area - Where specific game modules render */
+.game-area {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(52, 152, 219, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
 #start-game-btn-header {
     padding: 0.5rem 1rem;
     background: #27ae60;
