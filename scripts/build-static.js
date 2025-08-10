@@ -15,20 +15,26 @@ const OUTPUT_FILE = 'src/lib/static.ts';
 function readStaticAssets() {
     const assets = {};
     
-    try {
-        const files = fs.readdirSync(STATIC_DIR);
+    function readDirectory(dir, baseRoute = '/static') {
+        const files = fs.readdirSync(dir);
         
         for (const file of files) {
-            const filePath = path.join(STATIC_DIR, file);
+            const filePath = path.join(dir, file);
             const stats = fs.statSync(filePath);
             
             if (stats.isFile()) {
                 const content = fs.readFileSync(filePath, 'utf8');
-                const routePath = `/static/${file}`; // Keep /static/ prefix to match HTML references
+                const relativePath = path.relative(STATIC_DIR, filePath);
+                const routePath = `${baseRoute}/${relativePath}`.replace(/\\/g, '/'); // Normalize path separators
                 assets[routePath] = content;
+            } else if (stats.isDirectory()) {
+                readDirectory(filePath, baseRoute);
             }
         }
-        
+    }
+    
+    try {
+        readDirectory(STATIC_DIR);
         console.log(`✅ Embedded ${Object.keys(assets).length} static assets`);
         return assets;
     } catch (error) {

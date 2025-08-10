@@ -4,676 +4,141 @@
  */
 
 export const staticAssets: Record<string, string> = {
-  '/static/app.js': `// Premium Web Games Online Incorporated LLC Esq. GPT CBD - Vanilla JavaScript
+  '/static/app.js': `// Game Shell Architecture - New Main Application
+// Replaces monolithic GameClient with modular GameShell + GameModules
 
-class GameClient {
+/**
+ * Main Application class that coordinates the GameShell
+ */
+class GameApp {
     constructor() {
-        this.ws = null;
-        this.currentView = 'portal';
-        this.gameType = '';
-        this.sessionId = '';
-        this.currentPlayerId = null;
-        this.currentPlayer = null;
-        this.isSpectator = false;
-        this.spectatorId = null;
-        this.spectators = {}; // Track all spectators
-        this.checkboxStates = new Array(9).fill(false); // 3x3 grid of checkboxes
-        this.refreshInterval = null; // For auto-refresh
-        this.isRefreshing = false; // Prevent concurrent refreshes
+        this.gameShell = null;
         this.init();
     }
 
     init() {
-        this.setupEventListeners();
-        this.loadActiveRooms();
-        this.startActiveRoomsRefresh();
+        // Initialize the game shell
+        this.gameShell = new GameShell();
+        
+        // Integrate active rooms functionality with shell
+        this.integrateActiveRooms();
+        
+        // Load and display version information
+        this.loadVersionInfo();
+        
+        // Initialize the shell
+        this.gameShell.init();
     }
 
-    setupEventListeners() {
-        // Game card clicks
-        document.querySelectorAll('.game-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                const gameType = e.currentTarget.dataset.game;
-                const isComingSoon = e.currentTarget.classList.contains('coming-soon');
-                
-                if (isComingSoon) {
-                    return;
-                }
-                
-                if (gameType) {
-                    this.startGame(gameType);
-                }
-            });
-        });
+    /**
+     * Integrate active rooms functionality with GameShell
+     */
+    integrateActiveRooms() {
+        // Override shell's loadActiveRooms with existing functionality
+        this.gameShell.loadActiveRooms = () => {
+            this.loadActiveRooms();
+        };
 
-        // Join room functionality
-        const joinRoomBtn = document.getElementById('join-room-btn');
-        const roomCodeInput = document.getElementById('room-code-input');
-        
-        if (joinRoomBtn && roomCodeInput) {
-            joinRoomBtn.addEventListener('click', () => {
-                const roomCode = roomCodeInput.value.trim().toUpperCase();
-                if (roomCode) {
-                    this.joinExistingRoom(roomCode);
-                } else {
-                    this.showError('Please enter a room code');
-                }
-            });
-            
-            roomCodeInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    const roomCode = roomCodeInput.value.trim().toUpperCase();
-                    if (roomCode) {
-                        this.joinExistingRoom(roomCode);
-                    } else {
-                        this.showError('Please enter a room code');
-                    }
-                }
-            });
+        // Override shell's refresh methods
+        this.gameShell.startActiveRoomsRefresh = () => {
+            this.startActiveRoomsRefresh();
+        };
 
-            // Format room code input as user types (uppercase, 6 chars max)
-            roomCodeInput.addEventListener('input', (e) => {
-                let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                if (value.length > 6) {
-                    value = value.substring(0, 6);
-                }
-                e.target.value = value;
-            });
-        }
+        this.gameShell.stopActiveRoomsRefresh = () => {
+            this.stopActiveRoomsRefresh();
+        };
 
-        // Leave room button
-        const leaveBtn = document.getElementById('leave-room-btn');
-        if (leaveBtn) {
-            leaveBtn.addEventListener('click', () => this.leaveGame());
-        }
-
-        // Hello World specific controls
-        const updateNameBtn = document.getElementById('update-name-btn');
-        const nameInput = document.getElementById('player-name-input');
-        const currentEmojiBtn = document.getElementById('current-emoji-btn');
-
-        if (updateNameBtn && nameInput) {
-            updateNameBtn.addEventListener('click', () => {
-                const name = nameInput.value.trim();
-                if (name) {
-                    this.updateName(name);
-                }
-            });
-            
-            nameInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    const name = nameInput.value.trim();
-                    if (name) {
-                        this.updateName(name);
-                    }
-                }
-            });
-        }
-
-        if (currentEmojiBtn) {
-            currentEmojiBtn.addEventListener('click', () => {
-                this.toggleEmojiPicker();
-            });
-            this.setupEmojiPicker();
-        }
-
-        // Close emoji picker when clicking outside
-        document.addEventListener('click', (e) => {
-            const emojiPicker = document.getElementById('emoji-picker');
-            const emojiBtn = document.getElementById('current-emoji-btn');
-            if (emojiPicker && !emojiPicker.contains(e.target) && e.target !== emojiBtn) {
-                emojiPicker.style.display = 'none';
-            }
-        });
-
-        // Start Game button functionality
-        const startGameBtnHeader = document.getElementById('start-game-btn-header');
-        if (startGameBtnHeader) {
-            startGameBtnHeader.addEventListener('click', () => {
-                // Only allow host to start the game
-                if (this.isCurrentPlayerHost()) {
-                    this.startGameSession();
-                } else {
-                    this.showError('Only the host can start the game');
-                }
-            });
-        }
-
-        // OK button functionality (end game screen)
-        const okBtn = document.getElementById('ok-btn');
-        if (okBtn) {
-            okBtn.addEventListener('click', () => {
-                this.returnToHome();
-            });
-        }
-
-        // Refresh rooms button
-        const refreshRoomsBtn = document.getElementById('refresh-rooms-btn');
-        if (refreshRoomsBtn) {
-            refreshRoomsBtn.addEventListener('click', () => {
-                this.loadActiveRooms(true); // true indicates manual refresh
+        // Add refresh button handler
+        const refreshBtn = document.getElementById('refresh-rooms-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                this.loadActiveRooms();
             });
         }
     }
 
-    startGame(gameType) {
-        this.gameType = gameType;
-        this.sessionId = Math.random().toString(36).substr(2, 6).toUpperCase();
+    /**
+     * Load active rooms from server
+     */
+    async loadActiveRooms() {
+        if (this.gameShell.isRefreshing) return;
         
-        // Stop auto-refresh when entering a game
-        this.stopActiveRoomsRefresh();
-        
-        this.connectWebSocket();
-        this.showGameRoom();
-        
-        // Show universal player controls for ALL games
-        const controls = document.getElementById('player-controls');
-        if (controls) controls.style.display = 'block';
-        
-        // Initialize game-specific functionality
-        if (gameType === 'checkbox-game') {
-            this.initializeCheckboxGrid();
-        }
-        
-        // Clear the room code input
-        const roomCodeInput = document.getElementById('room-code-input');
-        if (roomCodeInput) roomCodeInput.value = '';
-    }
-
-    joinExistingRoom(roomCode) {
-        this.gameType = 'checkbox-game'; // Default to checkbox game
-        this.sessionId = roomCode;
-        
-        // Stop auto-refresh when joining a game
-        this.stopActiveRoomsRefresh();
-        
-        this.connectWebSocket();
-        this.showGameRoom();
-        
-        // Show universal player controls for ALL games
-        const controls = document.getElementById('player-controls');
-        if (controls) controls.style.display = 'block';
-        
-        // Initialize game-specific functionality
-        if (this.gameType === 'checkbox-game') {
-            this.initializeCheckboxGrid();
-        }
-        
-        // Clear the room code input
-        const roomCodeInput = document.getElementById('room-code-input');
-        if (roomCodeInput) roomCodeInput.value = '';
-    }
-
-    connectWebSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = \`\${protocol}//\${window.location.host}/api/game/\${this.sessionId}/ws\`;
-        
+        this.gameShell.isRefreshing = true;
+        const roomsList = document.getElementById('active-rooms-list');
         
         try {
-            this.ws = new WebSocket(wsUrl);
+            if (roomsList) {
+                roomsList.innerHTML = '<div class="loading-rooms">Loading rooms...</div>';
+            }
             
-            this.ws.onopen = () => {
-                this.updateConnectionStatus(true);
-            };
+            const response = await fetch('/api/active-rooms');
+            const data = await response.json();
             
-            this.ws.onmessage = (event) => {
-                try {
-                    const message = JSON.parse(event.data);
-                    this.handleMessage(message);
-                } catch (error) {
-                    console.error('Failed to parse message:', error);
-                }
-            };
-            
-            this.ws.onclose = () => {
-                this.updateConnectionStatus(false);
-            };
-            
-            this.ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
-            
+            if (roomsList) {
+                this.displayActiveRooms(data.rooms || []);
+            }
         } catch (error) {
-            console.error('Failed to create WebSocket:', error);
-            this.showError('Failed to connect to server');
+            console.error('Failed to load active rooms:', error);
+            if (roomsList) {
+                roomsList.innerHTML = '<div class="error-rooms">Failed to load rooms</div>';
+            }
+        } finally {
+            this.gameShell.isRefreshing = false;
         }
     }
 
-    handleMessage(message) {
-        
-        switch (message.type) {
-            case 'player_identity':
-                this.currentPlayerId = message.data.playerId;
-                this.currentPlayer = message.data.player;
-                this.updateCurrentPlayerInfo();
-                this.updateStartGameButton();
-                break;
-            case 'spectator_identity':
-                this.spectatorId = message.data.spectatorId;
-                this.currentPlayer = message.data.spectator; // Spectators now have player-like data
-                this.isSpectator = true;
-                this.setupSpectatorMode();
-                this.updateCurrentPlayerInfo(); // Show spectator's name and emoji
-                break;
-            case 'host_assigned':
-                // Handle host assignment - this is just informational
-                this.updateStartGameButton();
-                break;
-            case 'name_changed':
-                this.gameState = message.data.gameState;
-                this.updatePlayers(message.data.gameState.players);
-                this.updateBouncingEmojis(message.data.gameState.players);
-                this.refreshEmojiPicker();
-                // Update current player info if it's our player that changed name
-                if (message.data.playerId === this.currentPlayerId) {
-                    const updatedPlayer = message.data.gameState.players[this.currentPlayerId];
-                    if (updatedPlayer) {
-                        this.currentPlayer = updatedPlayer;
-                        this.updateCurrentPlayerInfo();
-                        this.showSuccessMessage(\`Name updated to: \${updatedPlayer.name}\`);
-                    }
-                }
-                break;
-            case 'emoji_changed':
-                this.gameState = message.data.gameState;
-                this.updatePlayers(message.data.gameState.players);
-                this.updateBouncingEmojis(message.data.gameState.players);
-                this.refreshEmojiPicker();
-                // Update current player info if it's our player that changed emoji
-                if (message.data.playerId === this.currentPlayerId) {
-                    const updatedPlayer = message.data.gameState.players[this.currentPlayerId];
-                    if (updatedPlayer) {
-                        this.currentPlayer = updatedPlayer;
-                        this.updateCurrentPlayerInfo();
-                    }
-                }
-                break;
-            case 'player_joined':
-            case 'playerJoined':
-                this.gameState = message.gameState ? message.gameState : message.data.gameState;
-                this.updatePlayers(message.gameState ? message.gameState.players : message.data.gameState.players);
-                this.updateBouncingEmojis(message.gameState ? message.gameState.players : message.data.gameState.players);
-                this.refreshEmojiPicker();
-                break;
-            case 'playerLeft':
-                this.gameState = message.gameState;
-                this.updatePlayers(message.gameState.players);
-                this.updateBouncingEmojis(message.gameState.players);
-                this.refreshEmojiPicker();
-                break;
-            case 'game_state':
-            case 'gameState':
-                this.gameState = message.data ? message.data : message.gameState;
-                
-                // Handle spectator mode
-                if (message.isSpectator) {
-                    this.spectatorId = message.spectatorId;
-                    this.isSpectator = true;
-                    this.setupSpectatorMode();
-                } else {
-                    // Set current player ID if provided in the message
-                    if (message.playerId && !this.currentPlayerId) {
-                        this.currentPlayerId = message.playerId;
-                    }
-                }
-                
-                this.updatePlayers(message.data ? message.data.players : message.gameState.players);
-                this.updateBouncingEmojis(message.data ? message.data.players : message.gameState.players);
-                this.refreshEmojiPicker();
-                
-                // Update current player info if we have playerId and players data (not for spectators)
-                if (!this.isSpectator && this.currentPlayerId && this.gameState && this.gameState.players) {
-                    const currentPlayer = this.gameState.players[this.currentPlayerId];
-                    if (currentPlayer) {
-                        this.currentPlayer = currentPlayer;
-                        this.updateCurrentPlayerInfo();
-                    }
-                }
-                
-                // Load spectators from game state
-                if (this.gameState && this.gameState.spectators) {
-                    this.spectators = this.gameState.spectators;
-                    this.updateSpectatorsDisplay();
-                }
-                
-                // 🐰 Game Logic Specialist: Sync checkbox states when game state is received
-                if (this.gameType === 'checkbox-game' && this.gameState && this.gameState.checkboxStates) {
-                    this.checkboxStates = this.gameState.checkboxStates;
-                    this.updateAllCheckboxes();
-                }
-                
-                // Update spectator display
-                this.updateSpectatorDisplay();
-                break;
-            case 'playerUpdated':
-                this.gameState = message.gameState;
-                this.updatePlayers(message.gameState.players);
-                this.updateBouncingEmojis(message.gameState.players);
-                this.refreshEmojiPicker();
-                // Update current player info if it's our player that was updated
-                if (this.currentPlayerId) {
-                    const updatedPlayer = message.gameState.players[this.currentPlayerId];
-                    if (updatedPlayer) {
-                        this.currentPlayer = updatedPlayer;
-                        this.updateCurrentPlayerInfo();
-                    }
-                }
-                break;
-            case 'checkbox_toggled':
-                // Handle checkbox toggle from server
-                if (message.data && message.data.checkboxIndex !== undefined && message.data.newState !== undefined) {
-                    this.checkboxStates[message.data.checkboxIndex] = message.data.newState;
-                    const playerId = message.data.toggledBy;
-                    this.updateCheckboxUI(message.data.checkboxIndex, message.data.newState, playerId);
-                }
-                // Update game state if provided in data
-                if (message.data && message.data.gameState) {
-                    this.gameState = message.data.gameState;
-                    if (message.data.gameState.checkboxStates) {
-                        this.checkboxStates = message.data.gameState.checkboxStates;
-                        this.updateAllCheckboxes();
-                    }
-                    this.updatePlayers(message.data.gameState.players);
-                    this.updatePlayerCount();
-                    // Update scoreboard if scores changed
-                    this.updateScoreboard();
-                }
-                break;
-            case 'game_started':
-                // Handle game start notification from server
-                if (message.data && message.data.gameType) {
-                    this.handleGameStart(message.data.gameType);
-                }
-                break;
-            case 'game_ended':
-                // Handle game end notification from server
-                this.handleGameEnd(message.data);
-                break;
-            case 'spectator_joined':
-                // Update spectator list and display
-                if (message.data && message.data.spectator) {
-                    this.spectators[message.data.spectator.id] = message.data.spectator;
-                    this.updateSpectatorsDisplay();
-                    this.updateSpectatorCount(message.data.spectatorCount);
-                }
-                // Update game state if provided
-                if (message.data && message.data.gameState) {
-                    this.gameState = message.data.gameState;
-                }
-                break;
-            case 'spectator_left':
-                // Remove spectator from list
-                if (message.data && message.data.spectatorId) {
-                    delete this.spectators[message.data.spectatorId];
-                    this.updateSpectatorsDisplay();
-                    this.updateSpectatorCount(message.data.spectatorCount);
-                }
-                break;
-            case 'spectator_name_changed':
-                // Update spectator name
-                if (message.data && message.data.spectator) {
-                    this.spectators[message.data.spectatorId] = message.data.spectator;
-                    this.updateSpectatorsDisplay();
-                    // Update current player info if it's our spectator
-                    if (message.data.spectatorId === this.spectatorId) {
-                        this.currentPlayer = message.data.spectator;
-                        this.updateCurrentPlayerInfo();
-                        this.showSuccessMessage(\`Name updated to: \${message.data.spectator.name}\`);
-                    }
-                }
-                break;
-            case 'spectator_emoji_changed':
-                // Update spectator emoji
-                if (message.data && message.data.spectator) {
-                    this.spectators[message.data.spectatorId] = message.data.spectator;
-                    this.updateSpectatorsDisplay();
-                    // Update current player info if it's our spectator
-                    if (message.data.spectatorId === this.spectatorId) {
-                        this.currentPlayer = message.data.spectator;
-                        this.updateCurrentPlayerInfo();
-                    }
-                }
-                break;
-            case 'error':
-                // Handle error messages from server
-                console.log('Server error:', message.message);
-                this.showError(message.message);
-                break;
-            default:
-                console.log('Unknown message type:', message.type);
-        }
-    }
+    /**
+     * Display active rooms in the UI
+     */
+    displayActiveRooms(rooms) {
+        const roomsList = document.getElementById('active-rooms-list');
+        if (!roomsList) return;
 
-    updatePlayers(players) {
-        const container = document.getElementById('players-container');
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        if (!players) {
+        if (rooms.length === 0) {
+            roomsList.innerHTML = '<div class="no-rooms">No active rooms</div>';
             return;
         }
 
-        Object.values(players).forEach(player => {
-            const playerDiv = document.createElement('div');
-            playerDiv.className = 'player';
-            playerDiv.style.display = 'flex';
-            playerDiv.style.alignItems = 'center';
-            playerDiv.style.gap = '10px';
-            playerDiv.style.padding = '8px';
-            playerDiv.style.backgroundColor = '#f5f5f5';
-            playerDiv.style.borderRadius = '4px';
-            playerDiv.style.marginBottom = '5px';
+        roomsList.innerHTML = '';
+        
+        rooms.forEach(room => {
+            const roomDiv = document.createElement('div');
+            roomDiv.className = 'room-item';
             
-            const emojiSpan = document.createElement('span');
-            emojiSpan.className = 'player-emoji';
-            emojiSpan.textContent = player.emoji || '😀';
-            emojiSpan.style.fontSize = '20px';
-
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'player-name';
-            nameSpan.textContent = player.name || 'Unknown Player';
-            nameSpan.style.fontWeight = 'bold';
-            nameSpan.style.flex = '1';
+            const playerCount = room.playerCount || 0;
+            const maxPlayers = room.maxPlayers || 8;
+            const gameType = this.formatGameName(room.gameType || 'Unknown');
+            const status = room.status || 'waiting';
             
-            const statusSpan = document.createElement('span');
-            statusSpan.className = 'player-status';
-            statusSpan.style.display = 'flex';
-            statusSpan.style.alignItems = 'center';
-            statusSpan.style.gap = '5px';
+            roomDiv.innerHTML = \`
+                <div class="room-info">
+                    <div class="room-code">\${room.sessionId}</div>
+                    <div class="room-details">
+                        <span class="game-type">\${gameType}</span>
+                        <span class="player-count">\${playerCount}/\${maxPlayers} players</span>
+                        <span class="room-status status-\${status}">\${this.formatStatus(status)}</span>
+                    </div>
+                </div>
+                <button class="join-room-button" data-room-code="\${room.sessionId}">
+                    Join
+                </button>
+            \`;
             
-            // Connection status
-            const connectionSpan = document.createElement('span');
-            connectionSpan.textContent = player.connected ? '✓' : '○';
-            connectionSpan.style.color = player.connected ? 'green' : 'gray';
-            connectionSpan.style.fontWeight = 'bold';
-            statusSpan.appendChild(connectionSpan);
-            
-            // Host indicator
-            if (player.isHost) {
-                const hostSpan = document.createElement('span');
-                hostSpan.textContent = '👑 HOST';
-                hostSpan.style.color = '#ff6b35';
-                hostSpan.style.fontWeight = 'bold';
-                hostSpan.style.fontSize = '12px';
-                hostSpan.style.backgroundColor = '#fff4e6';
-                hostSpan.style.padding = '2px 6px';
-                hostSpan.style.borderRadius = '3px';
-                hostSpan.style.border = '1px solid #ff6b35';
-                statusSpan.appendChild(hostSpan);
+            // Add click handler for join button
+            const joinBtn = roomDiv.querySelector('.join-room-button');
+            if (joinBtn) {
+                joinBtn.addEventListener('click', () => {
+                    this.gameShell.joinExistingRoom(room.sessionId);
+                });
             }
-
-            playerDiv.appendChild(emojiSpan);
-            playerDiv.appendChild(nameSpan);
-            playerDiv.appendChild(statusSpan);
-
-            container.appendChild(playerDiv);
+            
+            roomsList.appendChild(roomDiv);
         });
-        
-        // Update start game button state based on host status
-        this.updateStartGameButton();
     }
 
-    updateName(name) {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                type: 'change_name',
-                data: { newName: name }
-            }));
-        }
-    }
-
-    updateEmoji(emoji) {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                type: 'change_emoji',
-                data: { newEmoji: emoji }
-            }));
-        }
-    }
-
-    updateCurrentPlayerInfo() {
-        if (!this.currentPlayer) return;
-
-        // Update name display - show current name in the input field
-        const nameInput = document.getElementById('player-name-input');
-        if (nameInput) {
-            nameInput.value = this.currentPlayer.name;
-            nameInput.placeholder = "Enter your name";
-        }
-
-        // Update emoji button to show current emoji
-        const emojiBtn = document.getElementById('current-emoji-btn');
-        if (emojiBtn) {
-            emojiBtn.textContent = this.currentPlayer.emoji;
-        }
-    }
-
-    showGameRoom() {
-        document.getElementById('game-portal').classList.remove('active');
-        document.getElementById('game-room').classList.add('active');
-        
-        const gameTitle = document.getElementById('game-title');
-        if (gameTitle) {
-            gameTitle.textContent = this.formatGameName(this.gameType);
-        }
-        
-        const roomCode = document.getElementById('room-code-display');
-        if (roomCode) {
-            roomCode.textContent = this.sessionId;
-        }
-        
-        // Initialize the start game button state (will be disabled until we know host status)
-        this.updateStartGameButton();
-    }
-
-    leaveGame() {
-        if (this.ws) {
-            this.ws.close();
-        }
-        
-        // CRITICAL: Reset all client state for clean restart
-        this.currentPlayerId = null;
-        this.currentPlayer = null;
-        this.gameState = null;
-        this.sessionId = '';
-        this.gameType = '';
-        this.checkboxStates = new Array(9).fill(false);
-        
-        // GLOBAL DESIGN RULE: Remove all emoji animations when player leaves room
-        document.querySelectorAll('.floating-emoji').forEach(el => el.remove());
-        
-        // Reset spectator mode
-        this.isSpectator = false;
-        this.spectatorId = null;
-        this.spectators = {};
-        
-        // Hide spectator indicator
-        const spectatorIndicator = document.getElementById('spectator-indicator');
-        if (spectatorIndicator) {
-            spectatorIndicator.remove();
-        }
-        
-        // Hide spectator message
-        const spectatorMessage = document.getElementById('spectator-message');
-        if (spectatorMessage) {
-            spectatorMessage.remove();
-        }
-        
-        // Hide spectators section
-        const spectatorsSection = document.getElementById('spectators-section');
-        if (spectatorsSection) {
-            spectatorsSection.remove();
-        }
-        
-        // Hide player controls
-        const controls = document.getElementById('player-controls');
-        if (controls) controls.style.display = 'none';
-        
-        // Hide any game-specific content
-        const checkboxBoard = document.getElementById('checkbox-game-board');
-        if (checkboxBoard) checkboxBoard.style.display = 'none';
-        
-        // Hide end game screen if visible
-        const endGameScreen = document.getElementById('end-game-screen');
-        if (endGameScreen) endGameScreen.style.display = 'none';
-        
-        // Show player controls and list again (reset for next game)
-        const playerControlsReset = document.getElementById('player-controls');
-        if (playerControlsReset) playerControlsReset.style.display = 'block';
-        
-        // Show start game button again
-        const startGameBtn = document.getElementById('start-game-btn-header');
-        if (startGameBtn) {
-            startGameBtn.style.display = 'block';
-        }
-        
-        const playersList = document.querySelector('.players-list');
-        if (playersList) playersList.style.display = 'block';
-        
-        // Clear players container to avoid stale host status
-        const playersContainer = document.getElementById('players-container');
-        if (playersContainer) {
-            playersContainer.innerHTML = '';
-        }
-        
-        // Clear name input
-        const nameInput = document.getElementById('player-name-input');
-        if (nameInput) {
-            nameInput.value = '';
-        }
-        
-        document.getElementById('game-room').classList.remove('active');
-        document.getElementById('game-portal').classList.add('active');
-        
-        // Refresh rooms list when returning to portal to remove stale rooms
-        this.loadActiveRooms();
-        
-        // Restart auto-refresh when returning to portal
-        this.startActiveRoomsRefresh();
-    }
-
-    startActiveRoomsRefresh() {
-        // Clear any existing interval to prevent duplicates
-        this.stopActiveRoomsRefresh();
-        
-        // Only start auto-refresh if we're on the portal view
-        this.refreshInterval = setInterval(() => {
-            // Only refresh if we're on the portal view and not in a game
-            const portalView = document.getElementById('game-portal');
-            if (portalView && portalView.classList.contains('active') && !this.sessionId) {
-                this.loadActiveRooms();
-            }
-        }, 5000); // Refresh every 5 seconds
-    }
-    
-    stopActiveRoomsRefresh() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-            this.refreshInterval = null;
-        }
-    }
-
+    /**
+     * Format game name for display
+     */
     formatGameName(gameType) {
         return gameType
             .split('-')
@@ -681,980 +146,71 @@ class GameClient {
             .join(' ');
     }
 
+    /**
+     * Format room status for display
+     */
+    formatStatus(status) {
+        switch (status) {
+            case 'waiting': return 'Waiting';
+            case 'playing': return 'In Progress';
+            case 'finished': return 'Finished';
+            default: return status;
+        }
+    }
 
-    showError(message) {
-        const container = document.getElementById('error-container');
-        if (!container) return;
-
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message';
-        errorDiv.textContent = message;
-        errorDiv.style.background = '#ff4444';
-        errorDiv.style.color = 'white';
-        errorDiv.style.padding = '10px';
-        errorDiv.style.margin = '10px 0';
-        errorDiv.style.borderRadius = '4px';
-
-        container.appendChild(errorDiv);
-
-        setTimeout(() => {
-            if (container.contains(errorDiv)) {
-                container.removeChild(errorDiv);
+    /**
+     * Start auto-refresh for active rooms
+     */
+    startActiveRoomsRefresh() {
+        // Clear any existing interval
+        this.stopActiveRoomsRefresh();
+        
+        this.gameShell.refreshInterval = setInterval(() => {
+            // Only refresh if on portal view and not in a game
+            const portalView = document.getElementById('game-portal');
+            if (portalView && portalView.classList.contains('active') && !this.gameShell.sessionId) {
+                this.loadActiveRooms();
             }
-        }, 5000);
+        }, 5000); // Refresh every 5 seconds
     }
 
-    showSuccessMessage(message) {
-        const container = document.getElementById('error-container');
-        if (!container) return;
-
-        const successDiv = document.createElement('div');
-        successDiv.className = 'success-message';
-        successDiv.textContent = message;
-        successDiv.style.background = '#28a745';
-        successDiv.style.color = 'white';
-        successDiv.style.padding = '10px';
-        successDiv.style.margin = '10px 0';
-        successDiv.style.borderRadius = '4px';
-
-        container.appendChild(successDiv);
-
-        setTimeout(() => {
-            if (container.contains(successDiv)) {
-                container.removeChild(successDiv);
-            }
-        }, 3000);
-    }
-
-    setupEmojiPicker() {
-        const emojiGrid = document.getElementById('emoji-grid');
-        if (!emojiGrid) return;
-
-        // Animal emojis array (same as server)
-        const animalEmojis = [
-            '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯',
-            '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🐣',
-            '🦆', '🦅', '🦉', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋',
-            '🐌', '🐞', '🐜', '🦟', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎',
-            '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐟', '🐠', '🐡',
-            '🦈', '🐳', '🐋', '🐬', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘',
-            '🦏', '🦛', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎',
-            '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐈'
-        ];
-
-        this.updateEmojiPicker(animalEmojis);
-    }
-
-    updateEmojiPicker(animalEmojis) {
-        const emojiGrid = document.getElementById('emoji-grid');
-        if (!emojiGrid) return;
-
-        // Clear existing emojis
-        emojiGrid.innerHTML = '';
-
-        // Get emojis currently in use by other players
-        const usedEmojis = new Set();
-        if (this.gameState && this.gameState.players) {
-            Object.values(this.gameState.players).forEach(player => {
-                if (player.id !== this.currentPlayerId) {
-                    usedEmojis.add(player.emoji);
-                }
-            });
-        }
-
-        // Add each emoji as a clickable button
-        animalEmojis.forEach(emoji => {
-            const button = document.createElement('button');
-            button.textContent = emoji;
-            button.style.background = 'none';
-            button.style.border = '1px solid #ddd';
-            button.style.borderRadius = '4px';
-            button.style.padding = '8px';
-            button.style.fontSize = '20px';
-            button.style.transition = 'background-color 0.2s, opacity 0.2s';
-            
-            const isInUse = usedEmojis.has(emoji);
-            if (isInUse) {
-                button.style.opacity = '0.4';
-                button.style.cursor = 'not-allowed';
-                button.disabled = true;
-                button.title = 'Already in use by another player';
-            } else {
-                button.style.cursor = 'pointer';
-                button.disabled = false;
-                
-                button.addEventListener('mouseenter', () => {
-                    button.style.backgroundColor = '#f0f0f0';
-                });
-                
-                button.addEventListener('mouseleave', () => {
-                    button.style.backgroundColor = 'transparent';
-                });
-                
-                button.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.selectEmoji(emoji);
-                });
-            }
-            
-            emojiGrid.appendChild(button);
-        });
-    }
-
-    toggleEmojiPicker() {
-        const emojiPicker = document.getElementById('emoji-picker');
-        const emojiBtn = document.getElementById('current-emoji-btn');
-        
-        if (emojiPicker && emojiBtn) {
-            const isVisible = emojiPicker.style.display !== 'none';
-            
-            if (isVisible) {
-                emojiPicker.style.display = 'none';
-            } else {
-                // CRITICAL: Move picker to body to escape parent container stacking contexts
-                // This prevents any parent div from clipping or hiding the picker
-                if (emojiPicker.parentNode !== document.body) {
-                    document.body.appendChild(emojiPicker);
-                }
-                
-                // CRITICAL: Small delay to ensure button is properly rendered
-                // getBoundingClientRect() needs the button to be in the DOM and positioned
-                setTimeout(() => {
-                    // Get exact button position on screen
-                    const btnRect = emojiBtn.getBoundingClientRect();
-                    console.log('Button rect:', btnRect); // Keep for debugging
-                    
-                    // CRITICAL: Use setProperty with 'important' to force override CSS conflicts
-                    // Regular style.property assignments were being overridden by CSS rules
-                    emojiPicker.style.setProperty('position', 'fixed', 'important');
-                    emojiPicker.style.setProperty('left', Math.max(0, btnRect.left - 50) + 'px', 'important');
-                    emojiPicker.style.setProperty('top', Math.max(0, btnRect.bottom + 10) + 'px', 'important');
-                    emojiPicker.style.setProperty('right', 'auto', 'important'); // Clear conflicting properties
-                    emojiPicker.style.setProperty('bottom', 'auto', 'important'); // Clear conflicting properties
-                    emojiPicker.style.setProperty('z-index', '999999', 'important');
-                    emojiPicker.style.setProperty('display', 'block', 'important');
-                    
-                    console.log('Positioned picker at:', {
-                        left: Math.max(0, btnRect.left - 50) + 'px',
-                        top: Math.max(0, btnRect.bottom + 10) + 'px'
-                    });
-                }, 10); // 10ms delay is minimum needed for reliable positioning
-            }
+    /**
+     * Stop auto-refresh
+     */
+    stopActiveRoomsRefresh() {
+        if (this.gameShell.refreshInterval) {
+            clearInterval(this.gameShell.refreshInterval);
+            this.gameShell.refreshInterval = null;
         }
     }
 
-    selectEmoji(emoji) {
-        this.updateEmoji(emoji);
-        
-        // Update the current emoji button
-        const currentEmojiBtn = document.getElementById('current-emoji-btn');
-        if (currentEmojiBtn) {
-            currentEmojiBtn.textContent = emoji;
-        }
-        
-        // Hide the picker
-        const emojiPicker = document.getElementById('emoji-picker');
-        if (emojiPicker) {
-            emojiPicker.style.display = 'none';
-        }
-    }
-
-    refreshEmojiPicker() {
-        // Only refresh if the emoji picker exists and has been set up
-        const emojiGrid = document.getElementById('emoji-grid');
-        if (emojiGrid && emojiGrid.children.length > 0) {
-            const animalEmojis = [
-                '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯',
-                '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🐣',
-                '🦆', '🦅', '🦉', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋',
-                '🐌', '🐞', '🐜', '🦟', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎',
-                '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐟', '🐠', '🐡',
-                '🦈', '🐳', '🐋', '🐬', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘',
-                '🦏', '🦛', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎',
-                '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐈'
-            ];
-            this.updateEmojiPicker(animalEmojis);
-        }
-    }
-
-    // Bouncing emoji methods
-    updateBouncingEmojis(players) {
-        
-        // GLOBAL DESIGN RULE: Emoji animations should ONLY appear in waiting rooms
-        // They should NOT appear when a game has started or if player leaves the room
-        const gameHasStarted = this.gameState && this.gameState.gameStarted;
-        
-        if (!players || gameHasStarted) {
-            // Remove all emoji animations if no players OR if game has started
-            document.querySelectorAll('.floating-emoji').forEach(el => el.remove());
-            if (gameHasStarted) {
-            }
-            return;
-        }
-
-        // Handle both array and object formats
-        const playersArray = Array.isArray(players) ? players : Object.values(players);
-        const currentPlayerIds = playersArray.map(p => p.id);
-        const existingEmojis = document.querySelectorAll('.floating-emoji[data-player-id]');
-        
-        
-        // Remove emojis for players who left
-        existingEmojis.forEach(emoji => {
-            const playerId = emoji.getAttribute('data-player-id');
-            if (!currentPlayerIds.includes(playerId)) {
-                emoji.remove();
-            }
-        });
-        
-        // Add or update emojis for current players
-        playersArray.forEach((player, index) => {
-            const existingEmoji = document.querySelector(\`.floating-emoji[data-player-id="\${player.id}"]\`);
-            
-            if (existingEmoji) {
-                // Update existing emoji if it changed
-                const yContainer = existingEmoji.querySelector('.floating-emoji-y');
-                if (yContainer && yContainer.textContent !== (player.emoji || '🎾')) {
-                    yContainer.textContent = player.emoji || '🎾';
-                }
-            } else {
-                // Add new emoji for new player
-                
-                // Create nested structure: outer div for X movement, inner div for Y movement
-                const xContainer = document.createElement('div');
-                xContainer.className = 'floating-emoji floating-emoji-x';
-                xContainer.setAttribute('data-player-id', player.id);
-                
-                const yContainer = document.createElement('div');
-                yContainer.className = 'floating-emoji-y';
-                
-                // The actual emoji content
-                yContainer.textContent = player.emoji || '🎾';
-                
-                // Random animation patterns and durations for chaos (slower speeds)
-                const xAnimations = ['move-x', 'move-x-chaos1', 'move-x-chaos2'];
-                const yAnimations = ['move-y', 'move-y-chaos1', 'move-y-chaos2'];
-                const xDurations = [15, 20, 25, 30, 35]; // seconds - much slower
-                const yDurations = [12, 16, 20, 24, 28]; // seconds - much slower
-                
-                const randomXAnim = xAnimations[Math.floor(Math.random() * xAnimations.length)];
-                const randomYAnim = yAnimations[Math.floor(Math.random() * yAnimations.length)];
-                const randomXDuration = xDurations[Math.floor(Math.random() * xDurations.length)];
-                const randomYDuration = yDurations[Math.floor(Math.random() * yDurations.length)];
-                
-                xContainer.style.cssText = \`
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    z-index: 10000;
-                    pointer-events: none;
-                    user-select: none;
-                    animation: \${randomXAnim} \${randomXDuration}s ease-in-out infinite alternate;
-                \`;
-                
-                yContainer.style.cssText = \`
-                    font-size: 4rem;
-                    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-                    animation: \${randomYAnim} \${randomYDuration}s ease-in-out infinite alternate;
-                \`;
-                
-                // Nest the elements
-                xContainer.appendChild(yContainer);
-                
-                document.body.appendChild(xContainer);
-            }
-        });
-    }
-
-    addFloatingEmoji(emoji, playerId, index) {
-        
-        // Create floating emoji attached directly to body
-        const floatingEmoji = document.createElement('div');
-        floatingEmoji.className = 'floating-emoji';
-        floatingEmoji.setAttribute('data-player-id', playerId);
-        floatingEmoji.textContent = emoji || '🎾';
-        
-        // Position randomly across the screen
-        const positions = [
-            { left: '10%', top: '20%' },
-            { left: '80%', top: '15%' },
-            { left: '70%', top: '60%' },
-            { left: '20%', top: '70%' },
-            { left: '50%', top: '10%' },
-            { left: '90%', top: '40%' },
-            { left: '30%', top: '80%' },
-            { left: '60%', top: '30%' }
-        ];
-        
-        const position = positions[index % positions.length];
-        
-        // Style the floating emoji
-        floatingEmoji.style.cssText = \`
-            position: fixed;
-            left: \${position.left};
-            top: \${position.top};
-            font-size: 3rem;
-            z-index: 10000;
-            pointer-events: none;
-            user-select: none;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-            animation: float 3s ease-in-out infinite;
-            animation-delay: \${index * 0.5}s;
-        \`;
-        
-        document.body.appendChild(floatingEmoji);
-    }
-
-    removeFloatingEmoji(playerId) {
-        const emojiElement = document.querySelector(\`.floating-emoji[data-player-id="\${playerId}"]\`);
-        if (emojiElement) {
-            emojiElement.style.opacity = '0';
-            emojiElement.style.transform = 'scale(0)';
-            setTimeout(() => {
-                if (emojiElement.parentNode) {
-                    emojiElement.parentNode.removeChild(emojiElement);
-                }
-            }, 300);
-        }
-    }
-
-    async loadActiveRooms(isManualRefresh = false) {
-        // Prevent concurrent refreshes
-        if (this.isRefreshing && !isManualRefresh) {
-            return;
-        }
-        
-        this.isRefreshing = true;
-        
-        // Update refresh button UI for manual refreshes
-        const refreshBtn = document.getElementById('refresh-rooms-btn');
-        if (isManualRefresh && refreshBtn) {
-            refreshBtn.classList.add('refreshing');
-        }
-        
+    /**
+     * Load and display version information
+     */
+    async loadVersionInfo() {
         try {
-            const response = await fetch('/api/active-rooms');
-            const data = await response.json();
-            this.displayActiveRooms(data.rooms);
+            const response = await fetch('/static/version.json');
+            const versionInfo = await response.json();
+            
+            const versionDisplay = document.getElementById('version-display');
+            if (versionDisplay) {
+                versionDisplay.textContent = \`running version \${versionInfo.version}, last deployed on \${versionInfo.deployedAt}\`;
+            }
         } catch (error) {
-            console.error('Failed to load active rooms:', error);
-            this.displayActiveRooms([]);
-        } finally {
-            this.isRefreshing = false;
-            
-            // Reset refresh button UI
-            if (isManualRefresh && refreshBtn) {
-                setTimeout(() => {
-                    refreshBtn.classList.remove('refreshing');
-                }, 500); // Small delay to show the animation
+            console.warn('Could not load version info:', error);
+            const versionDisplay = document.getElementById('version-display');
+            if (versionDisplay) {
+                versionDisplay.textContent = 'version info unavailable';
             }
         }
-    }
-
-    displayActiveRooms(rooms) {
-        const container = document.getElementById('active-rooms-list');
-        if (!container) return;
-
-        if (rooms.length === 0) {
-            container.innerHTML = '<div class="no-rooms">No active rooms available</div>';
-            return;
-        }
-
-        container.innerHTML = '';
-        rooms.forEach(room => {
-            const roomElement = document.createElement('div');
-            roomElement.className = 'room-item';
-            roomElement.setAttribute('data-session-id', room.sessionId);
-            
-            const playersList = room.players.map(p => \`\${p.emoji} \${p.name}\`).join(', ');
-            const timeAgo = this.getTimeAgo(room.createdAt);
-            
-            roomElement.innerHTML = \`
-                <div class="room-info">
-                    <div class="room-title">\${room.gameType.replace('-', ' ').replace(/\\b\\w/g, l => l.toUpperCase())}</div>
-                    <div class="room-code">\${room.sessionId}</div>
-                    <div class="room-players">\${room.playerCount} player\${room.playerCount !== 1 ? 's' : ''}: \${playersList}</div>
-                    <div class="room-time">Created \${timeAgo}</div>
-                </div>
-                <button class="join-room-btn" data-session-id="\${room.sessionId}">Join</button>
-            \`;
-            
-            container.appendChild(roomElement);
-        });
-
-        // Add click handlers for join buttons
-        container.querySelectorAll('.join-room-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const sessionId = e.target.getAttribute('data-session-id');
-                this.joinExistingRoom(sessionId);
-            });
-        });
-    }
-
-    getTimeAgo(timestamp) {
-        const now = Date.now();
-        const diff = now - timestamp;
-        const minutes = Math.floor(diff / 60000);
-        const hours = Math.floor(diff / 3600000);
-        
-        if (minutes < 1) return 'just now';
-        if (minutes < 60) return \`\${minutes}m ago\`;
-        if (hours < 24) return \`\${hours}h ago\`;
-        return 'today';
-    }
-
-    // Checkbox Game specific methods
-    initializeCheckboxGrid() {
-        const checkboxGrid = document.getElementById('checkbox-grid');
-        if (!checkboxGrid) {
-            console.error('🐰 Checkbox grid element not found!');
-            return;
-        }
-        
-        // Ensure checkboxStates is initialized
-        if (!this.checkboxStates || this.checkboxStates.length !== 9) {
-            this.checkboxStates = new Array(9).fill(false);
-        }
-        
-        // Clear any existing content
-        checkboxGrid.innerHTML = '';
-        
-        
-        // Create 3x3 grid of checkboxes (9 total)
-        for (let i = 0; i < 9; i++) {
-            const checkboxItem = document.createElement('div');
-            checkboxItem.className = 'checkbox-item';
-            checkboxItem.dataset.index = i;
-            
-            const checkboxIcon = document.createElement('span');
-            checkboxIcon.className = 'checkbox-icon';
-            
-            // Determine the icon to show (player emoji or checkmark)
-            if (this.checkboxStates[i]) {
-                const playerId = this.gameState && this.gameState.checkboxPlayers ? this.gameState.checkboxPlayers[i] : null;
-                if (playerId && this.gameState && this.gameState.players && this.gameState.players[playerId]) {
-                    const player = this.gameState.players[playerId];
-                    checkboxIcon.textContent = player.emoji || '✓';
-                } else {
-                    checkboxIcon.textContent = '✓';
-                }
-            } else {
-                checkboxIcon.textContent = '';
-            }
-            
-            checkboxItem.appendChild(checkboxIcon);
-            
-            // Add click handler
-            checkboxItem.addEventListener('click', () => {
-                this.toggleCheckbox(i);
-            });
-            
-            checkboxGrid.appendChild(checkboxItem);
-            
-            // Update visual state
-            if (this.checkboxStates[i]) {
-                checkboxItem.classList.add('checked');
-            }
-        }
-        
-    }
-
-    toggleCheckbox(checkboxIndex) {
-        // Prevent spectators from taking actions
-        if (this.isSpectator) {
-            this.showError('Spectators cannot interact with the game');
-            return;
-        }
-        
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            
-            // Add temporary visual feedback while waiting for server response
-            const checkboxItem = document.querySelector(\`.checkbox-item[data-index="\${checkboxIndex}"]\`);
-            if (checkboxItem) {
-                checkboxItem.style.transform = 'scale(0.9)';
-                setTimeout(() => {
-                    checkboxItem.style.transform = '';
-                }, 150);
-            }
-            
-            this.ws.send(JSON.stringify({
-                type: 'TOGGLE_CHECKBOX',
-                data: { checkboxIndex: checkboxIndex }
-            }));
-        } else {
-            console.error('🐰 Game Logic Specialist: WebSocket not connected - cannot toggle checkbox');
-        }
-    }
-
-    updateCheckboxUI(checkboxIndex, newState, playerId = null) {
-        const checkboxItem = document.querySelector(\`.checkbox-item[data-index="\${checkboxIndex}"]\`);
-        if (!checkboxItem) return;
-        
-        const checkboxIcon = checkboxItem.querySelector('.checkbox-icon');
-        if (!checkboxIcon) return;
-        
-        if (newState) {
-            checkboxItem.classList.add('checked');
-            
-            // Show the player's emoji if we know who checked it
-            if (playerId && this.gameState && this.gameState.players && this.gameState.players[playerId]) {
-                const player = this.gameState.players[playerId];
-                checkboxIcon.textContent = player.emoji || '✓';
-            } else {
-                checkboxIcon.textContent = '✓';
-            }
-        } else {
-            checkboxItem.classList.remove('checked');
-            checkboxIcon.textContent = '';
-        }
-    }
-
-    updateAllCheckboxes() {
-        for (let i = 0; i < this.checkboxStates.length; i++) {
-            const playerId = this.gameState && this.gameState.checkboxPlayers ? this.gameState.checkboxPlayers[i] : null;
-            this.updateCheckboxUI(i, this.checkboxStates[i], playerId);
-        }
-    }
-
-    updateConnectionStatus(connected) {
-        const indicator = document.getElementById('connection-indicator');
-        const text = document.getElementById('connection-text');
-        
-        if (indicator && text) {
-            if (connected) {
-                indicator.className = 'status-indicator connected';
-                text.textContent = 'Connected';
-            } else {
-                indicator.className = 'status-indicator disconnected';  
-                text.textContent = 'Disconnected';
-            }
-        }
-    }
-
-    updatePlayerCount() {
-        const activePlayersSpan = document.getElementById('active-players');
-        if (activePlayersSpan && this.gameState && this.gameState.players) {
-            const connectedPlayers = Object.values(this.gameState.players).filter(p => p.connected).length;
-            activePlayersSpan.textContent = connectedPlayers;
-        }
-    }
-
-    startGameSession() {
-        
-        // Send start game message to server to notify all players
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                type: 'START_GAME',
-                data: { gameType: this.gameType }
-            }));
-        } else {
-            console.error('🐰 Game Logic Specialist: Cannot start game - WebSocket not connected');
-        }
-    }
-    
-    handleGameStart(gameType) {
-        
-        // GLOBAL DESIGN RULE: Remove all emoji animations when game starts
-        document.querySelectorAll('.floating-emoji').forEach(el => el.remove());
-        
-        // Hide player controls ("Who are you?" section)
-        const playerControls = document.getElementById('player-controls');
-        if (playerControls) {
-            playerControls.style.display = 'none';
-        }
-        
-        // Hide player list
-        const playersList = document.querySelector('.players-list');
-        if (playersList) {
-            playersList.style.display = 'none';
-        }
-        
-        // Show the appropriate game board based on game type
-        if (gameType === 'checkbox-game') {
-            const checkboxBoard = document.getElementById('checkbox-game-board');
-            if (checkboxBoard) {
-                checkboxBoard.style.display = 'block';
-                
-                // Update scoreboard
-                this.updateScoreboard();
-            }
-        }
-        
-        // Could add other game types here in the future
-        // if (gameType === 'tic-tac-toe') { ... }
-        // if (gameType === 'rock-paper-scissors') { ... }
-    }
-
-    isCurrentPlayerHost() {
-        // Spectators can never be host
-        if (this.isSpectator || !this.currentPlayerId || !this.gameState || !this.gameState.players) {
-            return false;
-        }
-        
-        const currentPlayer = this.gameState.players[this.currentPlayerId];
-        return currentPlayer && currentPlayer.isHost;
-    }
-
-    updateStartGameButton() {
-        const startGameBtn = document.getElementById('start-game-btn-header');
-        if (!startGameBtn) return;
-
-        const isHost = this.isCurrentPlayerHost();
-        
-        if (isHost) {
-            startGameBtn.disabled = false;
-            startGameBtn.style.opacity = '1';
-            startGameBtn.style.cursor = 'pointer';
-            startGameBtn.style.backgroundColor = '#28a745';
-            startGameBtn.style.color = 'white';
-            startGameBtn.textContent = 'Start Game';
-            startGameBtn.title = 'Start the game for all players';
-        } else {
-            startGameBtn.disabled = true;
-            startGameBtn.style.opacity = '0.5';
-            startGameBtn.style.cursor = 'not-allowed';
-            startGameBtn.style.backgroundColor = '#6c757d';
-            startGameBtn.style.color = '#ccc';
-            startGameBtn.textContent = 'only the host may start the game :<';
-            startGameBtn.title = 'Only the host can start the game';
-        }
-    }
-
-    // Update the scoreboard with current scores
-    updateScoreboard() {
-        const scoreList = document.getElementById('score-list');
-        if (!scoreList || !this.gameState || !this.gameState.playerScores) {
-            return;
-        }
-
-        scoreList.innerHTML = '';
-
-        // Get players and their scores, sorted by score (descending)
-        const playersWithScores = Object.keys(this.gameState.players).map(playerId => {
-            const player = this.gameState.players[playerId];
-            const score = this.gameState.playerScores[playerId] || 0;
-            return { playerId, player, score };
-        }).sort((a, b) => b.score - a.score);
-
-        playersWithScores.forEach(({ playerId, player, score }) => {
-            const scoreItem = document.createElement('div');
-            scoreItem.className = 'score-item';
-            
-            const playerDiv = document.createElement('div');
-            playerDiv.className = 'score-player';
-            
-            const emojiSpan = document.createElement('span');
-            emojiSpan.className = 'score-player-emoji';
-            emojiSpan.textContent = player.emoji || '🐶';
-            
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = player.name || 'Unknown';
-            
-            playerDiv.appendChild(emojiSpan);
-            playerDiv.appendChild(nameSpan);
-            
-            const pointsDiv = document.createElement('div');
-            pointsDiv.className = 'score-points';
-            pointsDiv.textContent = score;
-            
-            scoreItem.appendChild(playerDiv);
-            scoreItem.appendChild(pointsDiv);
-            scoreList.appendChild(scoreItem);
-        });
-    }
-
-    // Handle game end event from server
-    handleGameEnd(data) {
-        
-        // Hide the game board
-        const checkboxBoard = document.getElementById('checkbox-game-board');
-        if (checkboxBoard) {
-            checkboxBoard.style.display = 'none';
-        }
-        
-        // Show the end game screen
-        this.showEndGameScreen(data.message, data.scores);
-    }
-
-    // Show the end game screen with results
-    showEndGameScreen(resultMessage, finalScores) {
-        const endGameScreen = document.getElementById('end-game-screen');
-        const gameResultMessage = document.getElementById('game-result-message');
-        const finalScoresDiv = document.getElementById('final-scores');
-
-        if (!endGameScreen || !gameResultMessage || !finalScoresDiv) {
-            console.error('End game screen elements not found');
-            return;
-        }
-
-        // Set the result message
-        gameResultMessage.textContent = resultMessage;
-
-        // Clear and populate final scores
-        finalScoresDiv.innerHTML = '<h4>Final Scores</h4>';
-
-        if (finalScores && this.gameState && this.gameState.players) {
-            // Get players and their scores, sorted by score (descending)
-            const playersWithScores = Object.keys(this.gameState.players).map(playerId => {
-                const player = this.gameState.players[playerId];
-                const score = finalScores[playerId] || 0;
-                return { playerId, player, score };
-            }).sort((a, b) => b.score - a.score);
-
-            playersWithScores.forEach(({ playerId, player, score }) => {
-                const scoreItem = document.createElement('div');
-                scoreItem.className = 'final-score-item';
-                
-                const playerDiv = document.createElement('div');
-                playerDiv.className = 'final-score-player';
-                
-                const emojiSpan = document.createElement('span');
-                emojiSpan.className = 'final-score-emoji';
-                emojiSpan.textContent = player.emoji || '🐶';
-                
-                const nameSpan = document.createElement('span');
-                nameSpan.textContent = player.name || 'Unknown';
-                
-                playerDiv.appendChild(emojiSpan);
-                playerDiv.appendChild(nameSpan);
-                
-                const pointsDiv = document.createElement('div');
-                pointsDiv.className = 'final-score-points';
-                pointsDiv.textContent = \`\${score} point\${score !== 1 ? 's' : ''}\`;
-                
-                scoreItem.appendChild(playerDiv);
-                scoreItem.appendChild(pointsDiv);
-                finalScoresDiv.appendChild(scoreItem);
-            });
-        }
-
-        // Show the end game screen
-        endGameScreen.style.display = 'flex';
-    }
-
-    // Setup spectator mode UI
-    setupSpectatorMode() {
-        
-        // Show spectator indicator
-        this.showSpectatorIndicator();
-        
-        // Hide start game button for spectators
-        const startGameBtn = document.getElementById('start-game-btn-header');
-        if (startGameBtn) {
-            startGameBtn.style.display = 'none';
-        }
-        
-        // Show the game board if game is already started
-        if (this.gameState && this.gameState.gameStarted) {
-            this.handleGameStart(this.gameState.type || 'checkbox-game');
-        }
-        
-        // Update UI elements to show spectator status
-        this.updateSpectatorDisplay();
-    }
-    
-    showSpectatorIndicator() {
-        
-        // Wait a bit to ensure room UI is loaded
-        setTimeout(() => {
-            // Add spectator indicator to the room header
-            const roomInfo = document.querySelector('.room-header .room-info');
-            if (!roomInfo) {
-                // Try again after more delay
-                setTimeout(() => this.showSpectatorIndicator(), 500);
-                return;
-            }
-            
-            let spectatorIndicator = document.getElementById('spectator-indicator');
-            if (!spectatorIndicator) {
-                spectatorIndicator = document.createElement('div');
-                spectatorIndicator.id = 'spectator-indicator';
-                spectatorIndicator.style.cssText = \`
-                    background: #17a2b8;
-                    color: white;
-                    padding: 6px 12px;
-                    border-radius: 4px;
-                    font-weight: bold;
-                    font-size: 14px;
-                    margin-top: 8px;
-                    display: block;
-                    text-align: center;
-                \`;
-                spectatorIndicator.textContent = '👁️👄👁️ you are a spectator. enjoy the show 👁️👄👁️';
-                roomInfo.appendChild(spectatorIndicator);
-            }
-            spectatorIndicator.style.display = 'block';
-            
-            // Add spectator explanation message in the middle area
-            this.showSpectatorMessage();
-        }, 100);
-    }
-    
-    showSpectatorMessage() {
-        
-        setTimeout(() => {
-            // Find the players-list area to add the message
-            const playersList = document.querySelector('.players-list');
-            if (!playersList) {
-                return;
-            }
-            
-            let spectatorMessage = document.getElementById('spectator-message');
-            if (!spectatorMessage) {
-                spectatorMessage = document.createElement('div');
-                spectatorMessage.id = 'spectator-message';
-                spectatorMessage.style.cssText = \`
-                    background: rgba(255, 193, 7, 0.15);
-                    border: 3px solid #ffc107;
-                    border-radius: 12px;
-                    padding: 20px;
-                    text-align: center;
-                    margin: 20px 0;
-                    color: #ffc107;
-                    font-weight: bold;
-                    font-size: 18px;
-                    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
-                \`;
-                spectatorMessage.innerHTML = '👁️ You are watching as a spectator. Enjoy the show! 🍿';
-                
-                // Insert after players header - try multiple strategies
-                const playersHeader = playersList.querySelector('.players-header');
-                if (playersHeader) {
-                    playersHeader.insertAdjacentElement('afterend', spectatorMessage);
-                } else {
-                    // Try inserting at the beginning of players list
-                    playersList.insertBefore(spectatorMessage, playersList.firstChild);
-                }
-            }
-            spectatorMessage.style.display = 'block';
-        }, 200);
-    }
-    
-    updateSpectatorDisplay() {
-        // This method is for general spectator info updates
-        this.updateSpectatorsDisplay();
-    }
-    
-    updateSpectatorCount(count) {
-        // Update spectator count display
-        const spectatorCount = document.getElementById('spectator-count');
-        if (spectatorCount) {
-            spectatorCount.textContent = count;
-        }
-    }
-    
-    updateSpectatorsDisplay() {
-        // Create or update spectators section under the scoreboard
-        let spectatorsSection = document.getElementById('spectators-section');
-        
-        // Find the scoreboard to append spectators section after it
-        const scoreboard = document.getElementById('scoreboard');
-        if (!scoreboard) return;
-        
-        if (!spectatorsSection) {
-            spectatorsSection = document.createElement('div');
-            spectatorsSection.id = 'spectators-section';
-            spectatorsSection.style.cssText = \`
-                margin-top: 20px;
-                padding: 15px;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 8px;
-            \`;
-            
-            const title = document.createElement('h4');
-            title.textContent = 'Spectators';
-            title.style.cssText = \`
-                margin: 0 0 10px 0;
-                color: #17a2b8;
-                font-size: 16px;
-                text-align: center;
-            \`;
-            
-            const list = document.createElement('div');
-            list.id = 'spectators-list';
-            
-            spectatorsSection.appendChild(title);
-            spectatorsSection.appendChild(list);
-            scoreboard.appendChild(spectatorsSection);
-        }
-        
-        const spectatorsList = document.getElementById('spectators-list');
-        spectatorsList.innerHTML = '';
-        
-        const spectatorCount = Object.keys(this.spectators).length;
-        if (spectatorCount === 0) {
-            spectatorsList.innerHTML = '<div style="color: #6c757d; font-style: italic; text-align: center;">No spectators</div>';
-            return;
-        }
-        
-        Object.values(this.spectators).forEach(spectator => {
-            const spectatorDiv = document.createElement('div');
-            spectatorDiv.className = 'spectator-item';
-            
-            // Check if this spectator is the current user - fix: use spectatorId instead of playerId
-            const isCurrentUser = spectator.id === this.spectatorId;
-            
-            spectatorDiv.style.cssText = \`
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                padding: 6px;
-                margin-bottom: 4px;
-                background: \${isCurrentUser ? 'rgba(255, 193, 7, 0.2)' : 'rgba(23, 162, 184, 0.1)'};
-                border-radius: 4px;
-                border-left: 3px solid \${isCurrentUser ? '#ffc107' : '#17a2b8'};
-                \${isCurrentUser ? 'border: 2px solid #ffc107;' : ''}
-            \`;
-            
-            const emojiSpan = document.createElement('span');
-            emojiSpan.textContent = spectator.emoji || '👀';
-            emojiSpan.style.fontSize = '16px';
-            
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = (spectator.name || 'Anonymous') + (isCurrentUser ? ' (YOU)' : '');
-            nameSpan.style.cssText = \`
-                font-weight: \${isCurrentUser ? '900' : 'bold'};
-                font-size: 12px;
-                flex: 1;
-                color: \${isCurrentUser ? '#ffc107' : 'inherit'};
-            \`;
-            
-            spectatorDiv.appendChild(emojiSpan);
-            spectatorDiv.appendChild(nameSpan);
-            
-            spectatorsList.appendChild(spectatorDiv);
-        });
-    }
-
-    // Return to home screen (leave the room)
-    returnToHome() {
-        
-        // Send message to server to leave the room
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                type: 'RETURN_TO_HOME'
-            }));
-        }
-        
-        // Hide the end game screen
-        const endGameScreen = document.getElementById('end-game-screen');
-        if (endGameScreen) {
-            endGameScreen.style.display = 'none';
-        }
-        
-        // Call existing leaveGame method to handle cleanup and UI reset
-        this.leaveGame();
-        
-        // Refresh rooms list when returning home to ensure stale rooms are removed
-        this.loadActiveRooms();
-        
-        // Restart auto-refresh when returning to portal
-        this.startActiveRoomsRefresh();
     }
 }
 
-// Initialize when DOM is ready
+// Initialize the application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    window.gameClient = new GameClient();
+    console.log('🎮 Initializing Game Shell Architecture...');
+    window.gameApp = new GameApp();
+    console.log('✅ Game Shell Architecture initialized successfully');
 });`,
   '/static/index.html': `<!DOCTYPE html>
 <html lang="en">
@@ -1782,30 +338,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div id="players-container"></div>
                 </div>
                 
-                <!-- Checkbox Game - only shown when game is active -->
-                <div id="checkbox-game-board" class="checkbox-game-board" style="display: none;">
-                    <div class="game-info">
-                        <h3>Shared Checkbox Grid</h3>
-                        <p>Click any checkbox to toggle it. Changes are shared with all players in real-time!</p>
-                    </div>
-                    
-                    <div class="game-layout">
-                        <!-- Scoreboard on the left -->
-                        <div id="scoreboard" class="scoreboard">
-                            <h4>Scoreboard</h4>
-                            <div id="score-list" class="score-list">
-                                <!-- Scores will be populated by JavaScript -->
-                            </div>
-                        </div>
-                        
-                        <!-- Checkbox grid in the center -->
-                        <div id="checkbox-grid" class="checkbox-grid">
-                            <!-- 3x3 checkbox grid will be generated by JavaScript -->
-                        </div>
-                    </div>
+                <!-- Game Area - Where all game modules render -->
+                <div id="game-area" class="game-area" style="display: none;">
+                    <!-- Game modules will be injected here dynamically -->
                 </div>
                 
-                <!-- End Game Screen -->
+                <!-- Universal End Game Screen -->
                 <div id="end-game-screen" class="end-game-screen" style="display: none;">
                     <div class="end-game-content">
                         <h2 id="game-result-message">Game Over!</h2>
@@ -1814,21 +352,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <button id="ok-btn" class="ok-btn">OK</button>
                     </div>
-                </div>
-                
-                <!-- Drawing Game Specific UI -->
-                <div id="drawing-controls" class="drawing-controls" style="display: none;">
-                    <div class="drawing-tools">
-                        <button id="clear-canvas-btn">Clear</button>
-                        <label>Color: <input type="color" id="brush-color" value="#000000"></label>
-                        <label>Size: <input type="range" id="brush-size" min="1" max="10" value="3"></label>
-                    </div>
-                    <div id="word-display" class="word-display"></div>
-                    <div id="guess-input-container" class="guess-input" style="display: none;">
-                        <input type="text" id="guess-input" placeholder="Enter your guess...">
-                        <button id="submit-guess-btn">Guess</button>
-                    </div>
-                    <div id="game-timer" class="game-timer"></div>
                 </div>
                 
                 <div class="game-controls">
@@ -1848,9 +371,1350 @@ document.addEventListener('DOMContentLoaded', () => {
         <div id="error-container" class="error-container"></div>
     </div>
     
+    <!-- Version Info -->
+    <footer class="version-info">
+        <div id="version-display">Loading version...</div>
+    </footer>
+    
+    <!-- Game Shell Architecture -->
+    <script src="/static/js/GameModule.js"></script>
+    <script src="/static/js/games/CheckboxGameModule.js"></script>
+    <script src="/static/js/GameShell.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>`,
+  '/static/js/GameModule.js': `/**
+ * Base GameModule interface that all games must implement
+ * This defines the contract between the GameShell and individual games
+ */
+class GameModule {
+    constructor() {
+        this.gameAreaElement = null;
+        this.players = {};
+        this.gameState = {};
+        this.isActive = false;
+        this.onPlayerAction = null; // Callback to shell
+        this.onStateChange = null;  // Callback to shell
+    }
+
+    /**
+     * Initialize the game module
+     * @param {HTMLElement} gameAreaElement - The container where game UI should be rendered
+     * @param {Object} players - Current players in the room
+     * @param {Object} initialState - Initial game state from server
+     * @param {Function} onPlayerAction - Callback for player actions (playerId, action)
+     * @param {Function} onStateChange - Callback for state changes
+     */
+    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange) {
+        this.gameAreaElement = gameAreaElement;
+        this.players = players;
+        this.gameState = initialState || {};
+        this.onPlayerAction = onPlayerAction;
+        this.onStateChange = onStateChange;
+        this.isActive = true;
+        this.render();
+    }
+
+    /**
+     * Handle game state updates from server
+     * @param {Object} gameSpecificState - New game state
+     */
+    handleStateUpdate(gameSpecificState) {
+        this.gameState = { ...this.gameState, ...gameSpecificState };
+        this.render();
+    }
+
+    /**
+     * Update players data from shell
+     * @param {Object} players - Updated players object
+     */
+    updatePlayers(players) {
+        this.players = players;
+        // Re-render if needed to reflect player changes (like emojis)
+        this.render();
+    }
+
+    /**
+     * Handle player actions (from other players via WebSocket)
+     * @param {string} playerId - ID of player who performed action
+     * @param {Object} action - The action data
+     */
+    handlePlayerAction(playerId, action) {
+        // Default implementation - subclasses should override
+        console.log(\`Player \${playerId} performed action:\`, action);
+    }
+
+    /**
+     * Check if game has ended and return win condition
+     * @returns {Object|null} - {winnerId, points} or null if game continues
+     */
+    getWinCondition() {
+        // Default implementation - subclasses should override
+        return null;
+    }
+
+    /**
+     * Render the game UI
+     * Should update the gameAreaElement with current game state
+     */
+    render() {
+        // Default implementation - subclasses must override
+        if (this.gameAreaElement) {
+            this.gameAreaElement.innerHTML = '<p>Game module not implemented</p>';
+        }
+    }
+
+    /**
+     * Clean up resources when game module is destroyed
+     */
+    cleanup() {
+        this.isActive = false;
+        if (this.gameAreaElement) {
+            this.gameAreaElement.innerHTML = '';
+        }
+        this.gameAreaElement = null;
+        this.players = {};
+        this.gameState = {};
+        this.onPlayerAction = null;
+        this.onStateChange = null;
+    }
+
+    /**
+     * Get the game's display name
+     * @returns {string}
+     */
+    getDisplayName() {
+        return 'Base Game';
+    }
+
+    /**
+     * Get the game's unique identifier
+     * @returns {string}
+     */
+    getGameType() {
+        return 'base';
+    }
+
+    /**
+     * Check if player is allowed to perform actions (not a spectator)
+     * @param {string} playerId
+     * @returns {boolean}
+     */
+    canPlayerAct(playerId) {
+        const player = this.players[playerId];
+        return player && !player.isSpectator;
+    }
+}
+
+// Export for use in other files
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = GameModule;
+} else {
+    window.GameModule = GameModule;
+}`,
+  '/static/js/GameShell.js': `/**
+ * GameShell - Manages common game functionality across all games
+ * Handles WebSocket connections, player management, room lifecycle, and UI shell
+ */
+class GameShell {
+    constructor() {
+        // WebSocket and connection management
+        this.ws = null;
+        this.sessionId = '';
+        this.isConnected = false;
+        
+        // Player and room state
+        this.currentPlayerId = null;
+        this.currentPlayer = null;
+        this.players = {};
+        this.isSpectator = false;
+        this.spectatorId = null;
+        this.spectators = {};
+        
+        // Game state and module management
+        this.gameType = '';
+        this.gameModule = null;
+        this.gameState = 'waiting'; // waiting, playing, finished
+        this.roomState = {};
+        
+        // UI state
+        this.currentView = 'portal';
+        this.gameAreaElement = null;
+        
+        // Auto-refresh for active rooms
+        this.refreshInterval = null;
+        this.isRefreshing = false;
+    }
+
+    /**
+     * Initialize the game shell
+     */
+    init() {
+        this.setupEventListeners();
+        this.loadActiveRooms();
+        this.startActiveRoomsRefresh();
+        this.initializeGameArea();
+    }
+
+    /**
+     * Initialize the game area container where game modules will render
+     */
+    initializeGameArea() {
+        this.gameAreaElement = document.getElementById('game-area');
+        if (!this.gameAreaElement) {
+            console.error('Game area element not found - games will not render properly');
+        }
+    }
+
+    /**
+     * Setup event listeners for shell functionality
+     */
+    setupEventListeners() {
+        // Game selection
+        document.querySelectorAll('.game-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const gameType = e.currentTarget.dataset.game;
+                const isComingSoon = e.currentTarget.classList.contains('coming-soon');
+                
+                if (!isComingSoon && gameType) {
+                    this.startGame(gameType);
+                }
+            });
+        });
+
+        // Room joining
+        const joinRoomBtn = document.getElementById('join-room-btn');
+        const roomCodeInput = document.getElementById('room-code-input');
+        
+        if (joinRoomBtn && roomCodeInput) {
+            joinRoomBtn.addEventListener('click', () => this.joinRoomByCode());
+            roomCodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.joinRoomByCode();
+            });
+            roomCodeInput.addEventListener('input', this.formatRoomCodeInput.bind(this));
+        }
+
+        // Leave room
+        const leaveBtn = document.getElementById('leave-room-btn');
+        if (leaveBtn) {
+            leaveBtn.addEventListener('click', () => this.leaveGame());
+        }
+
+        // Player controls
+        this.setupPlayerControls();
+
+        // Start game button
+        const startGameBtn = document.getElementById('start-game-btn-header');
+        if (startGameBtn) {
+            startGameBtn.addEventListener('click', () => this.startGameSession());
+        }
+    }
+
+    /**
+     * Setup player control event listeners
+     */
+    setupPlayerControls() {
+        const updateNameBtn = document.getElementById('update-name-btn');
+        const nameInput = document.getElementById('player-name-input');
+        const currentEmojiBtn = document.getElementById('current-emoji-btn');
+
+        if (updateNameBtn && nameInput) {
+            updateNameBtn.addEventListener('click', () => {
+                const name = nameInput.value.trim();
+                if (name) this.updatePlayerName(name);
+            });
+            
+            nameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const name = nameInput.value.trim();
+                    if (name) this.updatePlayerName(name);
+                }
+            });
+        }
+
+        if (currentEmojiBtn) {
+            currentEmojiBtn.addEventListener('click', () => this.showEmojiPicker());
+        }
+
+        // Close emoji picker when clicking outside
+        document.addEventListener('click', (e) => {
+            const picker = document.getElementById('emoji-picker');
+            const emojiBtn = document.getElementById('current-emoji-btn');
+            if (picker && !picker.contains(e.target) && e.target !== emojiBtn) {
+                picker.style.display = 'none';
+            }
+        });
+    }
+
+    /**
+     * Start a new game of the specified type
+     */
+    async startGame(gameType) {
+        try {
+            this.gameType = gameType;
+            this.showLoadingOverlay();
+            
+            // Generate session ID and connect
+            this.sessionId = this.generateSessionId();
+            await this.connectToGame();
+            
+        } catch (error) {
+            console.error('Failed to start game:', error);
+            this.showError('Failed to start game: ' + error.message);
+            this.hideLoadingOverlay();
+        }
+    }
+
+    /**
+     * Connect to game WebSocket
+     */
+    connectToGame() {
+        return new Promise((resolve, reject) => {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = \`\${protocol}//\${window.location.host}/api/game/\${this.sessionId}/ws\`;
+            
+            console.log('Attempting to connect to WebSocket:', wsUrl);
+            this.ws = new WebSocket(wsUrl);
+            
+            this.ws.onopen = () => {
+                console.log('✅ Connected to game session:', this.sessionId);
+                this.isConnected = true;
+                resolve();
+            };
+            
+            this.ws.onmessage = (event) => this.handleWebSocketMessage(event);
+            this.ws.onclose = (event) => {
+                console.log('❌ WebSocket closed with code:', event.code, 'reason:', event.reason);
+                this.handleWebSocketClose();
+            };
+            this.ws.onerror = (error) => {
+                console.error('💥 WebSocket error:', error);
+                reject(error);
+            };
+        });
+    }
+
+    /**
+     * Handle incoming WebSocket messages
+     */
+    handleWebSocketMessage(event) {
+        try {
+            const message = JSON.parse(event.data);
+
+            switch (message.type) {
+                case 'gameState':
+                    this.handleGameStateUpdate(message);
+                    break;
+                case 'game_started':
+                    this.handleGameStarted(message);
+                    break;
+                case 'game_ended':
+                    this.handleGameEnded(message);
+                    break;
+                case 'playerJoined':
+                case 'playerLeft':
+                case 'playerUpdated':
+                    this.handlePlayerUpdate(message);
+                    break;
+                case 'spectator_identity':
+                case 'spectator_joined':
+                case 'spectator_left':
+                    this.handleSpectatorUpdate(message);
+                    break;
+                case 'checkbox_toggled':
+                    // Handle checkbox specific messages
+                    if (this.gameModule && message.data) {
+                        const playerId = message.data.toggledBy || message.playerId;
+                        this.gameModule.handlePlayerAction(playerId, message);
+                    }
+                    break;
+                default:
+                    
+                    // Pass unknown messages to game module
+                    if (this.gameModule) {
+                        this.gameModule.handlePlayerAction(message.playerId, message);
+                    }
+            }
+        } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+        }
+    }
+
+    /**
+     * Handle game state updates from server
+     */
+    handleGameStateUpdate(message) {
+        this.currentPlayerId = message.playerId;
+        this.roomState = message.gameState;
+        this.players = message.gameState.players || {};
+        
+        // Update current player reference
+        this.currentPlayer = this.players[this.currentPlayerId];
+        
+        // Update game state based on server status
+        if (message.gameState.gameStatus === 'finished') {
+            this.gameState = 'finished';
+        } else if (message.gameState.gameStatus === 'in-progress') {
+            this.gameState = 'playing';
+        } else {
+            this.gameState = 'waiting';
+        }
+        
+        // Ensure view switches to room when we have a session
+        if (this.sessionId && this.currentView === 'portal') {
+            this.currentView = 'room';
+        }
+        
+        this.updateUI();
+        this.hideLoadingOverlay();
+        
+        // Pass both updated players and game-specific state to module
+        if (this.gameModule) {
+            // Update players in the module
+            this.gameModule.updatePlayers(this.players);
+            
+            // Pass game-specific state to module
+            if (message.gameState.gameSpecificState) {
+                this.gameModule.handleStateUpdate(message.gameState.gameSpecificState);
+            }
+        }
+    }
+
+    /**
+     * Handle game started message
+     */
+    handleGameStarted(message) {
+        this.gameState = 'playing';
+        
+        // Load and initialize the appropriate game module
+        this.loadGameModule(this.gameType).then(() => {
+            if (this.gameModule) {
+                // Pass current player context to module
+                this.gameModule.currentPlayerId = this.currentPlayerId;
+                this.gameModule.isSpectator = this.isSpectator;
+                
+                this.gameModule.init(
+                    this.gameAreaElement,
+                    this.players,
+                    message.data?.gameSpecificState,
+                    (action) => this.sendPlayerAction(action),
+                    (state) => this.onGameStateChange(state)
+                );
+            }
+        });
+
+        this.updateUI();
+    }
+
+    /**
+     * Handle game ended message
+     */
+    handleGameEnded(message) {
+        this.gameState = 'finished';
+        
+        // Clean up game module but keep it for potential restart
+        if (this.gameModule) {
+            this.gameModule.cleanup();
+            // Don't set to null yet - keep reference until user leaves
+        }
+        
+        this.showGameEndScreen(message.data);
+        this.updateUI();
+    }
+
+    /**
+     * Load the appropriate game module
+     */
+    async loadGameModule(gameType) {
+        try {
+            console.log(\`Loading game module: \${gameType}\`);
+            
+            if (gameType === 'checkbox-game') {
+                if (typeof CheckboxGameModule !== 'undefined') {
+                    this.gameModule = new CheckboxGameModule();
+                    console.log('✅ CheckboxGameModule loaded successfully');
+                } else {
+                    console.error('CheckboxGameModule class not found - check script loading');
+                    this.gameModule = null;
+                }
+            } else {
+                console.warn(\`Game module not implemented: \${gameType}\`);
+                this.gameModule = null;
+            }
+        } catch (error) {
+            console.error(\`Failed to load game module \${gameType}:\`, error);
+            this.gameModule = null;
+        }
+    }
+
+    /**
+     * Send player action to server
+     */
+    sendPlayerAction(action) {
+        if (this.ws && this.isConnected) {
+            console.log('Sending player action:', action);
+            this.ws.send(JSON.stringify(action));
+        } else {
+            console.error('Cannot send action - WebSocket not connected');
+        }
+    }
+
+    /**
+     * Handle game state changes from modules
+     */
+    onGameStateChange(state) {
+        // Module is notifying us of state changes
+        // We can use this to update shell UI or send to server
+        console.log('Game module state change:', state);
+    }
+
+    /**
+     * Update the main UI elements
+     */
+    updateUI() {
+        this.updateView();
+        this.updateRoomInfo();
+        this.updatePlayersList();
+        this.updateGameControls();
+    }
+
+    /**
+     * Switch between portal and game room views
+     */
+    updateView() {
+        const portalView = document.getElementById('game-portal');
+        const roomView = document.getElementById('game-room');
+        
+        console.log('🔄 updateView called - currentView:', this.currentView, 'sessionId:', this.sessionId);
+        console.log('🔍 DOM elements found - portal:', !!portalView, 'room:', !!roomView);
+        
+        if (this.currentView === 'portal') {
+            portalView?.classList.add('active');
+            roomView?.classList.remove('active');
+            console.log('📱 Switched to PORTAL view');
+        } else {
+            portalView?.classList.remove('active');
+            roomView?.classList.add('active');
+            console.log('🏠 Switched to ROOM view');
+        }
+    }
+
+    /**
+     * Join room by entering room code
+     */
+    joinRoomByCode() {
+        const roomCodeInput = document.getElementById('room-code-input');
+        const roomCode = roomCodeInput.value.trim().toUpperCase();
+        
+        if (roomCode) {
+            this.joinExistingRoom(roomCode);
+        } else {
+            this.showError('Please enter a room code');
+        }
+    }
+
+    /**
+     * Join an existing room
+     */
+    async joinExistingRoom(roomCode) {
+        try {
+            this.gameType = 'checkbox-game'; // Default for now
+            this.sessionId = roomCode;
+            this.showLoadingOverlay();
+            this.stopActiveRoomsRefresh();
+            await this.connectToGame();
+        } catch (error) {
+            console.error('Failed to join room:', error);
+            this.showError('Failed to join room: ' + error.message);
+            this.hideLoadingOverlay();
+        }
+    }
+
+    /**
+     * Format room code input
+     */
+    formatRoomCodeInput(e) {
+        let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (value.length > 6) {
+            value = value.substring(0, 6);
+        }
+        e.target.value = value;
+    }
+
+    /**
+     * Handle WebSocket close
+     */
+    handleWebSocketClose() {
+        console.log('❌ WebSocket connection closed - currentView:', this.currentView, 'sessionId:', this.sessionId);
+        this.isConnected = false;
+        this.ws = null;
+        
+        // Don't automatically return to portal on unexpected disconnections
+        // Only do this if we're intentionally leaving (sessionId is cleared)
+        if (!this.sessionId) {
+            console.log('🏠 Intentional disconnect - returning to portal');
+            this.currentView = 'portal';
+            this.updateView();
+        } else {
+            console.log('⚠️ Unexpected disconnect - maintaining room view');
+            // Keep the room view active even without connection
+            // This allows users to see the room state even if connection drops
+        }
+    }
+
+    /**
+     * Handle player update messages
+     */
+    handlePlayerUpdate(message) {
+        if (message.gameState) {
+            this.players = message.gameState.players || {};
+            
+            // Update players in the game module too
+            if (this.gameModule) {
+                this.gameModule.updatePlayers(this.players);
+            }
+            
+            this.updatePlayersList();
+        }
+    }
+
+    /**
+     * Handle spectator update messages
+     */
+    handleSpectatorUpdate(message) {
+        console.log('Spectator update:', message.type, message);
+        
+        if (message.type === 'spectator_identity') {
+            this.isSpectator = true;
+            this.spectatorId = message.data.spectator.id;
+            this.showSpectatorUI();
+        }
+        
+        if (message.data && message.data.spectators) {
+            this.spectators = message.data.spectators;
+            this.updateSpectatorsDisplay();
+        }
+    }
+
+    /**
+     * Start game session (host only)
+     */
+    startGameSession() {
+        if (this.ws && this.isConnected) {
+            this.ws.send(JSON.stringify({
+                type: 'START_GAME',
+                data: { gameType: this.gameType }
+            }));
+        }
+    }
+
+    /**
+     * Update player name
+     */
+    updatePlayerName(name) {
+        if (this.ws && this.isConnected) {
+            this.ws.send(JSON.stringify({
+                type: 'change_name',
+                data: { newName: name }
+            }));
+        }
+    }
+
+    /**
+     * Show emoji picker
+     */
+    showEmojiPicker() {
+        const picker = document.getElementById('emoji-picker');
+        if (picker) {
+            picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+            
+            // Initialize emoji grid if not already done
+            const emojiGrid = document.getElementById('emoji-grid');
+            if (emojiGrid && emojiGrid.children.length === 0) {
+                this.initializeEmojiGrid();
+            }
+        }
+    }
+
+    /**
+     * Initialize emoji picker grid
+     */
+    initializeEmojiGrid() {
+        const emojiGrid = document.getElementById('emoji-grid');
+        if (!emojiGrid) return;
+
+        const animalEmojis = [
+            '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼',
+            '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔',
+            '🐧', '🐦', '🐤', '🐣', '🐺', '🐗', '🐴', '🦄',
+            '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗',
+            '🐢', '🐍', '🦎', '🐙', '🦑', '🦐', '🦀', '🐡'
+        ];
+
+        animalEmojis.forEach(emoji => {
+            const emojiBtn = document.createElement('button');
+            emojiBtn.textContent = emoji;
+            emojiBtn.style.cssText = 'border: none; background: none; font-size: 24px; cursor: pointer; padding: 5px; border-radius: 4px;';
+            emojiBtn.addEventListener('click', () => {
+                this.selectEmoji(emoji);
+            });
+            emojiBtn.addEventListener('mouseover', () => {
+                emojiBtn.style.background = '#f0f0f0';
+            });
+            emojiBtn.addEventListener('mouseout', () => {
+                emojiBtn.style.background = 'none';
+            });
+            emojiGrid.appendChild(emojiBtn);
+        });
+    }
+
+    /**
+     * Select emoji
+     */
+    selectEmoji(emoji) {
+        if (this.ws && this.isConnected) {
+            this.ws.send(JSON.stringify({
+                type: 'change_emoji',
+                data: { newEmoji: emoji }
+            }));
+        }
+        
+        // Update button immediately for feedback
+        const emojiBtn = document.getElementById('current-emoji-btn');
+        if (emojiBtn) {
+            emojiBtn.textContent = emoji;
+        }
+        
+        // Hide picker
+        const picker = document.getElementById('emoji-picker');
+        if (picker) {
+            picker.style.display = 'none';
+        }
+    }
+
+    /**
+     * Update room info display
+     */
+    updateRoomInfo() {
+        if (this.sessionId) {
+            this.currentView = 'room';
+            
+            const gameTitle = document.getElementById('game-title');
+            if (gameTitle) {
+                gameTitle.textContent = this.formatGameName(this.gameType);
+            }
+            
+            const roomCode = document.getElementById('room-code-display');
+            if (roomCode) {
+                roomCode.textContent = this.sessionId;
+            }
+        }
+    }
+
+    /**
+     * Update players list display
+     */
+    updatePlayersList() {
+        const container = document.getElementById('players-container');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        Object.values(this.players).forEach(player => {
+            const playerDiv = document.createElement('div');
+            playerDiv.className = 'player-item';
+            playerDiv.dataset.playerId = player.id;
+
+            const isHost = this.roomState.hostId === player.id;
+            const isCurrentPlayer = player.id === this.currentPlayerId;
+
+            playerDiv.innerHTML = \`
+                <span class="player-emoji">\${player.emoji}</span>
+                <span class="player-name">\${player.name}</span>
+                <span class="player-status">
+                    \${isHost ? '👑 Host' : ''}
+                    \${isCurrentPlayer ? '(You)' : ''}
+                </span>
+            \`;
+
+            container.appendChild(playerDiv);
+        });
+
+        this.updateStartGameButton();
+        this.updateCurrentPlayerInfo();
+    }
+
+    /**
+     * Update start game button state
+     */
+    updateStartGameButton() {
+        const startButton = document.getElementById('start-game-btn-header');
+        if (!startButton) return;
+
+        const isHost = this.roomState.hostId === this.currentPlayerId;
+        const gameNotStarted = this.gameState === 'waiting';
+
+        if (isHost && gameNotStarted) {
+            startButton.style.display = 'block';
+            startButton.disabled = false;
+        } else {
+            startButton.style.display = 'none';
+        }
+    }
+
+    /**
+     * Update current player info displays
+     */
+    updateCurrentPlayerInfo() {
+        if (!this.currentPlayer) return;
+
+        const nameInput = document.getElementById('player-name-input');
+        if (nameInput) {
+            nameInput.value = this.currentPlayer.name;
+        }
+
+        const emojiBtn = document.getElementById('current-emoji-btn');
+        if (emojiBtn) {
+            emojiBtn.textContent = this.currentPlayer.emoji;
+        }
+    }
+
+    /**
+     * Update game controls based on game state
+     */
+    updateGameControls() {
+        const gameArea = document.getElementById('game-area');
+        const playerControls = document.getElementById('player-controls');
+        const playersList = document.querySelector('.players-list');
+
+        if (this.gameState === 'playing') {
+            if (gameArea) gameArea.style.display = 'block';
+            if (playerControls) playerControls.style.display = 'none'; // Hide during gameplay
+            if (playersList) playersList.style.display = 'none'; // Hide during gameplay
+        } else if (this.gameState === 'finished') {
+            if (gameArea) gameArea.style.display = 'block'; // Keep game visible for end screen
+            if (playerControls) playerControls.style.display = 'none'; 
+            if (playersList) playersList.style.display = 'none';
+        } else if (this.gameState === 'waiting') {
+            if (gameArea) gameArea.style.display = 'none';
+            if (playerControls) playerControls.style.display = 'block';
+            if (playersList) playersList.style.display = 'block';
+        }
+    }
+
+    /**
+     * Show spectator UI
+     */
+    showSpectatorUI() {
+        // Add spectator indicator if not already present
+        let spectatorIndicator = document.getElementById('spectator-indicator');
+        if (!spectatorIndicator) {
+            spectatorIndicator = document.createElement('div');
+            spectatorIndicator.id = 'spectator-indicator';
+            spectatorIndicator.className = 'spectator-indicator';
+            spectatorIndicator.innerHTML = '👀 Spectator Mode';
+            
+            const roomInfo = document.querySelector('.room-info');
+            if (roomInfo) {
+                roomInfo.appendChild(spectatorIndicator);
+            }
+        }
+    }
+
+    /**
+     * Update spectators display
+     */
+    updateSpectatorsDisplay() {
+        const spectatorCount = Object.keys(this.spectators).length;
+        if (spectatorCount > 0) {
+            // Show spectator count somewhere in UI
+            console.log(\`\${spectatorCount} spectators watching\`);
+        }
+    }
+
+    /**
+     * Show game end screen
+     */
+    showGameEndScreen(gameEndData) {
+        const endScreen = document.getElementById('end-game-screen');
+        const resultMessage = document.getElementById('game-result-message');
+        const finalScores = document.getElementById('final-scores');
+        
+        if (endScreen && resultMessage && finalScores) {
+            // Update message with server's result message
+            resultMessage.textContent = gameEndData.message || 'Game Complete!';
+            
+            // Show final scores - server sends 'scores', not 'finalScores'
+            const scores = gameEndData.scores || gameEndData.finalScores;
+            if (scores) {
+                finalScores.innerHTML = '';
+                Object.entries(scores).forEach(([playerId, score]) => {
+                    const player = this.players[playerId];
+                    if (player) {
+                        const scoreItem = document.createElement('div');
+                        scoreItem.className = 'final-score-item';
+                        scoreItem.innerHTML = \`\${player.emoji} \${player.name}: \${score}\`;
+                        finalScores.appendChild(scoreItem);
+                    }
+                });
+            }
+            
+            endScreen.style.display = 'block';
+            
+            // Handle OK button - return to lobby
+            const okBtn = document.getElementById('ok-btn');
+            if (okBtn) {
+                okBtn.onclick = () => {
+                    endScreen.style.display = 'none';
+                    // Return to lobby/portal
+                    this.leaveGame();
+                };
+            }
+        }
+    }
+
+    /**
+     * Leave game and return to portal
+     */
+    leaveGame() {
+        if (this.ws) {
+            this.ws.close();
+        }
+        
+        // Clean up game module
+        if (this.gameModule) {
+            this.gameModule.cleanup();
+            this.gameModule = null;
+        }
+        
+        // Reset all state
+        this.currentPlayerId = null;
+        this.currentPlayer = null;
+        this.players = {};
+        this.sessionId = '';
+        this.gameType = '';
+        this.gameState = 'waiting';
+        this.roomState = {};
+        this.isSpectator = false;
+        this.spectatorId = null;
+        this.spectators = {};
+        
+        // Clean up UI
+        this.cleanupGameUI();
+        
+        // Return to portal
+        this.currentView = 'portal';
+        this.updateView();
+        this.loadActiveRooms();
+        this.startActiveRoomsRefresh();
+    }
+
+    /**
+     * Clean up game-specific UI elements
+     */
+    cleanupGameUI() {
+        // Hide game area
+        const gameArea = document.getElementById('game-area');
+        if (gameArea) {
+            gameArea.style.display = 'none';
+            gameArea.innerHTML = '';
+        }
+        
+        // Hide end game screen
+        const endScreen = document.getElementById('end-game-screen');
+        if (endScreen) endScreen.style.display = 'none';
+        
+        // Remove spectator indicator
+        const spectatorIndicator = document.getElementById('spectator-indicator');
+        if (spectatorIndicator) spectatorIndicator.remove();
+        
+        // Clear players
+        const playersContainer = document.getElementById('players-container');
+        if (playersContainer) playersContainer.innerHTML = '';
+        
+        // Clear name input
+        const nameInput = document.getElementById('player-name-input');
+        if (nameInput) nameInput.value = '';
+        
+        // Remove floating emojis
+        document.querySelectorAll('.floating-emoji').forEach(el => el.remove());
+    }
+
+    /**
+     * Load active rooms (placeholder - integrate with existing logic)
+     */
+    loadActiveRooms() {
+        // This will integrate with the existing active rooms logic
+        console.log('Loading active rooms...');
+    }
+
+    /**
+     * Start/stop active rooms refresh
+     */
+    startActiveRoomsRefresh() {
+        // Integrate with existing refresh logic
+        console.log('Starting active rooms refresh...');
+    }
+
+    stopActiveRoomsRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
+    }
+
+    /**
+     * Format game name for display
+     */
+    formatGameName(gameType) {
+        return gameType
+            .split('-')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    }
+
+    /**
+     * Utility: Generate session ID
+     */
+    generateSessionId() {
+        return Math.random().toString(36).substr(2, 6).toUpperCase();
+    }
+
+    /**
+     * Utility: Show error message
+     */
+    showError(message) {
+        console.error(message);
+        // TODO: Implement proper error UI
+    }
+
+    /**
+     * Utility: Show/hide loading overlay
+     */
+    showLoadingOverlay() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.style.display = 'flex';
+    }
+
+    hideLoadingOverlay() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+}
+
+// Export for use in other files
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = GameShell;
+} else {
+    window.GameShell = GameShell;
+}`,
+  '/static/js/games/CheckboxGameModule.js': `/**
+ * CheckboxGameModule - Implements the checkbox game as a GameModule
+ * Manages a 3x3 grid of checkboxes where players collaborate to check all boxes
+ */
+class CheckboxGameModule extends GameModule {
+    constructor() {
+        super();
+        this.checkboxStates = new Array(9).fill(false); // 3x3 grid
+        this.checkboxPlayers = {}; // Track which player checked each box
+        this.playerScores = {}; // Track player scores
+    }
+
+    /**
+     * Initialize the checkbox game
+     */
+    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange) {
+        super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange);
+        
+        // Initialize game state
+        if (initialState) {
+            this.checkboxStates = initialState.checkboxStates || new Array(9).fill(false);
+            this.checkboxPlayers = initialState.checkboxPlayers || {};
+            this.playerScores = initialState.playerScores || {};
+        }
+        
+        this.render();
+    }
+
+    /**
+     * Handle state updates from server
+     */
+    handleStateUpdate(gameSpecificState) {
+        super.handleStateUpdate(gameSpecificState);
+        
+        
+        if (gameSpecificState.checkboxStates) {
+            this.checkboxStates = gameSpecificState.checkboxStates;
+        }
+        if (gameSpecificState.checkboxPlayers) {
+            this.checkboxPlayers = gameSpecificState.checkboxPlayers;
+        }
+        if (gameSpecificState.playerScores) {
+            this.playerScores = gameSpecificState.playerScores;
+        }
+        
+        
+        this.render();
+    }
+
+    /**
+     * Handle player actions from WebSocket messages
+     */
+    handlePlayerAction(playerId, action) {
+        switch (action.type) {
+            case 'checkbox_toggled':
+                if (action.data) {
+                    const { checkboxIndex, newState } = action.data;
+                    this.checkboxStates[checkboxIndex] = newState;
+                    if (newState) {
+                        this.checkboxPlayers[checkboxIndex] = playerId;
+                    } else {
+                        delete this.checkboxPlayers[checkboxIndex];
+                    }
+                    this.updateCheckboxUI(checkboxIndex, newState, playerId);
+                    this.updateScoreboard();
+                }
+                break;
+        }
+    }
+
+    /**
+     * Check win condition - all checkboxes must be checked
+     */
+    getWinCondition() {
+        const allChecked = this.checkboxStates.every(state => state === true);
+        if (allChecked) {
+            // Calculate final scores
+            const finalScores = {};
+            Object.values(this.players).forEach(player => {
+                finalScores[player.id] = this.getPlayerScore(player.id);
+            });
+            
+            // Find winner (player with most checkboxes)
+            let winnerId = null;
+            let maxScore = -1;
+            Object.entries(finalScores).forEach(([playerId, score]) => {
+                if (score > maxScore) {
+                    maxScore = score;
+                    winnerId = playerId;
+                }
+            });
+
+            return {
+                winnerId,
+                points: finalScores
+            };
+        }
+        return null;
+    }
+
+    /**
+     * Render the checkbox game UI
+     */
+    render() {
+        if (!this.gameAreaElement) return;
+
+        this.gameAreaElement.innerHTML = \`
+            <div class="checkbox-game-container">
+                <div class="game-info">
+                    <h3>Shared Checkbox Grid</h3>
+                    <p>Click any checkbox to toggle it. Changes are shared with all players in real-time!</p>
+                </div>
+                
+                <div class="game-layout">
+                    <!-- Scoreboard on the left -->
+                    <div id="scoreboard" class="scoreboard">
+                        <h4>Scoreboard</h4>
+                        <div id="score-list" class="score-list">
+                            <!-- Scores will be populated -->
+                        </div>
+                    </div>
+                    
+                    <!-- Checkbox grid in the center -->
+                    <div id="checkbox-grid" class="checkbox-grid">
+                        <!-- 3x3 checkbox grid will be generated -->
+                    </div>
+                </div>
+            </div>
+        \`;
+
+        this.initializeCheckboxGrid();
+        this.updateScoreboard();
+    }
+
+    /**
+     * Initialize the 3x3 checkbox grid
+     */
+    initializeCheckboxGrid() {
+        const checkboxGrid = this.gameAreaElement.querySelector('#checkbox-grid');
+        if (!checkboxGrid) {
+            console.error('Checkbox grid element not found!');
+            return;
+        }
+
+        // Clear any existing content
+        checkboxGrid.innerHTML = '';
+        
+        // Create 3x3 grid of checkboxes (9 total)
+        for (let i = 0; i < 9; i++) {
+            const checkboxItem = document.createElement('div');
+            checkboxItem.className = 'checkbox-item';
+            checkboxItem.dataset.index = i;
+            
+            const checkboxIcon = document.createElement('span');
+            checkboxIcon.className = 'checkbox-icon';
+            
+            // Determine the icon to show (player emoji or checkmark)
+            if (this.checkboxStates[i]) {
+                const playerId = this.checkboxPlayers[i];
+                if (playerId && this.players[playerId]) {
+                    const player = this.players[playerId];
+                    checkboxIcon.textContent = player.emoji || '✓';
+                } else {
+                    checkboxIcon.textContent = '✓';
+                }
+            } else {
+                checkboxIcon.textContent = '';
+            }
+            
+            checkboxItem.appendChild(checkboxIcon);
+            
+            // Add click handler
+            checkboxItem.addEventListener('click', () => {
+                this.toggleCheckbox(i);
+            });
+            
+            checkboxGrid.appendChild(checkboxItem);
+            
+            // Update visual state
+            if (this.checkboxStates[i]) {
+                checkboxItem.classList.add('checked');
+            }
+        }
+    }
+
+    /**
+     * Toggle a checkbox (send action to server)
+     */
+    toggleCheckbox(checkboxIndex) {
+        // Prevent spectators from taking actions
+        if (this.isSpectator) {
+            this.showError?.('Spectators cannot interact with the game');
+            return;
+        }
+
+        if (this.onPlayerAction) {
+            // Add visual feedback
+            const checkboxItem = this.gameAreaElement.querySelector(\`.checkbox-item[data-index="\${checkboxIndex}"]\`);
+            if (checkboxItem) {
+                checkboxItem.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    checkboxItem.style.transform = '';
+                }, 150);
+            }
+            
+            // Send toggle action to server via shell
+            this.onPlayerAction({
+                type: 'toggle_checkbox',
+                data: { checkboxIndex: checkboxIndex }
+            });
+        }
+    }
+
+    /**
+     * Update the UI for a specific checkbox
+     */
+    updateCheckboxUI(checkboxIndex, newState, playerId = null) {
+        const checkboxItem = this.gameAreaElement.querySelector(\`.checkbox-item[data-index="\${checkboxIndex}"]\`);
+        if (!checkboxItem) return;
+        
+        const checkboxIcon = checkboxItem.querySelector('.checkbox-icon');
+        if (!checkboxIcon) return;
+        
+        if (newState) {
+            checkboxItem.classList.add('checked');
+            
+            
+            // Show the player's emoji if we know who checked it
+            if (playerId && this.players[playerId]) {
+                const player = this.players[playerId];
+                checkboxIcon.textContent = player.emoji || '✓';
+            } else {
+                checkboxIcon.textContent = '✓';
+            }
+        } else {
+            checkboxItem.classList.remove('checked');
+            checkboxIcon.textContent = '';
+        }
+    }
+
+    /**
+     * Update the scoreboard display
+     */
+    updateScoreboard() {
+        const scoreList = this.gameAreaElement.querySelector('#score-list');
+        if (!scoreList) return;
+        
+        scoreList.innerHTML = '';
+        
+        // Sort players by score (descending)
+        const sortedPlayers = Object.values(this.players)
+            .filter(player => !player.isSpectator)
+            .sort((a, b) => this.getPlayerScore(b.id) - this.getPlayerScore(a.id));
+        
+        sortedPlayers.forEach(player => {
+            const score = this.getPlayerScore(player.id);
+            const scoreItem = document.createElement('div');
+            scoreItem.className = 'score-item';
+            scoreItem.innerHTML = \`
+                <span class="score-player">\${player.emoji} \${player.name}</span>
+                <span class="score-points">\${score}</span>
+            \`;
+            scoreList.appendChild(scoreItem);
+        });
+    }
+
+    /**
+     * Get score for a specific player
+     */
+    getPlayerScore(playerId) {
+        let score = 0;
+        for (let i = 0; i < this.checkboxStates.length; i++) {
+            if (this.checkboxStates[i] && this.checkboxPlayers[i] === playerId) {
+                score++;
+            }
+        }
+        return score;
+    }
+
+    /**
+     * Game-specific methods
+     */
+    getDisplayName() {
+        return 'Checkbox Game';
+    }
+
+    getGameType() {
+        return 'checkbox-game';
+    }
+
+    /**
+     * Clean up checkbox game resources
+     */
+    cleanup() {
+        this.checkboxStates = new Array(9).fill(false);
+        this.checkboxPlayers = {};
+        this.playerScores = {};
+        super.cleanup();
+    }
+}
+
+// Export for use in other files
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = CheckboxGameModule;
+} else {
+    window.CheckboxGameModule = CheckboxGameModule;
+}`,
   '/static/styles.css': `/* Reset and base styles */
 * {
     margin: 0;
@@ -3718,6 +3582,40 @@ input:focus {
         padding: 0.75rem 2rem;
         font-size: 1rem;
     }
+}
+
+/* Version Info Footer */
+.version-info {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: rgba(255, 255, 255, 0.8);
+    padding: 0.5rem 1rem;
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 100;
+}
+
+#version-display {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+/* Ensure main content doesn't overlap footer */
+main {
+    padding-bottom: 3rem;
+}`,
+  '/static/version.json': `{
+  "version": "1.0.0-alpha",
+  "baseVersion": "1.0.0",
+  "branch": "game-shell-architecture",
+  "commit": "639fb89",
+  "timestamp": "2025-08-10T21:47:07.975Z",
+  "deployedAt": "Aug 10, 2025, 03:47 PM MDT"
 }`
 };
 
