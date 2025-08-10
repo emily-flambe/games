@@ -27,6 +27,12 @@ class GameClient {
         document.querySelectorAll('.game-card').forEach(card => {
             card.addEventListener('click', (e) => {
                 const gameType = e.currentTarget.dataset.game;
+                const isComingSoon = e.currentTarget.classList.contains('coming-soon');
+                
+                if (isComingSoon) {
+                    return;
+                }
+                
                 if (gameType) {
                     this.startGame(gameType);
                 }
@@ -1394,64 +1400,87 @@ class GameClient {
     }
     
     showSpectatorIndicator() {
-        // Add spectator indicator to the room header
-        const roomInfo = document.querySelector('.room-info');
-        if (!roomInfo) return;
+        console.log('Showing spectator indicator');
         
-        let spectatorIndicator = document.getElementById('spectator-indicator');
-        if (!spectatorIndicator) {
-            spectatorIndicator = document.createElement('div');
-            spectatorIndicator.id = 'spectator-indicator';
-            spectatorIndicator.style.cssText = `
-                background: #17a2b8;
-                color: white;
-                padding: 4px 8px;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 12px;
-                margin-top: 5px;
-                display: inline-block;
-            `;
-            spectatorIndicator.textContent = '👁️ SPECTATOR MODE';
-            roomInfo.appendChild(spectatorIndicator);
-        }
-        spectatorIndicator.style.display = 'inline-block';
-        
-        // Add spectator explanation message in the middle area
-        this.showSpectatorMessage();
+        // Wait a bit to ensure room UI is loaded
+        setTimeout(() => {
+            // Add spectator indicator to the room header
+            const roomInfo = document.querySelector('.room-header .room-info');
+            if (!roomInfo) {
+                console.log('Room header info not found, trying again...');
+                // Try again after more delay
+                setTimeout(() => this.showSpectatorIndicator(), 500);
+                return;
+            }
+            
+            let spectatorIndicator = document.getElementById('spectator-indicator');
+            if (!spectatorIndicator) {
+                spectatorIndicator = document.createElement('div');
+                spectatorIndicator.id = 'spectator-indicator';
+                spectatorIndicator.style.cssText = `
+                    background: #17a2b8;
+                    color: white;
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    font-size: 14px;
+                    margin-top: 8px;
+                    display: block;
+                    text-align: center;
+                `;
+                spectatorIndicator.textContent = '👁️👄👁️ you are a spectator. enjoy the show 👁️👄👁️';
+                roomInfo.appendChild(spectatorIndicator);
+                console.log('Spectator indicator added to room info');
+            }
+            spectatorIndicator.style.display = 'block';
+            
+            // Add spectator explanation message in the middle area
+            this.showSpectatorMessage();
+        }, 100);
     }
     
     showSpectatorMessage() {
-        // Find the players-list area to add the message
-        const playersList = document.querySelector('.players-list');
-        if (!playersList) return;
+        console.log('Showing spectator message');
         
-        let spectatorMessage = document.getElementById('spectator-message');
-        if (!spectatorMessage) {
-            spectatorMessage = document.createElement('div');
-            spectatorMessage.id = 'spectator-message';
-            spectatorMessage.style.cssText = `
-                background: rgba(23, 162, 184, 0.1);
-                border: 2px solid #17a2b8;
-                border-radius: 8px;
-                padding: 20px;
-                text-align: center;
-                margin: 20px 0;
-                color: #17a2b8;
-                font-weight: bold;
-                font-size: 16px;
-            `;
-            spectatorMessage.innerHTML = 'The game has already started. You can look, but you can\'t touch :O';
-            
-            // Insert after players header
-            const playersHeader = playersList.querySelector('.players-header');
-            if (playersHeader) {
-                playersHeader.insertAdjacentElement('afterend', spectatorMessage);
-            } else {
-                playersList.appendChild(spectatorMessage);
+        setTimeout(() => {
+            // Find the players-list area to add the message
+            const playersList = document.querySelector('.players-list');
+            if (!playersList) {
+                console.log('Players list not found for spectator message');
+                return;
             }
-        }
-        spectatorMessage.style.display = 'block';
+            
+            let spectatorMessage = document.getElementById('spectator-message');
+            if (!spectatorMessage) {
+                spectatorMessage = document.createElement('div');
+                spectatorMessage.id = 'spectator-message';
+                spectatorMessage.style.cssText = `
+                    background: rgba(255, 193, 7, 0.15);
+                    border: 3px solid #ffc107;
+                    border-radius: 12px;
+                    padding: 20px;
+                    text-align: center;
+                    margin: 20px 0;
+                    color: #ffc107;
+                    font-weight: bold;
+                    font-size: 18px;
+                    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+                `;
+                spectatorMessage.innerHTML = '👁️ You are watching as a spectator. Enjoy the show! 🍿';
+                
+                // Insert after players header - try multiple strategies
+                const playersHeader = playersList.querySelector('.players-header');
+                if (playersHeader) {
+                    playersHeader.insertAdjacentElement('afterend', spectatorMessage);
+                    console.log('Spectator message added after players header');
+                } else {
+                    // Try inserting at the beginning of players list
+                    playersList.insertBefore(spectatorMessage, playersList.firstChild);
+                    console.log('Spectator message added to beginning of players list');
+                }
+            }
+            spectatorMessage.style.display = 'block';
+        }, 200);
     }
     
     updateSpectatorDisplay() {
@@ -1514,15 +1543,20 @@ class GameClient {
         Object.values(this.spectators).forEach(spectator => {
             const spectatorDiv = document.createElement('div');
             spectatorDiv.className = 'spectator-item';
+            
+            // Check if this spectator is the current user - fix: use spectatorId instead of playerId
+            const isCurrentUser = spectator.id === this.spectatorId;
+            
             spectatorDiv.style.cssText = `
                 display: flex;
                 align-items: center;
                 gap: 8px;
                 padding: 6px;
                 margin-bottom: 4px;
-                background: rgba(23, 162, 184, 0.1);
+                background: ${isCurrentUser ? 'rgba(255, 193, 7, 0.2)' : 'rgba(23, 162, 184, 0.1)'};
                 border-radius: 4px;
-                border-left: 3px solid #17a2b8;
+                border-left: 3px solid ${isCurrentUser ? '#ffc107' : '#17a2b8'};
+                ${isCurrentUser ? 'border: 2px solid #ffc107;' : ''}
             `;
             
             const emojiSpan = document.createElement('span');
@@ -1530,27 +1564,16 @@ class GameClient {
             emojiSpan.style.fontSize = '16px';
             
             const nameSpan = document.createElement('span');
-            nameSpan.textContent = spectator.name || 'Anonymous';
+            nameSpan.textContent = (spectator.name || 'Anonymous') + (isCurrentUser ? ' (YOU)' : '');
             nameSpan.style.cssText = `
-                font-weight: bold;
+                font-weight: ${isCurrentUser ? '900' : 'bold'};
                 font-size: 12px;
                 flex: 1;
-            `;
-            
-            const statusSpan = document.createElement('span');
-            statusSpan.textContent = 'WATCHING';
-            statusSpan.style.cssText = `
-                color: #17a2b8;
-                font-size: 9px;
-                font-weight: bold;
-                background: rgba(23, 162, 184, 0.2);
-                padding: 2px 4px;
-                border-radius: 2px;
+                color: ${isCurrentUser ? '#ffc107' : 'inherit'};
             `;
             
             spectatorDiv.appendChild(emojiSpan);
             spectatorDiv.appendChild(nameSpan);
-            spectatorDiv.appendChild(statusSpan);
             
             spectatorsList.appendChild(spectatorDiv);
         });
