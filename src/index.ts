@@ -18,7 +18,8 @@ interface SessionMetadata {
   players: Array<{name: string; emoji: string}>;
   createdAt: number;
   lastHeartbeat: number;
-  status: 'waiting' | 'in-progress' | 'finished';
+  roomStatus: 'active' | 'inactive';  // Room can be active even if game is over
+  gameStatus: 'waiting' | 'in-progress' | 'finished';  // Actual game state
 }
 
 export default {
@@ -194,6 +195,7 @@ export class GameSession implements DurableObject {
       checkboxPlayers: new Array(9).fill(null),
       playerScores: {},
       gameStarted: false,
+      gameFinished: false,
       spectatorCount: 0,
       spectators: {}
     };
@@ -473,6 +475,9 @@ export class GameSession implements DurableObject {
             this.gameState.status = 'started';
             this.gameState.gameStarted = true;
             
+            // Update registry to mark game as in-progress
+            this.updateRegistryStatus('in-progress');
+            
             this.broadcast({
               type: 'game_started',
               data: {
@@ -591,6 +596,11 @@ export class GameSession implements DurableObject {
   handleGameEnd() {
     console.log('Game ended - all checkboxes checked');
     
+    // Update game state to mark game as finished
+    this.gameState.gameStarted = false;  // Game is no longer in progress
+    this.gameState.gameFinished = true;  // Game is finished
+    this.gameState.status = 'finished';  // Update status
+    
     // Find the highest score
     const scores = this.gameState.playerScores;
     const maxScore = Math.max(...Object.values(scores));
@@ -613,6 +623,9 @@ export class GameSession implements DurableObject {
     console.log('Game result:', resultMessage);
     console.log('Final scores:', scores);
     
+    // Update registry to mark game as finished
+    this.updateRegistryStatus('finished');
+    
     this.broadcast({
       type: 'game_ended',
       data: {
@@ -623,6 +636,27 @@ export class GameSession implements DurableObject {
       },
       timestamp: Date.now()
     });
+  }
+
+  // Registry update methods
+  async updateRegistryStatus(gameStatus: 'waiting' | 'in-progress' | 'finished') {
+    if (!this.sessionId) return;
+    
+    try {
+      const registry = this.env.GAME_REGISTRY.get(
+        this.env.GAME_REGISTRY.idFromName('singleton')
+      );
+      
+      await registry.fetch(new Request('http://internal/update-game-status', {
+        method: 'POST',
+        body: JSON.stringify({
+          sessionId: this.sessionId,
+          gameStatus: gameStatus
+        })
+      }));
+    } catch (error) {
+      console.error('Failed to update registry game status:', error);
+    }
   }
 
   // Helper functions
@@ -654,8 +688,8 @@ export class GameSession implements DurableObject {
             name: p.name,
             emoji: p.emoji
           })),
-          createdAt: Date.now(),
-          status: this.gameState.gameStarted ? 'in-progress' : 'waiting'
+          createdAt: Date.now()
+          // roomStatus and gameStatus will be set by the registry
         } as SessionMetadata)
       }));
       console.log(`Registered session ${this.sessionId} with registry`);
@@ -679,7 +713,7 @@ export class GameSession implements DurableObject {
             name: p.name,
             emoji: p.emoji
           })),
-          status: this.gameState.gameStarted ? 'in-progress' : 'waiting'
+          gameStatus: this.gameState.gameStarted ? 'in-progress' : 'waiting'
         })
       }));
     } catch (error) {
@@ -720,6 +754,8 @@ export class GameSessionRegistry implements DurableObject {
         const data: SessionMetadata = await request.json();
         this.sessions.set(data.sessionId, {
           ...data,
+          roomStatus: 'active',  // Room is active when first created
+          gameStatus: 'waiting', // Game starts in waiting state
           lastHeartbeat: Date.now()
         });
         console.log(`Registered session: ${data.sessionId} (${data.gameType})`);
@@ -742,6 +778,21 @@ export class GameSessionRegistry implements DurableObject {
         return new Response('OK');
       }
       
+      if (request.method === 'POST' && url.pathname === '/update-game-status') {
+        const { sessionId, gameStatus } = await request.json();
+        const existingSession = this.sessions.get(sessionId);
+        
+        if (existingSession) {
+          this.sessions.set(sessionId, {
+            ...existingSession,
+            gameStatus: gameStatus,
+            lastHeartbeat: Date.now()
+          });
+          console.log(`Updated game status for session ${sessionId} to: ${gameStatus}`);
+        }
+        return new Response('OK');
+      }
+      
       if (request.method === 'DELETE' && url.pathname.startsWith('/unregister/')) {
         const sessionId = url.pathname.split('/')[2];
         this.sessions.delete(sessionId);
@@ -751,8 +802,10 @@ export class GameSessionRegistry implements DurableObject {
       
       if (request.method === 'GET' && url.pathname === '/list') {
         this.cleanupStale();
-        const activeRooms = Array.from(this.sessions.values());
-        return Response.json({ rooms: activeRooms });
+        // Only show games that are not finished (waiting or in-progress)
+        const activeGames = Array.from(this.sessions.values())
+          .filter(session => session.gameStatus !== 'finished');
+        return Response.json({ rooms: activeGames });
       }
       
       return new Response('Not Found', { status: 404 });
