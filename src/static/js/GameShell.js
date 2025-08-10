@@ -267,9 +267,10 @@ class GameShell {
     handleGameEnded(message) {
         this.gameState = 'finished';
         
+        // Clean up game module but keep it for potential restart
         if (this.gameModule) {
             this.gameModule.cleanup();
-            this.gameModule = null;
+            // Don't set to null yet - keep reference until user leaves
         }
         
         this.showGameEndScreen(message.data);
@@ -620,8 +621,12 @@ class GameShell {
 
         if (this.gameState === 'playing') {
             if (gameArea) gameArea.style.display = 'block';
-            if (playerControls) playerControls.style.display = 'block';
-            if (playersList) playersList.style.display = 'block';
+            if (playerControls) playerControls.style.display = 'none'; // Hide during gameplay
+            if (playersList) playersList.style.display = 'none'; // Hide during gameplay
+        } else if (this.gameState === 'finished') {
+            if (gameArea) gameArea.style.display = 'block'; // Keep game visible for end screen
+            if (playerControls) playerControls.style.display = 'none'; 
+            if (playersList) playersList.style.display = 'none';
         } else if (this.gameState === 'waiting') {
             if (gameArea) gameArea.style.display = 'none';
             if (playerControls) playerControls.style.display = 'block';
@@ -668,13 +673,14 @@ class GameShell {
         const finalScores = document.getElementById('final-scores');
         
         if (endScreen && resultMessage && finalScores) {
-            // Update message
-            resultMessage.textContent = 'Game Complete!';
+            // Update message with server's result message
+            resultMessage.textContent = gameEndData.message || 'Game Complete!';
             
-            // Show final scores
-            if (gameEndData.finalScores) {
+            // Show final scores - server sends 'scores', not 'finalScores'
+            const scores = gameEndData.scores || gameEndData.finalScores;
+            if (scores) {
                 finalScores.innerHTML = '';
-                Object.entries(gameEndData.finalScores).forEach(([playerId, score]) => {
+                Object.entries(scores).forEach(([playerId, score]) => {
                     const player = this.players[playerId];
                     if (player) {
                         const scoreItem = document.createElement('div');
@@ -687,11 +693,13 @@ class GameShell {
             
             endScreen.style.display = 'block';
             
-            // Handle OK button
+            // Handle OK button - return to lobby
             const okBtn = document.getElementById('ok-btn');
             if (okBtn) {
                 okBtn.onclick = () => {
                     endScreen.style.display = 'none';
+                    // Return to lobby/portal
+                    this.leaveGame();
                 };
             }
         }

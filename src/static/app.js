@@ -17,6 +17,9 @@ class GameApp {
         // Integrate active rooms functionality with shell
         this.integrateActiveRooms();
         
+        // Load and display version information
+        this.loadVersionInfo();
+        
         // Initialize the shell
         this.gameShell.init();
     }
@@ -172,6 +175,27 @@ class GameApp {
         if (this.gameShell.refreshInterval) {
             clearInterval(this.gameShell.refreshInterval);
             this.gameShell.refreshInterval = null;
+        }
+    }
+
+    /**
+     * Load and display version information
+     */
+    async loadVersionInfo() {
+        try {
+            const response = await fetch('/static/version.json');
+            const versionInfo = await response.json();
+            
+            const versionDisplay = document.getElementById('version-display');
+            if (versionDisplay) {
+                versionDisplay.textContent = `running version ${versionInfo.version}, last deployed on ${versionInfo.deployedAt}`;
+            }
+        } catch (error) {
+            console.warn('Could not load version info:', error);
+            const versionDisplay = document.getElementById('version-display');
+            if (versionDisplay) {
+                versionDisplay.textContent = 'version info unavailable';
+            }
         }
     }
 }

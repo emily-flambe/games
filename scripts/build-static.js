@@ -7,6 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { generateVersion } = require('./generate-version');
 
 const STATIC_DIR = 'src/static';
 const OUTPUT_FILE = 'src/lib/static.ts';
@@ -82,6 +83,9 @@ function writeStaticModule(content) {
 
 function main() {
     console.log('🔨 Building static assets for Cloudflare Worker...');
+    
+    // Generate version.json first
+    generateVersion();
     
     const assets = readStaticAssets();
     const moduleContent = generateStaticModule(assets);
