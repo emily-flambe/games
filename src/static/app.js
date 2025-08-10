@@ -109,6 +109,12 @@ class GameClient {
                 emojiPicker.style.display = 'none';
             }
         });
+
+        // Start Game button functionality
+        const startGameBtnHeader = document.getElementById('start-game-btn-header');
+        if (startGameBtnHeader) {
+            startGameBtnHeader.addEventListener('click', () => this.startGameSession());
+        }
     }
 
     startGame(gameType) {
@@ -901,6 +907,23 @@ class GameClient {
             const connectedPlayers = Object.values(this.gameState.players).filter(p => p.connected).length;
             activePlayersSpan.textContent = connectedPlayers;
         }
+    }
+
+    startGameSession() {
+        console.log('🐰 Game Logic Specialist: Starting game session for', this.gameType);
+        
+        // Show the appropriate game board based on game type
+        if (this.gameType === 'checkbox-game') {
+            const checkboxBoard = document.getElementById('checkbox-game-board');
+            if (checkboxBoard) {
+                checkboxBoard.style.display = 'block';
+                console.log('🐰 Game Logic Specialist: Checkbox game board is now visible');
+            }
+        }
+        
+        // Could add other game types here in the future
+        // if (this.gameType === 'tic-tac-toe') { ... }
+        // if (this.gameType === 'rock-paper-scissors') { ... }
     }
 }
 
