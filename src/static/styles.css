@@ -470,6 +470,14 @@ main {
     font-weight: 500;
 }
 
+/* CRITICAL: Player emoji display in active rooms - DO NOT REMOVE */
+.room-emojis {
+    font-size: 1.2rem;
+    line-height: 1.5;
+    margin: 0.5rem 0;
+    letter-spacing: 0.2em;
+}
+
 .room-time {
     font-size: 0.8rem;
     color: #6c757d;

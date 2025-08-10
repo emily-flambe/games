@@ -83,6 +83,11 @@ class GameApp {
 
     /**
      * Display active rooms in the UI
+     * CRITICAL: This function creates the room display with:
+     * - Proper CSS class 'join-room-btn' (NOT 'join-room-button')
+     * - Player emojis from room.players array
+     * - Styled room information layout
+     * DO NOT REMOVE player emoji display or change button CSS class!
      */
     displayActiveRooms(rooms) {
         const roomsList = document.getElementById('active-rooms-list');
@@ -102,24 +107,32 @@ class GameApp {
             const playerCount = room.playerCount || 0;
             const maxPlayers = room.maxPlayers || 8;
             const gameType = this.formatGameName(room.gameType || 'Unknown');
-            const status = room.status || 'waiting';
+            const status = room.gameStatus || 'waiting';
+            
+            // Generate player emojis display
+            const playerEmojis = room.players && room.players.length > 0 
+                ? room.players.map(player => player.emoji).join(' ')
+                : '';
             
             roomDiv.innerHTML = `
                 <div class="room-info">
+                    <div class="room-title">${gameType}</div>
                     <div class="room-code">${room.sessionId}</div>
-                    <div class="room-details">
-                        <span class="game-type">${gameType}</span>
-                        <span class="player-count">${playerCount}/${maxPlayers} players</span>
-                        <span class="room-status status-${status}">${this.formatStatus(status)}</span>
-                    </div>
+                    <div class="room-players">${playerCount}/${maxPlayers} players</div>
+                    ${playerEmojis ? `<div class="room-emojis">${playerEmojis}</div>` : ''}
+                    <div class="room-time">Status: ${this.formatStatus(status)}</div>
                 </div>
-                <button class="join-room-button" data-room-code="${room.sessionId}">
+                <button class="join-room-btn" data-room-code="${room.sessionId}">
                     Join
                 </button>
+                <!--
+                CRITICAL: Button MUST use class 'join-room-btn' for proper green styling!
+                Do NOT change to 'join-room-button' or other class names.
+                -->
             `;
             
             // Add click handler for join button
-            const joinBtn = roomDiv.querySelector('.join-room-button');
+            const joinBtn = roomDiv.querySelector('.join-room-btn');
             if (joinBtn) {
                 joinBtn.addEventListener('click', () => {
                     this.gameShell.joinExistingRoom(room.sessionId);
