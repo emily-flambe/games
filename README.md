@@ -11,6 +11,42 @@ A real-time multiplayer games platform built with Cloudflare Workers, Durable Ob
 - **Modular game system** supporting multiple game types
 - **Session management** with automatic cleanup
 - **Static file serving** for web-based games
+- **Spectator mode** - automatic spectator mode for late-joining players
+
+## Game Design Principles
+
+### Spectator Mode (Global Design Choice)
+
+The platform implements **automatic spectator mode** as a core design principle across all games:
+
+**When it activates:**
+- Players who join a game session **after the game has started** automatically become spectators
+- This prevents disruption to ongoing gameplay and maintains fair play
+
+**Spectator capabilities:**
+- ✅ **View**: Full read-only access to the current game state
+- ✅ **Watch**: See all game actions and player interactions in real-time
+- ✅ **Observe**: View player scores, game progress, and outcomes
+
+**Spectator restrictions:**
+- ❌ **No name/emoji**: Spectators have no visible identity in the game
+- ❌ **No actions**: Cannot interact with game elements (checkboxes, moves, etc.)
+- ❌ **No influence**: Cannot affect game state or player scores
+- ❌ **Cannot start games**: Only active players can control game flow
+
+**Implementation details:**
+- Server-side enforcement prevents spectator actions
+- Client-side UI clearly indicates spectator status
+- Spectator count is visible to all players
+- Spectators are automatically cleaned up when they disconnect
+
+**Benefits:**
+- **Fair play**: Prevents mid-game joining from affecting game balance
+- **Consistent experience**: All games behave the same way for late joiners
+- **Educational**: New players can learn by watching ongoing games
+- **Scalable**: Unlimited spectators can watch without impacting performance
+
+This design choice ensures that **once a game starts, the playing field remains level** while still allowing newcomers to engage with the community by observing gameplay.
 
 ## Architecture
 
@@ -250,6 +286,8 @@ Connect to WebSocket endpoint: `ws://localhost:8777/ws` (development)
 - `gameState`: Current game state update  
 - `playerJoined`: New player joined
 - `playerLeft`: Player disconnected
+- `spectator_identity`: Spectator mode assignment
+- `spectator_joined`/`spectator_left`: Spectator count updates
 - `error`: Error message
 - `pong`: Heartbeat response
 

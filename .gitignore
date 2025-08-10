@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 
 # Build artifacts
 dist/
@@ -31,3 +30,7 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+
+# Test artifacts
+screenshots/
+src/lib/

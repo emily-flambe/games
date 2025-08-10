@@ -1,5 +1,22 @@
 # Coding Standards & Guidelines
 
+## Communication & Content Standards
+
+### Emoji Usage Policy
+**CRITICAL RULE**: Emojis are STRICTLY PROHIBITED in all code, documentation, UI text, and communication except for these two approved cases:
+
+1. **Player Avatar Emojis**: Emoji characters used as visual avatars for players in game interfaces
+2. **Subagent Commit Messages**: Emoji prefixes in commit messages when using specialized subagents (e.g., "🐰 Game Logic Specialist:")
+
+**Prohibited Uses:**
+- Code comments, variable names, or function names
+- User interface text, buttons, or labels
+- Documentation files, README content, or technical writing
+- Error messages, notifications, or status indicators
+- Any form of communication or content creation
+
+**Enforcement**: This rule applies to all development work, automated generation, and content creation unless explicitly requested otherwise by the project owner.
+
 ## TypeScript Standards
 
 ### General TypeScript Guidelines
@@ -328,3 +345,16 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
 - [ ] CORS configuration
 - [ ] No sensitive data in logs
 - [ ] Proper authentication checks
+
+## Critical Implementation Notes
+
+### Emoji Picker Positioning (PROTECTED CODE)
+**Location**: `src/static/app.js` - `toggleEmojiPicker()` method
+
+**CRITICAL**: This method uses specific positioning logic to solve z-index stacking issues:
+- Moves picker to `document.body` to escape parent container stacking contexts
+- Uses `setProperty` with `'important'` flag to override CSS conflicts
+- Requires `setTimeout` delay for reliable `getBoundingClientRect()` positioning
+- Forces `z-index: 999999` to appear above all UI elements
+
+**Do not modify this positioning logic** - it was extensively debugged to solve emoji picker being hidden under UI elements.
