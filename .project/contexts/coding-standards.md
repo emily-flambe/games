@@ -1,5 +1,22 @@
 # Coding Standards & Guidelines
 
+## Communication & Content Standards
+
+### Emoji Usage Policy
+**CRITICAL RULE**: Emojis are STRICTLY PROHIBITED in all code, documentation, UI text, and communication except for these two approved cases:
+
+1. **Player Avatar Emojis**: Emoji characters used as visual avatars for players in game interfaces
+2. **Subagent Commit Messages**: Emoji prefixes in commit messages when using specialized subagents (e.g., "🐰 Game Logic Specialist:")
+
+**Prohibited Uses:**
+- Code comments, variable names, or function names
+- User interface text, buttons, or labels
+- Documentation files, README content, or technical writing
+- Error messages, notifications, or status indicators
+- Any form of communication or content creation
+
+**Enforcement**: This rule applies to all development work, automated generation, and content creation unless explicitly requested otherwise by the project owner.
+
 ## TypeScript Standards
 
 ### General TypeScript Guidelines

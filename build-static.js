@@ -23,7 +23,7 @@ function readStaticAssets() {
             
             if (stats.isFile()) {
                 const content = fs.readFileSync(filePath, 'utf8');
-                const routePath = `/${file}`;
+                const routePath = `/static/${file}`; // Keep /static/ prefix to match HTML references
                 assets[routePath] = content;
             }
         }

@@ -4,7 +4,7 @@
  */
 
 export const staticAssets: Record<string, string> = {
-  '/app.js': `// Premium Web Games Online Incorporated LLC Esq. GPT CBD - Vanilla JavaScript
+  '/static/app.js': `// Premium Web Games Online Incorporated LLC Esq. GPT CBD - Vanilla JavaScript
 
 class GameClient {
     constructor() {
@@ -1584,7 +1584,7 @@ class GameClient {
 document.addEventListener('DOMContentLoaded', () => {
     window.gameClient = new GameClient();
 });`,
-  '/index.html': `<!DOCTYPE html>
+  '/static/index.html': `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1766,7 +1766,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="/static/app.js"></script>
 </body>
 </html>`,
-  '/styles.css': `/* Reset and base styles */
+  '/static/styles.css': `/* Reset and base styles */
 * {
     margin: 0;
     padding: 0;
