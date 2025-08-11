@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button id="current-emoji-btn" style="padding: 8px 12px; background: #f8f9fa; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 24px;">🐶</button>
                             
                             <!-- Emoji Picker Popup -->
-                            <div id="emoji-picker" style="display: none; position: absolute; top: 40px; left: 0; background: white; border: 2px solid #ccc; border-radius: 8px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 10001; width: 300px;">
+                            <div id="emoji-picker" style="display: none; position: absolute; top: 40px; left: 0; background: white; border: 2px solid #ccc; border-radius: 8px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 99999; width: 300px;">
                                 <h4 style="margin: 0 0 10px 0;">Choose Your Animal:</h4>
                                 <div id="emoji-grid" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; max-height: 200px; overflow-y: auto;">
                                     <!-- Animal emojis will be populated by JavaScript -->
@@ -1337,6 +1337,16 @@ class GameShell {
                 type: 'change_name',
                 data: { newName: name }
             }));
+            
+            // Immediately update local state and UI
+            if (this.currentPlayer) {
+                this.currentPlayer.name = name;
+                if (this.players[this.currentPlayerId]) {
+                    this.players[this.currentPlayerId].name = name;
+                }
+                this.updatePlayersList();
+                this.updateCurrentPlayerInfo();
+            }
         }
     }
 
@@ -1399,11 +1409,23 @@ class GameShell {
             }));
         }
         
+        // Immediately update local state and UI
+        if (this.currentPlayer) {
+            this.currentPlayer.emoji = emoji;
+            if (this.players[this.currentPlayerId]) {
+                this.players[this.currentPlayerId].emoji = emoji;
+            }
+        }
+        
         // Update button immediately for feedback
         const emojiBtn = document.getElementById('current-emoji-btn');
         if (emojiBtn) {
             emojiBtn.textContent = emoji;
         }
+        
+        // Update all UI elements with new emoji
+        this.updatePlayersList();
+        this.updateCurrentPlayerInfo();
         
         // Hide picker
         const picker = document.getElementById('emoji-picker');
@@ -4765,9 +4787,9 @@ main {
   "version": "1.0.0-alpha",
   "baseVersion": "1.0.0",
   "branch": "game-shell-architecture",
-  "commit": "c2c8974",
-  "timestamp": "2025-08-11T00:44:02.833Z",
-  "deployedAt": "Aug 10, 2025, 06:44 PM MDT"
+  "commit": "5b833a9",
+  "timestamp": "2025-08-11T00:50:30.087Z",
+  "deployedAt": "Aug 10, 2025, 06:50 PM MDT"
 }`
 };
 

@@ -746,6 +746,16 @@ class GameShell {
                 type: 'change_name',
                 data: { newName: name }
             }));
+            
+            // Immediately update local state and UI
+            if (this.currentPlayer) {
+                this.currentPlayer.name = name;
+                if (this.players[this.currentPlayerId]) {
+                    this.players[this.currentPlayerId].name = name;
+                }
+                this.updatePlayersList();
+                this.updateCurrentPlayerInfo();
+            }
         }
     }
 
@@ -808,11 +818,23 @@ class GameShell {
             }));
         }
         
+        // Immediately update local state and UI
+        if (this.currentPlayer) {
+            this.currentPlayer.emoji = emoji;
+            if (this.players[this.currentPlayerId]) {
+                this.players[this.currentPlayerId].emoji = emoji;
+            }
+        }
+        
         // Update button immediately for feedback
         const emojiBtn = document.getElementById('current-emoji-btn');
         if (emojiBtn) {
             emojiBtn.textContent = emoji;
         }
+        
+        // Update all UI elements with new emoji
+        this.updatePlayersList();
+        this.updateCurrentPlayerInfo();
         
         // Hide picker
         const picker = document.getElementById('emoji-picker');
