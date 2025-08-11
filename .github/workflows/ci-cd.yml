@@ -1,4 +1,4 @@
-name: Auto Version & Deploy
+name: CI/CD Pipeline
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  version-and-deploy:
+  test-and-deploy:
     runs-on: ubuntu-latest
     
     steps:
@@ -23,16 +23,59 @@ jobs:
         node-version: '18'
         cache: 'npm'
     
+    - name: Install system dependencies for Puppeteer
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libnss3-dev \
+          libatk-bridge2.0-dev \
+          libdrm-dev \
+          libgtk-3-dev \
+          libgbm-dev
+    
     - name: Install dependencies
       run: npm ci
     
-    - name: Run tests
-      run: npm test
+    - name: Run unit tests
+      run: npm run test:unit
+    
+    - name: Start server in background
+      run: |
+        npm run dev &
+        echo $! > server.pid
+      
+    - name: Wait for server to start
+      run: |
+        echo "🔄 Waiting for server to start on port 8777..."
+        timeout 30 bash -c 'until nc -z localhost 8777; do sleep 1; done'
+        echo "✅ Server is ready!"
+    
+    - name: Run integration tests
+      run: make test
+      env:
+        CI: true
+      
+    - name: Upload screenshots on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-failure-screenshots
+        path: screenshots/
+        retention-days: 7
+        if-no-files-found: ignore
+      
+    - name: Stop server
+      run: |
+        if [ -f server.pid ]; then
+          kill $(cat server.pid) || true
+          rm server.pid
+        fi
+      if: always()
     
     - name: Build project
       run: npm run build
     
-    # Only run version bump and deploy on main branch pushes (not PRs) AND if tests pass
+    # Only run version bump and deploy on main branch pushes (not PRs) AND if all tests pass
     - name: Bump version based on conventional commits
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       id: version
