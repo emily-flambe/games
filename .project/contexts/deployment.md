@@ -14,6 +14,34 @@ npx wrangler login
 npm run deploy
 ```
 
+## Automated Versioning
+
+**CRITICAL**: Commit messages control automated deployments!
+
+### Commit Format → Version Bump
+- `feat:` → Minor version (1.0.0 → 1.1.0)
+- `fix:` → Patch version (1.0.0 → 1.0.1)
+- `feat!:` → Major version (1.0.0 → 2.0.0)
+- `docs:`, `chore:` → No version bump
+
+### Examples
+```bash
+# Auto-deploy with minor bump
+git commit -m "feat: add spectator mode"
+
+# Auto-deploy with patch bump  
+git commit -m "fix: WebSocket reconnection"
+
+# No deployment
+git commit -m "docs: update README"
+```
+
+### Deployment Flow
+1. Push to `main` with conventional commit
+2. GitHub Actions auto-bumps version
+3. Creates git tag and deploys to Cloudflare
+4. Updates version display on site
+
 ## Requirements
 - Node.js 18+
 - Cloudflare account with Workers enabled
