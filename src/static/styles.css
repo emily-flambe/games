@@ -1949,18 +1949,24 @@ main {
 }
 
 .chat-message {
-    padding: 0.25rem 0;
+    padding: 0.5rem;
     margin-bottom: 0.5rem;
+    background: rgba(52, 152, 219, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid rgba(52, 152, 219, 0.3);
+    word-wrap: break-word;
 }
 
 .chat-author {
     font-weight: 600;
     color: #2c3e50;
     margin-right: 0.5rem;
+    display: inline-block;
 }
 
 .chat-text {
     color: #555;
+    display: inline;
 }
 
 .chat-input-area {

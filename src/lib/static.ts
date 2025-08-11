@@ -253,26 +253,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="games-grid">
                     <button class="game-card" data-game="checkbox-game">
                         <h3>Checkbox Game</h3>
-                        <p>Collaborate with others on a shared 3x3 checkbox grid</p>
+                        <p>Not really a game lol</p>
                     </button>
-                    <button class="game-card coming-soon" data-game="tic-tac-toe">
-                        <h3>Tic Tac Toe</h3>
-                        <p>Classic 3x3 strategy game</p>
+                    <button class="game-card coming-soon" data-game="paddlin-game">
+                        <h3>That's a Paddlin'</h3>
+                        <p>N-way pong with paddles around a shared arena</p>
                         <div class="coming-soon-badge">Coming Soon</div>
                     </button>
-                    <button class="game-card coming-soon" data-game="rock-paper-scissors">
-                        <h3>Rock Paper Scissors</h3>
-                        <p>Quick decision-based game</p>
+                    <button class="game-card coming-soon" data-game="votes-game">
+                        <h3>Everybody Votes</h3>
+                        <p>Vote on fun questions and predict what others will choose</p>
                         <div class="coming-soon-badge">Coming Soon</div>
                     </button>
-                    <button class="game-card coming-soon" data-game="connect-four">
-                        <h3>Connect Four</h3>
-                        <p>Drop chips to connect four in a row</p>
+                    <button class="game-card coming-soon" data-game="bracketeering-game">
+                        <h3>Bracketeering</h3>
+                        <p>Tournament-style voting on head-to-head matchups</p>
                         <div class="coming-soon-badge">Coming Soon</div>
                     </button>
-                    <button class="game-card coming-soon" data-game="drawing">
-                        <h3>Drawing Game</h3>
-                        <p>Draw and guess words with friends</p>
+                    <button class="game-card coming-soon" data-game="price-game">
+                        <h3>The Price is Dumb</h3>
+                        <p>Guess prices of real Etsy products without going over</p>
                         <div class="coming-soon-badge">Coming Soon</div>
                     </button>
                 </div>
@@ -360,6 +360,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     <!-- Game modules will be injected here dynamically -->
                 </div>
                 
+                <!-- Chat Area - For in-game communication -->
+                <div id="chat-area" class="chat-area" style="display: none;">
+                    <div class="chat-header">
+                        <h3>💬 Game Chat</h3>
+                    </div>
+                    <div class="chat-messages" id="chat-messages">
+                        <!-- Chat messages will appear here -->
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Type a message...">
+                        <button id="chat-send-btn">Send</button>
+                    </div>
+                </div>
+                
                 <!-- Universal End Game Screen -->
                 <div id="end-game-screen" class="end-game-screen" style="display: none;">
                     <div class="end-game-content">
@@ -396,6 +410,10 @@ document.addEventListener('DOMContentLoaded', () => {
     <!-- Game Shell Architecture -->
     <script src="/static/js/GameModule.js"></script>
     <script src="/static/js/games/CheckboxGameModule.js"></script>
+    <script src="/static/js/games/PaddlinGameModule.js"></script>
+    <script src="/static/js/games/VotesGameModule.js"></script>
+    <script src="/static/js/games/BracketeeringGameModule.js"></script>
+    <script src="/static/js/games/PriceGameModule.js"></script>
     <script src="/static/js/GameShell.js"></script>
     <script src="/static/app.js"></script>
 </body>
@@ -561,6 +579,9 @@ class GameShell {
         // Auto-refresh for active rooms
         this.refreshInterval = null;
         this.isRefreshing = false;
+        
+        // Chat state
+        this.chatMessages = [];
     }
 
     /**
@@ -583,8 +604,6 @@ class GameShell {
         
         if (roomMatch) {
             const roomCode = roomMatch[1];
-            console.log(\`🔗 Room code found in URL: \${roomCode}\`);
-            
             // Auto-join the room after a short delay to ensure DOM is ready
             setTimeout(() => {
                 this.joinExistingRoom(roomCode);
@@ -644,6 +663,9 @@ class GameShell {
         if (startGameBtn) {
             startGameBtn.addEventListener('click', () => this.startGameSession());
         }
+        
+        // Chat controls
+        this.setupChatControls();
 
         // Handle browser back/forward buttons
         window.addEventListener('popstate', (event) => {
@@ -661,6 +683,47 @@ class GameShell {
         });
     }
 
+    /**
+     * Setup chat control event listeners
+     */
+    setupChatControls() {
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        
+        if (chatInput && chatSendBtn) {
+            // Enable chat when connected
+            const enableChat = () => {
+                if (this.isConnected && (this.gameState === 'playing' || this.gameState === 'finished')) {
+                    chatInput.disabled = false;
+                    chatSendBtn.disabled = false;
+                }
+            };
+            
+            // Send message handler
+            const sendMessage = () => {
+                const message = chatInput.value.trim();
+                if (message && this.ws && this.isConnected) {
+                    this.ws.send(JSON.stringify({
+                        type: 'chat_message',
+                        data: { message }
+                    }));
+                    chatInput.value = '';
+                }
+            };
+            
+            chatSendBtn.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+            
+            // Store enableChat function for later use
+            this.enableChat = enableChat;
+        }
+    }
+    
     /**
      * Setup player control event listeners
      */
@@ -776,6 +839,12 @@ class GameShell {
                 case 'spectator_left':
                     this.handleSpectatorUpdate(message);
                     break;
+                case 'chat_message':
+                    this.handleChatMessage(message);
+                    break;
+                case 'chat_history':
+                    this.handleChatHistory(message);
+                    break;
                 case 'checkbox_toggled':
                     // Handle checkbox specific messages
                     if (this.gameModule && message.data) {
@@ -803,7 +872,6 @@ class GameShell {
         if (message.isSpectator || message.spectatorId) {
             this.isSpectator = true;
             this.spectatorId = message.spectatorId;
-            console.log('📺 Received game state as spectator');
         } else {
             this.currentPlayerId = message.playerId;
             this.currentPlayer = this.players[this.currentPlayerId];
@@ -836,7 +904,6 @@ class GameShell {
         
         // If spectator and game is in progress, load the game module
         if (this.isSpectator && this.gameState === 'playing' && !this.gameModule) {
-            console.log('🎮 Loading game module for spectator');
             this.loadGameModule(this.gameType || 'checkbox-game').then(() => {
                 if (this.gameModule) {
                     this.gameModule.currentPlayerId = null; // No player ID for spectator
@@ -970,17 +1037,12 @@ class GameShell {
         const portalView = document.getElementById('game-portal');
         const roomView = document.getElementById('game-room');
         
-        console.log('🔄 updateView called - currentView:', this.currentView, 'sessionId:', this.sessionId);
-        console.log('🔍 DOM elements found - portal:', !!portalView, 'room:', !!roomView);
-        
         if (this.currentView === 'portal') {
             portalView?.classList.add('active');
             roomView?.classList.remove('active');
-            console.log('📱 Switched to PORTAL view');
         } else {
             portalView?.classList.remove('active');
             roomView?.classList.add('active');
-            console.log('🏠 Switched to ROOM view');
         }
     }
 
@@ -1036,18 +1098,15 @@ class GameShell {
      * Handle WebSocket close
      */
     handleWebSocketClose() {
-        console.log('❌ WebSocket connection closed - currentView:', this.currentView, 'sessionId:', this.sessionId);
         this.isConnected = false;
         this.ws = null;
         
         // Don't automatically return to portal on unexpected disconnections
         // Only do this if we're intentionally leaving (sessionId is cleared)
         if (!this.sessionId) {
-            console.log('🏠 Intentional disconnect - returning to portal');
             this.currentView = 'portal';
             this.updateView();
         } else {
-            console.log('⚠️ Unexpected disconnect - maintaining room view');
             // Keep the room view active even without connection
             // This allows users to see the room state even if connection drops
         }
@@ -1070,11 +1129,73 @@ class GameShell {
     }
 
     /**
+     * Handle incoming chat message
+     */
+    handleChatMessage(message) {
+        if (message.data) {
+            this.addChatMessage(message.data);
+        }
+    }
+    
+    /**
+     * Handle chat history
+     */
+    handleChatHistory(message) {
+        if (message.data && message.data.messages) {
+            // Clear placeholder messages
+            const chatMessagesEl = document.getElementById('chat-messages');
+            if (chatMessagesEl) {
+                chatMessagesEl.innerHTML = '';
+            }
+            
+            // Add historical messages
+            message.data.messages.forEach(msg => {
+                this.addChatMessage(msg, false);
+            });
+        }
+    }
+    
+    /**
+     * Add a chat message to the UI
+     */
+    addChatMessage(messageData, scrollToBottom = true) {
+        const chatMessagesEl = document.getElementById('chat-messages');
+        if (!chatMessagesEl) return;
+        
+        // Clear placeholder messages if this is the first real message
+        if (this.chatMessages.length === 0 && chatMessagesEl.querySelector('.chat-message')) {
+            chatMessagesEl.innerHTML = '';
+        }
+        
+        const messageEl = document.createElement('div');
+        messageEl.className = 'chat-message';
+        
+        const authorEl = document.createElement('span');
+        authorEl.className = 'chat-author';
+        authorEl.textContent = \`\${messageData.playerEmoji} \${messageData.playerName}\${messageData.isSpectator ? ' (spectator)' : ''}:\`;
+        
+        const textEl = document.createElement('span');
+        textEl.className = 'chat-text';
+        textEl.textContent = messageData.message;
+        
+        messageEl.appendChild(authorEl);
+        messageEl.appendChild(textEl);
+        
+        chatMessagesEl.appendChild(messageEl);
+        
+        // Store message
+        this.chatMessages.push(messageData);
+        
+        // Scroll to bottom if requested
+        if (scrollToBottom) {
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+    }
+    
+    /**
      * Handle spectator update messages
      */
     handleSpectatorUpdate(message) {
-        console.log('Spectator update:', message.type, message);
-        
         if (message.type === 'spectator_identity') {
             this.isSpectator = true;
             this.spectatorId = message.data.spectatorId;
@@ -1086,8 +1207,6 @@ class GameShell {
             this.showSpectatorUI();
             this.updateView();
             this.hideLoadingOverlay();
-            
-            console.log('✅ Spectator mode activated - maintaining room view');
         }
         
         if (message.data && message.data.spectators) {
@@ -1289,17 +1408,34 @@ class GameShell {
      */
     updateGameControls() {
         const gameArea = document.getElementById('game-area');
+        const chatArea = document.getElementById('chat-area');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
         const playerControls = document.getElementById('player-controls');
         const playersList = document.querySelector('.players-list');
 
         // Special handling for spectators
         if (this.isSpectator) {
+            // Always ensure spectator UI is visible
+            this.showSpectatorUI();
+            
             if (this.gameState === 'playing') {
                 if (gameArea) gameArea.style.display = 'block';
+                if (chatArea) {
+                    chatArea.style.display = 'block'; // Show chat during game
+                    // Enable chat for spectators too
+                    if (chatInput) chatInput.disabled = false;
+                    if (chatSendBtn) chatSendBtn.disabled = false;
+                }
                 if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
                 if (playersList) playersList.style.display = 'none'; // Hide during gameplay
             } else {
                 if (gameArea) gameArea.style.display = 'none';
+                if (chatArea) {
+                    chatArea.style.display = 'none'; // Hide chat when not playing
+                    if (chatInput) chatInput.disabled = true;
+                    if (chatSendBtn) chatSendBtn.disabled = true;
+                }
                 if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
                 if (playersList) playersList.style.display = 'block'; // Show player list
             }
@@ -1309,14 +1445,31 @@ class GameShell {
         // Normal player controls
         if (this.gameState === 'playing') {
             if (gameArea) gameArea.style.display = 'block';
+            if (chatArea) {
+                chatArea.style.display = 'block'; // Show chat during game
+                // Enable chat for players
+                if (chatInput) chatInput.disabled = false;
+                if (chatSendBtn) chatSendBtn.disabled = false;
+            }
             if (playerControls) playerControls.style.display = 'none'; // Hide during gameplay
             if (playersList) playersList.style.display = 'none'; // Hide during gameplay
         } else if (this.gameState === 'finished') {
             if (gameArea) gameArea.style.display = 'block'; // Keep game visible for end screen
+            if (chatArea) {
+                chatArea.style.display = 'block'; // Keep chat visible at game end
+                // Keep chat enabled at game end
+                if (chatInput) chatInput.disabled = false;
+                if (chatSendBtn) chatSendBtn.disabled = false;
+            }
             if (playerControls) playerControls.style.display = 'none'; 
             if (playersList) playersList.style.display = 'none';
         } else if (this.gameState === 'waiting') {
             if (gameArea) gameArea.style.display = 'none';
+            if (chatArea) {
+                chatArea.style.display = 'none'; // Hide chat when waiting
+                if (chatInput) chatInput.disabled = true;
+                if (chatSendBtn) chatSendBtn.disabled = true;
+            }
             if (playerControls) playerControls.style.display = 'block';
             if (playersList) playersList.style.display = 'block';
         }
@@ -1341,12 +1494,22 @@ class GameShell {
                 font-weight: bold;
                 margin: 10px 0;
                 text-align: center;
+                position: sticky;
+                top: 0;
+                z-index: 10000;
             \`;
             
-            const roomInfo = document.querySelector('.room-info');
-            if (roomInfo) {
-                roomInfo.appendChild(spectatorIndicator);
+            // Insert after room-header instead of inside room-info
+            const roomHeader = document.querySelector('.room-header');
+            if (roomHeader && roomHeader.parentNode) {
+                roomHeader.parentNode.insertBefore(spectatorIndicator, roomHeader.nextSibling);
             }
+        }
+        
+        // Make sure it stays visible even when game area is shown
+        const indicator = document.getElementById('spectator-indicator');
+        if (indicator) {
+            indicator.style.display = 'block';
         }
     }
 
@@ -1452,6 +1615,26 @@ class GameShell {
             gameArea.innerHTML = '';
         }
         
+        // Hide and reset chat area
+        const chatArea = document.getElementById('chat-area');
+        if (chatArea) {
+            chatArea.style.display = 'none';
+        }
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) {
+            chatMessages.innerHTML = '';
+        }
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput) {
+            chatInput.value = '';
+            chatInput.disabled = true;
+        }
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        if (chatSendBtn) {
+            chatSendBtn.disabled = true;
+        }
+        this.chatMessages = [];
+        
         // Hide end game screen
         const endScreen = document.getElementById('end-game-screen');
         if (endScreen) endScreen.style.display = 'none';
@@ -1539,6 +1722,91 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = GameShell;
 } else {
     window.GameShell = GameShell;
+}`,
+  '/static/js/games/BracketeeringGameModule.js': `/**
+ * BracketeeringGameModule - Implements "Bracketeering" 
+ * A tournament-style voting game where players vote on various matchups
+ */
+class BracketeeringGameModule extends GameModule {
+    constructor() {
+        super();
+        // Game state will be initialized when implemented
+    }
+
+    /**
+     * Initialize the game
+     */
+    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange) {
+        super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange);
+        this.render();
+    }
+
+    /**
+     * Render the game UI
+     */
+    render() {
+        if (!this.gameAreaElement) return;
+        
+        this.gameAreaElement.innerHTML = \`
+            <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 400px;
+                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                border-radius: 12px;
+                color: white;
+                text-align: center;
+                padding: 2rem;
+            ">
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">🏆 Bracketeering 🏆</h2>
+                <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem;">Tournament-Style Voting Game</p>
+                <div style="
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 8px;
+                    padding: 1.5rem 2rem;
+                    backdrop-filter: blur(10px);
+                ">
+                    <p style="font-size: 1.1rem; margin: 0;">🚧 Coming Soon! 🚧</p>
+                    <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">
+                        Vote on head-to-head matchups in tournament brackets!
+                    </p>
+                </div>
+            </div>
+        \`;
+    }
+
+    /**
+     * Handle player actions
+     */
+    handlePlayerAction(playerId, action) {
+        // Will be implemented when game is ready
+        console.log('Bracketeering - Action received:', action);
+    }
+
+    /**
+     * Handle state updates from server
+     */
+    handleStateUpdate(gameSpecificState) {
+        // Will be implemented when game is ready
+        super.handleStateUpdate(gameSpecificState);
+    }
+
+    /**
+     * Clean up game resources
+     */
+    cleanup() {
+        super.cleanup();
+        // Additional cleanup when implemented
+    }
+}
+
+// Export for use
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = BracketeeringGameModule;
+} else {
+    window.BracketeeringGameModule = BracketeeringGameModule;
 }`,
   '/static/js/games/CheckboxGameModule.js': `/**
  * CheckboxGameModule - Implements the checkbox game as a GameModule
@@ -1846,6 +2114,261 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = CheckboxGameModule;
 } else {
     window.CheckboxGameModule = CheckboxGameModule;
+}`,
+  '/static/js/games/PaddlinGameModule.js': `/**
+ * PaddlinGameModule - Implements "That's a Paddlin'" (N-way pong game)
+ * A multiplayer pong variant where N players control paddles around a shared play area
+ */
+class PaddlinGameModule extends GameModule {
+    constructor() {
+        super();
+        // Game state will be initialized when implemented
+    }
+
+    /**
+     * Initialize the game
+     */
+    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange) {
+        super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange);
+        this.render();
+    }
+
+    /**
+     * Render the game UI
+     */
+    render() {
+        if (!this.gameAreaElement) return;
+        
+        this.gameAreaElement.innerHTML = \`
+            <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 400px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 12px;
+                color: white;
+                text-align: center;
+                padding: 2rem;
+            ">
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">🏓 That's a Paddlin' 🏓</h2>
+                <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem;">N-way Pong Game</p>
+                <div style="
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 8px;
+                    padding: 1.5rem 2rem;
+                    backdrop-filter: blur(10px);
+                ">
+                    <p style="font-size: 1.1rem; margin: 0;">🚧 Coming Soon! 🚧</p>
+                    <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">
+                        Multiple players control paddles around a shared arena
+                    </p>
+                </div>
+            </div>
+        \`;
+    }
+
+    /**
+     * Handle player actions
+     */
+    handlePlayerAction(playerId, action) {
+        // Will be implemented when game is ready
+        console.log('That\\'s a Paddlin\\' - Action received:', action);
+    }
+
+    /**
+     * Handle state updates from server
+     */
+    handleStateUpdate(gameSpecificState) {
+        // Will be implemented when game is ready
+        super.handleStateUpdate(gameSpecificState);
+    }
+
+    /**
+     * Clean up game resources
+     */
+    cleanup() {
+        super.cleanup();
+        // Additional cleanup when implemented
+    }
+}
+
+// Export for use
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = PaddlinGameModule;
+} else {
+    window.PaddlinGameModule = PaddlinGameModule;
+}`,
+  '/static/js/games/PriceGameModule.js': `/**
+ * PriceGameModule - Implements "The Price is Dumb" 
+ * A Price is Right clone using Etsy API for real product pricing
+ */
+class PriceGameModule extends GameModule {
+    constructor() {
+        super();
+        // Game state will be initialized when implemented
+    }
+
+    /**
+     * Initialize the game
+     */
+    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange) {
+        super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange);
+        this.render();
+    }
+
+    /**
+     * Render the game UI
+     */
+    render() {
+        if (!this.gameAreaElement) return;
+        
+        this.gameAreaElement.innerHTML = \`
+            <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 400px;
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                border-radius: 12px;
+                color: white;
+                text-align: center;
+                padding: 2rem;
+            ">
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">💰 The Price is Dumb 💰</h2>
+                <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem;">Price is Right Clone with Etsy Products</p>
+                <div style="
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 8px;
+                    padding: 1.5rem 2rem;
+                    backdrop-filter: blur(10px);
+                ">
+                    <p style="font-size: 1.1rem; margin: 0;">🚧 Coming Soon! 🚧</p>
+                    <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">
+                        Guess the price of real Etsy products without going over!
+                    </p>
+                </div>
+            </div>
+        \`;
+    }
+
+    /**
+     * Handle player actions
+     */
+    handlePlayerAction(playerId, action) {
+        // Will be implemented when game is ready
+        console.log('The Price is Dumb - Action received:', action);
+    }
+
+    /**
+     * Handle state updates from server
+     */
+    handleStateUpdate(gameSpecificState) {
+        // Will be implemented when game is ready
+        super.handleStateUpdate(gameSpecificState);
+    }
+
+    /**
+     * Clean up game resources
+     */
+    cleanup() {
+        super.cleanup();
+        // Additional cleanup when implemented
+    }
+}
+
+// Export for use
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = PriceGameModule;
+} else {
+    window.PriceGameModule = PriceGameModule;
+}`,
+  '/static/js/games/VotesGameModule.js': `/**
+ * VotesGameModule - Implements "Everybody Votes" (Nintendo Wii clone)
+ * A voting game where players answer fun questions and predict what others will choose
+ */
+class VotesGameModule extends GameModule {
+    constructor() {
+        super();
+        // Game state will be initialized when implemented
+    }
+
+    /**
+     * Initialize the game
+     */
+    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange) {
+        super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange);
+        this.render();
+    }
+
+    /**
+     * Render the game UI
+     */
+    render() {
+        if (!this.gameAreaElement) return;
+        
+        this.gameAreaElement.innerHTML = \`
+            <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 400px;
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                border-radius: 12px;
+                color: white;
+                text-align: center;
+                padding: 2rem;
+            ">
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">🗳️ Everybody Votes 🗳️</h2>
+                <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem;">Nintendo Wii Channel Clone</p>
+                <div style="
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 8px;
+                    padding: 1.5rem 2rem;
+                    backdrop-filter: blur(10px);
+                ">
+                    <p style="font-size: 1.1rem; margin: 0;">🚧 Coming Soon! 🚧</p>
+                    <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">
+                        Vote on fun questions and predict what others will choose!
+                    </p>
+                </div>
+            </div>
+        \`;
+    }
+
+    /**
+     * Handle player actions
+     */
+    handlePlayerAction(playerId, action) {
+        // Will be implemented when game is ready
+        console.log('Everybody Votes - Action received:', action);
+    }
+
+    /**
+     * Handle state updates from server
+     */
+    handleStateUpdate(gameSpecificState) {
+        // Will be implemented when game is ready
+        super.handleStateUpdate(gameSpecificState);
+    }
+
+    /**
+     * Clean up game resources
+     */
+    cleanup() {
+        super.cleanup();
+        // Additional cleanup when implemented
+    }
+}
+
+// Export for use
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = VotesGameModule;
+} else {
+    window.VotesGameModule = VotesGameModule;
 }`,
   '/static/styles.css': `/* Reset and base styles */
 * {
@@ -3759,14 +4282,111 @@ input:focus {
 /* Ensure main content doesn't overlap footer */
 main {
     padding-bottom: 3rem;
+}
+
+/* Chat Area - In-game chat feature */
+.chat-area {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(52, 152, 219, 0.3);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    max-height: 300px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-header {
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 0.75rem;
+}
+
+.chat-header h3 {
+    color: #2c3e50;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 150px;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.chat-message {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    background: rgba(52, 152, 219, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid rgba(52, 152, 219, 0.3);
+    word-wrap: break-word;
+}
+
+.chat-author {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-right: 0.5rem;
+    display: inline-block;
+}
+
+.chat-text {
+    color: #555;
+    display: inline;
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 0.5rem;
+}
+
+#chat-input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+#chat-input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+#chat-send-btn {
+    padding: 0.5rem 1rem;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#chat-send-btn:hover:not(:disabled) {
+    background: #2980b9;
+}
+
+#chat-send-btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+    opacity: 0.6;
 }`,
   '/static/version.json': `{
   "version": "1.0.0-alpha",
   "baseVersion": "1.0.0",
   "branch": "game-shell-architecture",
-  "commit": "63c8f50",
-  "timestamp": "2025-08-10T23:57:35.101Z",
-  "deployedAt": "Aug 10, 2025, 05:57 PM MDT"
+  "commit": "be18e28",
+  "timestamp": "2025-08-11T00:17:30.623Z",
+  "deployedAt": "Aug 10, 2025, 06:17 PM MDT"
 }`
 };
 

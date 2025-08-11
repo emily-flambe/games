@@ -46,6 +46,7 @@ class GameSession {
     this.websockets = new Set();
     this.playerSockets = new Map(); // Track player ID -> WebSocket mapping
     this.spectatorSockets = new Map(); // Track spectator ID -> WebSocket mapping
+    this.chatHistory = []; // Store chat messages
     this.gameState = {
       type: 'checkbox-game',
       status: 'waiting',
@@ -115,6 +116,26 @@ class GameSession {
       gameState: this.gameState,
       playerId: playerId
     }));
+    
+    // Send chat history to new player
+    if (this.chatHistory.length > 0) {
+      ws.send(JSON.stringify({
+        type: 'chat_history',
+        data: {
+          messages: this.chatHistory.map(msg => {
+            const sender = this.players.get(msg.playerId) || this.spectators.get(msg.playerId);
+            return {
+              playerId: msg.playerId,
+              playerName: sender?.name || 'Unknown',
+              playerEmoji: sender?.emoji || '👤',
+              message: msg.message,
+              timestamp: msg.timestamp,
+              isSpectator: this.spectators.has(msg.playerId)
+            };
+          })
+        }
+      }));
+    }
   }
 
   addSpectator(spectatorId, ws) {
@@ -153,6 +174,26 @@ class GameSession {
       spectatorId: spectatorId,
       isSpectator: true
     }));
+    
+    // Send chat history to spectator
+    if (this.chatHistory.length > 0) {
+      ws.send(JSON.stringify({
+        type: 'chat_history',
+        data: {
+          messages: this.chatHistory.map(msg => {
+            const sender = this.players.get(msg.playerId) || this.spectators.get(msg.playerId);
+            return {
+              playerId: msg.playerId,
+              playerName: sender?.name || 'Unknown',
+              playerEmoji: sender?.emoji || '👤',
+              message: msg.message,
+              timestamp: msg.timestamp,
+              isSpectator: this.spectators.has(msg.playerId)
+            };
+          })
+        }
+      }));
+    }
     
     // Notify all users that a spectator joined
     this.broadcast({
@@ -514,6 +555,39 @@ class GameSession {
           console.log(`${isSpectator ? 'Spectator' : 'Player'} ${playerId} returning to home screen`);
           // This will trigger the disconnect logic which removes the player/spectator
           ws.close();
+          break;
+          
+        case 'chat_message':
+          const messageText = data.data?.message || data.message;
+          if (messageText && messageText.trim()) {
+            const chatMessage = {
+              playerId: playerId,
+              message: messageText.trim(),
+              timestamp: Date.now()
+            };
+            
+            // Add to chat history (keep last 50 messages)
+            this.chatHistory.push(chatMessage);
+            if (this.chatHistory.length > 50) {
+              this.chatHistory.shift();
+            }
+            
+            // Get sender info (could be player or spectator)
+            const sender = this.players.get(playerId) || this.spectators.get(playerId);
+            
+            // Broadcast to all connected clients
+            this.broadcast({
+              type: 'chat_message',
+              data: {
+                playerId: playerId,
+                playerName: sender?.name || 'Unknown',
+                playerEmoji: sender?.emoji || '👤',
+                message: messageText.trim(),
+                timestamp: chatMessage.timestamp,
+                isSpectator: this.spectators.has(playerId)
+              }
+            });
+          }
           break;
           
         default:
