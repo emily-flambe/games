@@ -42,6 +42,10 @@ class CheckboxGameModule extends GameModule {
         if (gameSpecificState.playerScores) {
             this.playerScores = gameSpecificState.playerScores;
         }
+        // Update players if included in the gameSpecificState
+        if (gameSpecificState.players) {
+            this.players = gameSpecificState.players;
+        }
         
         
         this.render();

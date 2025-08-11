@@ -898,7 +898,12 @@ class GameShell {
                 case 'checkbox_toggled':
                     // Handle checkbox specific messages
                     if (this.gameModule && message.data) {
-                        const playerId = message.data.toggledBy || message.playerId;
+                        // Update players if gameState is included
+                        if (message.data.gameState && message.data.gameState.players) {
+                            this.players = message.data.gameState.players;
+                            this.gameModule.updatePlayers(this.players);
+                        }
+                        const playerId = message.data.playerId || message.data.toggledBy || message.playerId;
                         this.gameModule.handlePlayerAction(playerId, message);
                     }
                     break;
@@ -2066,6 +2071,10 @@ class CheckboxGameModule extends GameModule {
         }
         if (gameSpecificState.playerScores) {
             this.playerScores = gameSpecificState.playerScores;
+        }
+        // Update players if included in the gameSpecificState
+        if (gameSpecificState.players) {
+            this.players = gameSpecificState.players;
         }
         
         
@@ -4867,9 +4876,9 @@ main {
   "version": "1.0.0-alpha",
   "baseVersion": "1.0.0",
   "branch": "game-shell-architecture",
-  "commit": "a336337",
-  "timestamp": "2025-08-11T02:26:22.940Z",
-  "deployedAt": "Aug 10, 2025, 08:26 PM MDT"
+  "commit": "887075b",
+  "timestamp": "2025-08-11T03:19:42.719Z",
+  "deployedAt": "Aug 10, 2025, 09:19 PM MDT"
 }`
 };
 

@@ -300,7 +300,12 @@ class GameShell {
                 case 'checkbox_toggled':
                     // Handle checkbox specific messages
                     if (this.gameModule && message.data) {
-                        const playerId = message.data.toggledBy || message.playerId;
+                        // Update players if gameState is included
+                        if (message.data.gameState && message.data.gameState.players) {
+                            this.players = message.data.gameState.players;
+                            this.gameModule.updatePlayers(this.players);
+                        }
+                        const playerId = message.data.playerId || message.data.toggledBy || message.playerId;
                         this.gameModule.handlePlayerAction(playerId, message);
                     }
                     break;
