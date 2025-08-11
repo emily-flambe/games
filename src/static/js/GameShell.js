@@ -761,6 +761,17 @@ class GameShell {
 
     /**
      * Show emoji picker
+     * 
+     * CRITICAL: EMOJI PICKER POSITIONING (PROTECTED CODE - DO NOT MODIFY)
+     * This method uses specific positioning logic to solve z-index stacking issues:
+     * - Moves picker to document.body to escape parent container stacking contexts
+     * - Uses setProperty with 'important' flag to override CSS conflicts
+     * - Calculates position after showing picker for accurate getBoundingClientRect()
+     * - Forces z-index: 999999 to appear above all UI elements
+     * - Handles viewport boundaries to prevent picker from appearing off-screen
+     * 
+     * DO NOT MODIFY this positioning logic - it was extensively debugged to solve
+     * emoji picker being hidden under UI elements or appearing in wrong position.
      */
     showEmojiPicker() {
         const picker = document.getElementById('emoji-picker');
@@ -774,18 +785,18 @@ class GameShell {
                     this.initializeEmojiGrid();
                 }
                 
-                // Move picker to body if not already there (to escape parent containers)
+                // CRITICAL: Move picker to body to escape parent container z-index issues
                 if (picker.parentElement !== document.body) {
                     document.body.appendChild(picker);
                 }
                 
-                // Show the picker first
+                // Show the picker first (required for accurate height calculation)
                 picker.style.display = 'block';
                 
-                // Force position: fixed for proper positioning
+                // CRITICAL: Force position: fixed for proper positioning
                 picker.style.position = 'fixed';
                 
-                // Then position it relative to the button
+                // Calculate position relative to the button
                 const rect = emojiBtn.getBoundingClientRect();
                 const pickerWidth = 340; // Width set in HTML
                 const pickerHeight = picker.getBoundingClientRect().height;
@@ -811,7 +822,7 @@ class GameShell {
                     }
                 }
                 
-                // Apply positioning with important flag to override any conflicting styles
+                // CRITICAL: Apply positioning with !important to override any conflicting styles
                 picker.style.setProperty('left', left + 'px', 'important');
                 picker.style.setProperty('top', top + 'px', 'important');
                 picker.style.setProperty('z-index', '999999', 'important');
