@@ -1912,8 +1912,8 @@ input:focus {
     white-space: nowrap;
 }
 
-/* Responsive breakpoint for narrow screens */
-@media (max-width: 500px) {
+/* Responsive breakpoint for narrow screens and constrained layouts */
+@media (max-width: 750px) {
     .responsive-name-control {
         flex-direction: column;
         align-items: stretch;
@@ -1938,7 +1938,10 @@ input:focus {
         padding: 12px 20px;
         font-size: 16px; /* Better touch target */
     }
-    
+}
+
+/* Additional mobile-specific adjustments */
+@media (max-width: 600px) {
     /* Adjust player controls padding on mobile */
     #player-controls {
         padding-left: 20px !important;
@@ -1961,6 +1964,22 @@ input:focus {
     .waiting-room-content > div > #player-controls {
         border-left: none !important;
     }
+}
+
+/* Alternative approach: Always stack in the waiting room context */
+.waiting-room-content .responsive-name-control {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.waiting-room-content .name-input-group {
+    flex-direction: column;
+    gap: 8px;
+}
+
+.waiting-room-content .update-btn {
+    width: 100%;
 }
 
 /* Mobile responsive styles for new layout */
