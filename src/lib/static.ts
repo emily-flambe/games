@@ -331,38 +331,43 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 
-                <!-- Universal Player Controls - for ALL games -->
-                <div id="player-controls" class="player-controls">
-                    <div class="player-info-container">
-                        <h3>Who Are You?</h3>
-                        <div class="player-info" style="display: flex; gap: 15px; align-items: center; background: #f9f9f9; padding: 15px; border-radius: 8px;">
-                        <div class="name-control" style="display: flex; gap: 10px; align-items: center;">
-                            <label style="font-weight: bold;">Name:</label>
-                            <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 150px;">
-                            <button id="update-name-btn" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Update</button>
+                <!-- Combined Waiting Room Container -->
+                <div class="waiting-room-container" style="background: white; border: 2px solid #e0e0e0; border-radius: 12px; padding: 25px; margin: 20px 0; display: flex; gap: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <!-- Players List Section (Left) -->
+                    <div class="players-list" style="flex: 1; min-width: 200px;">
+                        <div class="players-header" style="margin-bottom: 15px;">
+                            <h3 style="margin: 0; color: #333;">Players</h3>
+                            <button id="start-game-btn-header">Start Game</button>
                         </div>
-                        <div class="emoji-control" style="display: flex; gap: 10px; align-items: center; position: relative;">
-                            <label style="font-weight: bold;">Emoji:</label>
-                            <button id="current-emoji-btn" style="padding: 8px 12px; background: #f8f9fa; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 24px;">🐶</button>
-                            
-                            <!-- Emoji Picker Popup -->
-                            <div id="emoji-picker" style="display: none; position: absolute; top: 40px; left: 0; background: white; border: 2px solid #ccc; border-radius: 8px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 99999; width: 300px;">
-                                <h4 style="margin: 0 0 10px 0;">Choose Your Animal:</h4>
-                                <div id="emoji-grid" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; max-height: 200px; overflow-y: auto;">
-                                    <!-- Animal emojis will be populated by JavaScript -->
+                        <div id="players-container" style="background: #f8f9fa; border-radius: 8px; padding: 10px; min-height: 120px;"></div>
+                    </div>
+                    
+                    <!-- Player Identity Section (Right) -->
+                    <div id="player-controls" class="player-controls" style="flex: 1; min-width: 300px; border-left: 2px solid #e0e0e0; padding-left: 30px;">
+                        <div class="player-info-container">
+                            <h3 style="margin: 0 0 20px 0; color: #333;">Who Are You?</h3>
+                            <div class="player-info" style="display: flex; flex-direction: column; gap: 18px;">
+                                <div class="name-control" style="display: flex; gap: 12px; align-items: center;">
+                                    <label style="font-weight: 600; min-width: 55px; color: #555;">Name:</label>
+                                    <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20" style="padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; flex: 1; font-size: 14px;">
+                                    <button id="update-name-btn" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">Update</button>
+                                </div>
+                                <div class="emoji-control" style="display: flex; gap: 12px; align-items: center;">
+                                    <label style="font-weight: 600; min-width: 55px; color: #555;">Avatar:</label>
+                                    <button id="current-emoji-btn" style="padding: 10px 16px; background: white; border: 2px solid #007bff; border-radius: 6px; cursor: pointer; font-size: 28px; transition: all 0.2s; min-width: 60px;" onmouseover="this.style.background='#e3f2fd'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='white'; this.style.transform='scale(1)'">🐶</button>
+                                    <span style="color: #888; font-size: 13px;">Click to change</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    </div>
                 </div>
                 
-                <div class="players-list">
-                    <div class="players-header">
-                        <h3>Players</h3>
-                        <button id="start-game-btn-header">Start Game</button>
+                <!-- Emoji Picker Popup (Outside container to avoid overflow issues) -->
+                <div id="emoji-picker" style="display: none; position: fixed; background: white; border: 2px solid #007bff; border-radius: 10px; padding: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 99999; width: 340px;">
+                    <h4 style="margin: 0 0 12px 0; color: #333; font-size: 16px; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">Choose Your Avatar</h4>
+                    <div id="emoji-grid" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; max-height: 280px; overflow-y: auto; padding: 5px;">
+                        <!-- Animal emojis will be populated by JavaScript -->
                     </div>
-                    <div id="players-container"></div>
                 </div>
                 
                 <!-- Game Area - Where all game modules render -->
@@ -1355,13 +1360,23 @@ class GameShell {
      */
     showEmojiPicker() {
         const picker = document.getElementById('emoji-picker');
-        if (picker) {
-            picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
-            
-            // Initialize emoji grid if not already done
-            const emojiGrid = document.getElementById('emoji-grid');
-            if (emojiGrid && emojiGrid.children.length === 0) {
-                this.initializeEmojiGrid();
+        const emojiBtn = document.getElementById('current-emoji-btn');
+        
+        if (picker && emojiBtn) {
+            if (picker.style.display === 'none') {
+                // Position the picker relative to the emoji button
+                const rect = emojiBtn.getBoundingClientRect();
+                picker.style.left = rect.left + 'px';
+                picker.style.top = (rect.bottom + 5) + 'px';
+                picker.style.display = 'block';
+                
+                // Initialize emoji grid if not already done
+                const emojiGrid = document.getElementById('emoji-grid');
+                if (emojiGrid && emojiGrid.children.length === 0) {
+                    this.initializeEmojiGrid();
+                }
+            } else {
+                picker.style.display = 'none';
             }
         }
     }
@@ -1384,15 +1399,19 @@ class GameShell {
         animalEmojis.forEach(emoji => {
             const emojiBtn = document.createElement('button');
             emojiBtn.textContent = emoji;
-            emojiBtn.style.cssText = 'border: none; background: none; font-size: 24px; cursor: pointer; padding: 5px; border-radius: 4px;';
+            emojiBtn.style.cssText = 'border: 1px solid transparent; background: white; font-size: 26px; cursor: pointer; padding: 8px; border-radius: 6px; transition: all 0.2s; aspect-ratio: 1;';
             emojiBtn.addEventListener('click', () => {
                 this.selectEmoji(emoji);
             });
             emojiBtn.addEventListener('mouseover', () => {
-                emojiBtn.style.background = '#f0f0f0';
+                emojiBtn.style.background = '#e3f2fd';
+                emojiBtn.style.borderColor = '#007bff';
+                emojiBtn.style.transform = 'scale(1.1)';
             });
             emojiBtn.addEventListener('mouseout', () => {
-                emojiBtn.style.background = 'none';
+                emojiBtn.style.background = 'white';
+                emojiBtn.style.borderColor = 'transparent';
+                emojiBtn.style.transform = 'scale(1)';
             });
             emojiGrid.appendChild(emojiBtn);
         });
@@ -4787,9 +4806,9 @@ main {
   "version": "1.0.0-alpha",
   "baseVersion": "1.0.0",
   "branch": "game-shell-architecture",
-  "commit": "5b833a9",
-  "timestamp": "2025-08-11T00:50:30.087Z",
-  "deployedAt": "Aug 10, 2025, 06:50 PM MDT"
+  "commit": "f8a498e",
+  "timestamp": "2025-08-11T01:36:39.262Z",
+  "deployedAt": "Aug 10, 2025, 07:36 PM MDT"
 }`
 };
 

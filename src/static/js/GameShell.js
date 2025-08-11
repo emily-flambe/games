@@ -764,13 +764,23 @@ class GameShell {
      */
     showEmojiPicker() {
         const picker = document.getElementById('emoji-picker');
-        if (picker) {
-            picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
-            
-            // Initialize emoji grid if not already done
-            const emojiGrid = document.getElementById('emoji-grid');
-            if (emojiGrid && emojiGrid.children.length === 0) {
-                this.initializeEmojiGrid();
+        const emojiBtn = document.getElementById('current-emoji-btn');
+        
+        if (picker && emojiBtn) {
+            if (picker.style.display === 'none') {
+                // Position the picker relative to the emoji button
+                const rect = emojiBtn.getBoundingClientRect();
+                picker.style.left = rect.left + 'px';
+                picker.style.top = (rect.bottom + 5) + 'px';
+                picker.style.display = 'block';
+                
+                // Initialize emoji grid if not already done
+                const emojiGrid = document.getElementById('emoji-grid');
+                if (emojiGrid && emojiGrid.children.length === 0) {
+                    this.initializeEmojiGrid();
+                }
+            } else {
+                picker.style.display = 'none';
             }
         }
     }
@@ -793,15 +803,19 @@ class GameShell {
         animalEmojis.forEach(emoji => {
             const emojiBtn = document.createElement('button');
             emojiBtn.textContent = emoji;
-            emojiBtn.style.cssText = 'border: none; background: none; font-size: 24px; cursor: pointer; padding: 5px; border-radius: 4px;';
+            emojiBtn.style.cssText = 'border: 1px solid transparent; background: white; font-size: 26px; cursor: pointer; padding: 8px; border-radius: 6px; transition: all 0.2s; aspect-ratio: 1;';
             emojiBtn.addEventListener('click', () => {
                 this.selectEmoji(emoji);
             });
             emojiBtn.addEventListener('mouseover', () => {
-                emojiBtn.style.background = '#f0f0f0';
+                emojiBtn.style.background = '#e3f2fd';
+                emojiBtn.style.borderColor = '#007bff';
+                emojiBtn.style.transform = 'scale(1.1)';
             });
             emojiBtn.addEventListener('mouseout', () => {
-                emojiBtn.style.background = 'none';
+                emojiBtn.style.background = 'white';
+                emojiBtn.style.borderColor = 'transparent';
+                emojiBtn.style.transform = 'scale(1)';
             });
             emojiGrid.appendChild(emojiBtn);
         });
