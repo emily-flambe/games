@@ -58,7 +58,7 @@ class EverybodyVotesGameModule extends GameModule {
                 ">
                     <p style="font-size: 1.1rem; margin: 0;">🚧 Coming Soon! 🚧</p>
                     <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">
-                        Vote on fun questions and predict what others will choose!
+                        Remember that game on Wii channel? Wasn't it fun? I miss it
                     </p>
                 </div>
             </div>

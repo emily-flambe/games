@@ -254,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>
                     <button class="game-card" data-game="votes-game">
                         <h3>Everybody Votes</h3>
-                        <p>Vote on fun questions and predict what others will choose</p>
+                        <p>Remember that game on Wii channel? Wasn't it fun? I miss it</p>
                         <div class="coming-soon-badge">WIP</div>
                     </button>
                     <button class="game-card coming-soon" data-game="paddlin-game">
@@ -2404,7 +2404,7 @@ class EverybodyVotesGameModule extends GameModule {
                 ">
                     <p style="font-size: 1.1rem; margin: 0;">🚧 Coming Soon! 🚧</p>
                     <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">
-                        Vote on fun questions and predict what others will choose!
+                        Remember that game on Wii channel? Wasn't it fun? I miss it
                     </p>
                 </div>
             </div>
@@ -4869,9 +4869,9 @@ main {
   "version": "1.0.0-alpha",
   "baseVersion": "1.0.0",
   "branch": "game-shell-architecture",
-  "commit": "a03ebb8",
-  "timestamp": "2025-08-11T03:25:37.322Z",
-  "deployedAt": "Aug 10, 2025, 09:25 PM MDT"
+  "commit": "6525c1b",
+  "timestamp": "2025-08-11T03:29:27.541Z",
+  "deployedAt": "Aug 10, 2025, 09:29 PM MDT"
 }`
 };
 
