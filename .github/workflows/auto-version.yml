@@ -29,7 +29,10 @@ jobs:
     - name: Run tests
       run: npm test
     
-    # Only run version bump and deploy on main branch pushes (not PRs)
+    - name: Build project
+      run: npm run build
+    
+    # Only run version bump and deploy on main branch pushes (not PRs) AND if tests pass
     - name: Bump version based on conventional commits
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       id: version
@@ -49,11 +52,8 @@ jobs:
           echo "version_bumped=false" >> $GITHUB_OUTPUT
         fi
     
-    - name: Build project
-      run: npm run build
-    
     - name: Deploy to Cloudflare Workers
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.version.outputs.version_bumped == 'true'
       run: |
         npm install -g wrangler
         echo "${{ secrets.CLOUDFLARE_API_TOKEN }}" | wrangler auth login
