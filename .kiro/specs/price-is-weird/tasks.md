@@ -1,33 +1,36 @@
-# Implementation Plan - Price Is Wrong Game
+# Implementation Plan - Price Is Weird Game
 
 - [ ] 1. Set up core game module structure and interfaces
-  - Create PriceIsWrongModule class extending GameModule
+  - Create PriceIsWeirdModule class extending GameModule
   - Define TypeScript interfaces for EtsyProduct, GameConfig, and game state
   - Set up basic game phase management (lobby, product-display, guessing, results, final-results)
   - _Requirements: 1.1, 1.2, 6.1_
 
 - [ ] 2. Implement Etsy API integration service
-  - [ ] 2.1 Create EtsyProductService class with basic API connection
-    - Set up Etsy API client with authentication
-    - Implement basic product search functionality
-    - Add rate limiting to respect Etsy's 10 requests/second limit
-    - _Requirements: 4.1, 4.2_
+  - [ ] 2.1 Create EtsyProductService class with Etsy Open API v3 connection
+    - Set up Etsy API client with x-api-key authentication
+    - Implement /listings/active endpoint for product search
+    - Add rate limiting to respect Etsy's 10 requests/second and 10,000/day limits
+    - Implement proper error handling for API status codes (400, 401, 403, 404, 429, 500)
+    - _Requirements: 4.1, 4.2, 7.1, 7.5_
 
   - [ ] 2.2 Implement quirky item discovery algorithms
-    - Build unusual keyword combination search logic
-    - Implement low engagement filtering (view count < 100, new shops)
-    - Create quirkiness scoring algorithm based on materials, tags, and engagement
-    - Add niche category exploration with cross-category searches
-    - _Requirements: 4.1, 4.6_
+    - Build unusual keyword combination search logic using modifiers: "bizarre", "peculiar", "oddity", "unusual", "weird", "avant-garde", "unconventional"
+    - Implement low engagement filtering (view count < 100, shops with < 50 sales)
+    - Create quirkiness scoring algorithm (1-10 scale) based on materials, tags, view count, and shop newness
+    - Add niche category exploration with cross-category searches (e.g., "vintage electronics" + "steampunk")
+    - Implement material-based discovery for items with unusual materials
+    - _Requirements: 4.1, 4.6, 7.2, 7.3, 7.4_
 
   - [ ] 2.3 Add product caching and fallback mechanisms
-    - Implement in-memory cache for discovered quirky products
-    - Create fallback system for when API is unavailable
-    - Add error handling for API failures and malformed responses
-    - _Requirements: 4.3, 4.4_
+    - Implement in-memory cache for discovered quirky products with 1-hour TTL
+    - Create fallback system using cached quirky products sorted by quirkiness score
+    - Add proper Etsy attribution: "The term 'Etsy' is a trademark of Etsy, Inc."
+    - Handle API errors with appropriate fallback to cached products
+    - _Requirements: 4.3, 4.4, 7.6, 7.7, 7.8_
 
 - [ ] 3. Build game state management system
-  - [ ] 3.1 Extend GameSession for Price Is Wrong specific state
+  - [ ] 3.1 Extend GameSession for Price Is Weird specific state
     - Add game configuration handling (categories, rounds, timing)
     - Implement current round and product state management
     - Create player guess tracking and validation
@@ -77,8 +80,9 @@
     - Build number line visualization showing all guesses vs actual price
     - Implement percentage difference display for each player
     - Create dramatic price reveal animation sequence
-    - Add link to actual Etsy product listing
-    - _Requirements: 2.4, 2.7, 2.8, 6.5_
+    - Add link to actual Etsy product listing with proper attribution
+    - Display shop name and Etsy branding as required by API terms
+    - _Requirements: 2.4, 2.7, 2.8, 6.5, 7.8_
 
 - [ ] 6. Implement real-time leaderboard system
   - Create live leaderboard component with real-time updates
@@ -132,19 +136,22 @@
     - Test scoring algorithm with various guess scenarios
     - Test quirkiness scoring for different product types
     - Test game state transitions and validation logic
-    - Test Etsy API service with mocked responses
+    - Test Etsy API v3 service with mocked responses
+    - Test quirkiness scoring algorithm with various product types
     - _Requirements: All requirements_
 
   - [ ] 10.2 Implement integration tests
     - Test complete game flow from lobby to final results
     - Test real-time WebSocket communication between multiple clients
-    - Test Etsy API integration with rate limiting
+    - Test Etsy API v3 integration with rate limiting (10 req/sec, 10k/day)
+    - Test quirky product discovery algorithms
     - Test error handling and recovery scenarios
     - _Requirements: All requirements_
 
 - [ ] 11. Add game analytics and monitoring
   - Implement basic game metrics tracking (games played, completion rates)
-  - Add Etsy API usage monitoring and quota tracking
+  - Add Etsy API v3 usage monitoring and quota tracking (10k requests/day limit)
+  - Track quirkiness scores and discovery algorithm effectiveness
   - Create performance monitoring for game session load times
   - Build logging for debugging game state issues
   - _Requirements: 4.6_

@@ -601,7 +601,7 @@ export class GameSession implements DurableObject {
         case 'toggle_checkbox':
         case 'TOGGLE_CHECKBOX':
           if (this.players.has(playerId) && !isSpectator) {
-            this.handleCheckboxToggle(data, playerId);
+            await this.handleCheckboxToggle(data, playerId);
           } else if (isSpectator) {
             ws.send(JSON.stringify({
               type: 'error',
@@ -722,7 +722,7 @@ export class GameSession implements DurableObject {
     }
   }
 
-  handleCheckboxToggle(data: any, playerId: string) {
+  async handleCheckboxToggle(data: any, playerId: string) {
     const checkboxIndex = data.checkboxIndex !== undefined ? data.checkboxIndex : data.data?.checkboxIndex;
     
     if (typeof checkboxIndex !== 'number' || checkboxIndex < 0 || checkboxIndex > 8) {

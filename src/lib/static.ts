@@ -263,17 +263,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="game-card coming-soon" data-game="paddlin-game">
                         <h3>That's a Paddlin'</h3>
                         <p>N-way pong with paddles around a shared arena</p>
-                        <div class="coming-soon-badge">WIP</div>
+                        <div class="coming-soon-badge">Coming soon maybe lol</div>
                     </button>
                     <button class="game-card coming-soon" data-game="bracketeering-game">
                         <h3>Bracketeering</h3>
                         <p>Tournament-style voting on head-to-head matchups</p>
-                        <div class="coming-soon-badge">WIP</div>
+                        <div class="coming-soon-badge">Coming soon maybe lol</div>
                     </button>
                     <button class="game-card coming-soon" data-game="price-game">
                         <h3>The Price is Weird</h3>
                         <p>Guess prices of real Etsy products without going over</p>
-                        <div class="coming-soon-badge">WIP</div>
+                        <div class="coming-soon-badge">Coming soon maybe lol</div>
                     </button>
                 </div>
                 
@@ -347,12 +347,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="player-info-container">
                             <h3 style="margin: 0 0 20px 0; color: #333;">Who Are You?</h3>
                             <div class="player-info" style="display: flex; flex-direction: column; gap: 18px;">
-                                <div class="name-control" style="display: flex; gap: 12px; align-items: center;">
-                                    <label style="font-weight: 600; min-width: 55px; color: #555;">Name:</label>
-                                    <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20" style="padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; flex: 1; font-size: 14px;">
-                                    <button id="update-name-btn" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">Update</button>
+                                <div class="name-control responsive-name-control">
+                                    <label class="name-label" style="font-weight: 600; min-width: 55px; color: #555;">Name:</label>
+                                    <div class="name-input-group">
+                                        <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20" class="name-input">
+                                        <button id="update-name-btn" class="update-btn" onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">Update</button>
+                                    </div>
                                 </div>
-                                <div class="emoji-control" style="display: flex; gap: 12px; align-items: center;">
+                                <div class="emoji-control" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                                     <label style="font-weight: 600; min-width: 55px; color: #555;">Avatar:</label>
                                     <button id="current-emoji-btn" style="padding: 10px 16px; background: white; border: 2px solid #007bff; border-radius: 6px; cursor: pointer; font-size: 28px; transition: all 0.2s; min-width: 60px;" onmouseover="this.style.background='#e3f2fd'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='white'; this.style.transform='scale(1)'">🐶</button>
                                     <span style="color: #888; font-size: 13px;">Click to change</span>
@@ -1357,6 +1359,17 @@ class GameShell {
 
     /**
      * Show emoji picker
+     * 
+     * CRITICAL: EMOJI PICKER POSITIONING (PROTECTED CODE - DO NOT MODIFY)
+     * This method uses specific positioning logic to solve z-index stacking issues:
+     * - Moves picker to document.body to escape parent container stacking contexts
+     * - Uses setProperty with 'important' flag to override CSS conflicts
+     * - Calculates position after showing picker for accurate getBoundingClientRect()
+     * - Forces z-index: 999999 to appear above all UI elements
+     * - Handles viewport boundaries to prevent picker from appearing off-screen
+     * 
+     * DO NOT MODIFY this positioning logic - it was extensively debugged to solve
+     * emoji picker being hidden under UI elements or appearing in wrong position.
      */
     showEmojiPicker() {
         const picker = document.getElementById('emoji-picker');
@@ -1370,24 +1383,47 @@ class GameShell {
                     this.initializeEmojiGrid();
                 }
                 
-                // Show the picker first
+                // CRITICAL: Move picker to body to escape parent container z-index issues
+                if (picker.parentElement !== document.body) {
+                    document.body.appendChild(picker);
+                }
+                
+                // Show the picker first (required for accurate height calculation)
                 picker.style.display = 'block';
                 
-                // Then position it relative to the button
+                // CRITICAL: Force position: fixed for proper positioning
+                picker.style.position = 'fixed';
+                
+                // Calculate position relative to the button
                 const rect = emojiBtn.getBoundingClientRect();
                 const pickerWidth = 340; // Width set in HTML
+                const pickerHeight = picker.getBoundingClientRect().height;
                 
-                // Position below button, centered if possible
+                // Calculate horizontal position - center below button
                 let left = rect.left + (rect.width / 2) - (pickerWidth / 2);
                 
-                // Keep within viewport bounds
+                // Keep within viewport bounds horizontally
                 if (left < 10) left = 10;
                 if (left + pickerWidth > window.innerWidth - 10) {
                     left = window.innerWidth - pickerWidth - 10;
                 }
                 
-                picker.style.left = left + 'px';
-                picker.style.top = (rect.bottom + 5) + 'px';
+                // Calculate vertical position - prefer below button
+                let top = rect.bottom + 5;
+                
+                // If picker would go off bottom of screen, show above button instead
+                if (top + pickerHeight > window.innerHeight - 10) {
+                    top = rect.top - pickerHeight - 5;
+                    // Make sure it doesn't go off top of screen
+                    if (top < 10) {
+                        top = rect.bottom + 5; // Fall back to below if no room above
+                    }
+                }
+                
+                // CRITICAL: Apply positioning with !important to override any conflicting styles
+                picker.style.setProperty('left', left + 'px', 'important');
+                picker.style.setProperty('top', top + 'px', 'important');
+                picker.style.setProperty('z-index', '999999', 'important');
             } else {
                 picker.style.display = 'none';
             }
@@ -1584,6 +1620,7 @@ class GameShell {
         const chatSendBtn = document.getElementById('chat-send-btn');
         const playerControls = document.getElementById('player-controls');
         const playersList = document.querySelector('.players-list');
+        const waitingRoomContainer = document.querySelector('.waiting-room-container');
 
         // Special handling for spectators
         if (this.isSpectator) {
@@ -1600,6 +1637,7 @@ class GameShell {
                 }
                 if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
                 if (playersList) playersList.style.display = 'none'; // Hide during gameplay
+                if (waitingRoomContainer) waitingRoomContainer.style.display = 'none'; // Hide waiting room container
             } else {
                 if (gameArea) gameArea.style.display = 'none';
                 if (chatArea) {
@@ -1609,6 +1647,7 @@ class GameShell {
                 }
                 if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
                 if (playersList) playersList.style.display = 'block'; // Show player list
+                if (waitingRoomContainer) waitingRoomContainer.style.display = 'flex'; // Show waiting room container
             }
             return;
         }
@@ -1624,6 +1663,7 @@ class GameShell {
             }
             if (playerControls) playerControls.style.display = 'none'; // Hide during gameplay
             if (playersList) playersList.style.display = 'none'; // Hide during gameplay
+            if (waitingRoomContainer) waitingRoomContainer.style.display = 'none'; // Hide waiting room container
         } else if (this.gameState === 'finished') {
             if (gameArea) gameArea.style.display = 'block'; // Keep game visible for end screen
             if (chatArea) {
@@ -1634,6 +1674,7 @@ class GameShell {
             }
             if (playerControls) playerControls.style.display = 'none'; 
             if (playersList) playersList.style.display = 'none';
+            if (waitingRoomContainer) waitingRoomContainer.style.display = 'none'; // Hide waiting room container
         } else if (this.gameState === 'waiting') {
             if (gameArea) gameArea.style.display = 'none';
             if (chatArea) {
@@ -1644,6 +1685,7 @@ class GameShell {
             }
             if (playerControls) playerControls.style.display = 'block';
             if (playersList) playersList.style.display = 'block';
+            if (waitingRoomContainer) waitingRoomContainer.style.display = 'flex'; // Show waiting room container
         }
     }
 
@@ -1937,7 +1979,6 @@ class GameShell {
             'checkbox-game': 'Checkbox Game',
             'votes-game': 'Everybody Votes',
             'paddlin-game': "That's a Paddlin'",
-            'bracketeering-game': 'Bracketeering',
             'price-game': 'The Price is Weird'
         };
         
@@ -1981,91 +2022,6 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = GameShell;
 } else {
     window.GameShell = GameShell;
-}`,
-  '/static/js/games/BracketeeringGameModule.js': `/**
- * BracketeeringGameModule - Implements "Bracketeering" 
- * A tournament-style voting game where players vote on various matchups
- */
-class BracketeeringGameModule extends GameModule {
-    constructor() {
-        super();
-        // Game state will be initialized when implemented
-    }
-
-    /**
-     * Initialize the game
-     */
-    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange) {
-        super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange);
-        this.render();
-    }
-
-    /**
-     * Render the game UI
-     */
-    render() {
-        if (!this.gameAreaElement) return;
-        
-        this.gameAreaElement.innerHTML = \`
-            <div style="
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 400px;
-                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-                border-radius: 12px;
-                color: white;
-                text-align: center;
-                padding: 2rem;
-            ">
-                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">🏆 Bracketeering 🏆</h2>
-                <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem;">Tournament-Style Voting Game</p>
-                <div style="
-                    background: rgba(255, 255, 255, 0.2);
-                    border-radius: 8px;
-                    padding: 1.5rem 2rem;
-                    backdrop-filter: blur(10px);
-                ">
-                    <p style="font-size: 1.1rem; margin: 0;">🚧 Coming Soon! 🚧</p>
-                    <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">
-                        Vote on head-to-head matchups in tournament brackets!
-                    </p>
-                </div>
-            </div>
-        \`;
-    }
-
-    /**
-     * Handle player actions
-     */
-    handlePlayerAction(playerId, action) {
-        // Will be implemented when game is ready
-        console.log('Bracketeering - Action received:', action);
-    }
-
-    /**
-     * Handle state updates from server
-     */
-    handleStateUpdate(gameSpecificState) {
-        // Will be implemented when game is ready
-        super.handleStateUpdate(gameSpecificState);
-    }
-
-    /**
-     * Clean up game resources
-     */
-    cleanup() {
-        super.cleanup();
-        // Additional cleanup when implemented
-    }
-}
-
-// Export for use
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = BracketeeringGameModule;
-} else {
-    window.BracketeeringGameModule = BracketeeringGameModule;
 }`,
   '/static/js/games/CheckboxGameModule.js': `/**
  * CheckboxGameModule - Implements the checkbox game as a GameModule
@@ -2187,10 +2143,6 @@ class CheckboxGameModule extends GameModule {
 
         this.gameAreaElement.innerHTML = \`
             <div class="checkbox-game-container">
-                <div class="game-info">
-                    <h3>Shared Checkbox Grid</h3>
-                    <p>Click any checkbox to toggle it. Changes are shared with all players in real-time!</p>
-                </div>
                 
                 <div class="game-layout">
                     <!-- Scoreboard on the left -->
@@ -2764,6 +2716,7 @@ main {
 }
 
 .game-card {
+    position: relative;
     background: white;
     border: none;
     border-radius: 12px;
@@ -2829,7 +2782,7 @@ main {
     position: absolute;
     top: 1rem;
     right: 1rem;
-    background: linear-gradient(135deg, #ff6b35, #e74c3c);
+    background: linear-gradient(135deg, #ff9500, #ff6b00);
     color: white;
     padding: 0.25rem 0.75rem;
     border-radius: 12px;
@@ -2837,7 +2790,7 @@ main {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+    box-shadow: 0 2px 8px rgba(255, 149, 0, 0.3);
 }
 
 .join-room-section {
@@ -4398,6 +4351,8 @@ input:focus {
     width: 90%;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
     animation: gameEndFadeIn 0.5s ease-out;
+    position: relative;
+    margin: auto;
 }
 
 @keyframes gameEndFadeIn {
@@ -4413,10 +4368,13 @@ input:focus {
 
 #game-result-message {
     color: #2c3e50;
-    font-size: 2rem;
+    font-size: 2.5rem;
     font-weight: bold;
-    margin-bottom: 2rem;
+    margin: 0 auto 2rem auto;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    display: block;
+    width: 100%;
 }
 
 .final-scores {
@@ -4532,6 +4490,96 @@ input:focus {
     font-size: 24px;
     font-weight: bold;
 }
+
+/* Name control responsive styles */
+.responsive-name-control {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.name-input-group {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    align-items: center;
+}
+
+.name-input {
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    flex: 1;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.update-btn {
+    padding: 10px 20px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+/* Responsive breakpoint aligned with header wrapping (when "Incorporated" moves to second line) */
+@media (max-width: 820px) {
+    .responsive-name-control {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .name-label {
+        min-width: unset !important;
+    }
+    
+    .name-input-group {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .name-input {
+        width: 100%;
+    }
+    
+    .update-btn {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 16px; /* Better touch target */
+    }
+}
+
+/* Additional mobile-specific adjustments */
+@media (max-width: 600px) {
+    /* Adjust player controls padding on mobile */
+    #player-controls {
+        padding-left: 20px !important;
+        min-width: unset !important;
+    }
+    
+    /* Stack the Players and Who Are You sections vertically */
+    .waiting-room-content > div {
+        flex-direction: column !important;
+        gap: 30px;
+    }
+    
+    .waiting-room-content > div > .players-list {
+        border-right: none !important;
+        padding-right: 0 !important;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 30px;
+    }
+    
+    .waiting-room-content > div > #player-controls {
+        border-left: none !important;
+    }
+}
+
 
 /* Mobile responsive styles for new layout */
 @media (max-width: 768px) {
@@ -4819,9 +4867,9 @@ main {
   "version": "1.0.0-alpha",
   "baseVersion": "1.0.0",
   "branch": "game-shell-architecture",
-  "commit": "dcaca0b",
-  "timestamp": "2025-08-11T01:45:43.021Z",
-  "deployedAt": "Aug 10, 2025, 07:45 PM MDT"
+  "commit": "a336337",
+  "timestamp": "2025-08-11T02:26:22.940Z",
+  "deployedAt": "Aug 10, 2025, 08:26 PM MDT"
 }`
 };
 

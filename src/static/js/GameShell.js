@@ -1022,6 +1022,7 @@ class GameShell {
         const chatSendBtn = document.getElementById('chat-send-btn');
         const playerControls = document.getElementById('player-controls');
         const playersList = document.querySelector('.players-list');
+        const waitingRoomContainer = document.querySelector('.waiting-room-container');
 
         // Special handling for spectators
         if (this.isSpectator) {
@@ -1038,6 +1039,7 @@ class GameShell {
                 }
                 if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
                 if (playersList) playersList.style.display = 'none'; // Hide during gameplay
+                if (waitingRoomContainer) waitingRoomContainer.style.display = 'none'; // Hide waiting room container
             } else {
                 if (gameArea) gameArea.style.display = 'none';
                 if (chatArea) {
@@ -1047,6 +1049,7 @@ class GameShell {
                 }
                 if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
                 if (playersList) playersList.style.display = 'block'; // Show player list
+                if (waitingRoomContainer) waitingRoomContainer.style.display = 'flex'; // Show waiting room container
             }
             return;
         }
@@ -1062,6 +1065,7 @@ class GameShell {
             }
             if (playerControls) playerControls.style.display = 'none'; // Hide during gameplay
             if (playersList) playersList.style.display = 'none'; // Hide during gameplay
+            if (waitingRoomContainer) waitingRoomContainer.style.display = 'none'; // Hide waiting room container
         } else if (this.gameState === 'finished') {
             if (gameArea) gameArea.style.display = 'block'; // Keep game visible for end screen
             if (chatArea) {
@@ -1072,6 +1076,7 @@ class GameShell {
             }
             if (playerControls) playerControls.style.display = 'none'; 
             if (playersList) playersList.style.display = 'none';
+            if (waitingRoomContainer) waitingRoomContainer.style.display = 'none'; // Hide waiting room container
         } else if (this.gameState === 'waiting') {
             if (gameArea) gameArea.style.display = 'none';
             if (chatArea) {
@@ -1082,6 +1087,7 @@ class GameShell {
             }
             if (playerControls) playerControls.style.display = 'block';
             if (playersList) playersList.style.display = 'block';
+            if (waitingRoomContainer) waitingRoomContainer.style.display = 'flex'; // Show waiting room container
         }
     }
 
@@ -1375,7 +1381,6 @@ class GameShell {
             'checkbox-game': 'Checkbox Game',
             'votes-game': 'Everybody Votes',
             'paddlin-game': "That's a Paddlin'",
-            'bracketeering-game': 'Bracketeering',
             'price-game': 'The Price is Weird'
         };
         

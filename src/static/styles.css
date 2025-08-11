@@ -108,6 +108,7 @@ main {
 }
 
 .game-card {
+    position: relative;
     background: white;
     border: none;
     border-radius: 12px;
@@ -173,7 +174,7 @@ main {
     position: absolute;
     top: 1rem;
     right: 1rem;
-    background: linear-gradient(135deg, #ff6b35, #e74c3c);
+    background: linear-gradient(135deg, #ff9500, #ff6b00);
     color: white;
     padding: 0.25rem 0.75rem;
     border-radius: 12px;
@@ -181,7 +182,7 @@ main {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+    box-shadow: 0 2px 8px rgba(255, 149, 0, 0.3);
 }
 
 .join-room-section {
@@ -1742,6 +1743,8 @@ input:focus {
     width: 90%;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
     animation: gameEndFadeIn 0.5s ease-out;
+    position: relative;
+    margin: auto;
 }
 
 @keyframes gameEndFadeIn {
@@ -1757,10 +1760,13 @@ input:focus {
 
 #game-result-message {
     color: #2c3e50;
-    font-size: 2rem;
+    font-size: 2.5rem;
     font-weight: bold;
-    margin-bottom: 2rem;
+    margin: 0 auto 2rem auto;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    display: block;
+    width: 100%;
 }
 
 .final-scores {

@@ -1,8 +1,8 @@
-# Design Document - Price Is Wrong Game
+# Design Document - Price Is Weird Game
 
 ## Overview
 
-The Price Is Wrong is a multiplayer real-time guessing game built on the existing games platform architecture. Players view product images and names, guess prices, and earn points based on accuracy. The game integrates specifically with the Etsy API to source unique, off-the-beaten-path items that are more likely to be odd and surprising, creating an engaging and unpredictable competitive experience across multiple rounds.
+The Price Is Weird is a multiplayer real-time guessing game built on the existing games platform architecture. Players view product images and names from real Etsy listings, guess prices, and earn points based on accuracy. The game leverages the Etsy Open API v3 to source unique, off-the-beaten-path items that are quirky, unusual, and surprising, creating an engaging and unpredictable competitive experience across multiple rounds.
 
 The design leverages the existing GameShell/GameModule architecture with WebSocket-based real-time communication through Cloudflare Durable Objects, ensuring synchronized game state across all participants.
 
@@ -25,7 +25,8 @@ graph TB
         DO --> WS[WebSocket Manager]
         DO --> GS_SERVER[Game State Manager]
         DO --> SC[Scoring Calculator]
-        API --> PC[Product Cache]
+        ETSY --> PC[Product Cache]
+        ETSY --> RL[Rate Limiter]
     end
 ```
 
@@ -307,6 +308,73 @@ const SCORING_TIERS: ScoreTier[] = [
    - Network interruption recovery
    - API service outages
    - Extreme guess values and edge cases
+
+## Etsy API Integration
+
+### API Configuration and Authentication
+
+```typescript
+interface EtsyAPIConfig {
+    apiKey: string // Obtained from Etsy Developer Portal
+    apiUrl: 'https://api.etsy.com/v3/application'
+    rateLimits: {
+        requestsPerSecond: 10
+        requestsPerDay: 10000
+    }
+    headers: {
+        'x-api-key': string
+        'Content-Type': 'application/json'
+    }
+}
+```
+
+### Core API Endpoints Used
+
+1. **Search Active Listings**: `GET /listings/active`
+   - Primary endpoint for discovering quirky products
+   - Supports filtering by category, price range, keywords
+   - Returns up to 100 items per request
+
+2. **Get Listing Details**: `GET /listings/{listing_id}`
+   - Fetches detailed information about specific products
+   - Includes shop information and additional images
+
+3. **Get Category Taxonomies**: `GET /buyer-taxonomy/nodes`
+   - Retrieves Etsy's category structure for targeted searches
+
+4. **Batch Listings**: `GET /listings/batch`
+   - Efficiently fetch multiple products by IDs
+
+### API Response Handling
+
+```typescript
+interface EtsyListingResponse {
+    listing_id: number
+    title: string
+    description: string
+    price: {
+        amount: number // Price in cents
+        divisor: number // Usually 100
+        currency_code: string
+    }
+    url: string
+    images: Array<{
+        url_570xN: string // Medium size for display
+        url_fullxfull: string // Full size
+        url_75x75: string // Thumbnail
+    }>
+    shop: {
+        shop_id: number
+        shop_name: string
+        url: string
+    }
+    tags: string[]
+    materials: string[]
+    views: number
+    num_favorers: number
+    state: 'active' | 'inactive' | 'sold_out'
+}
+```
 
 ## Quirky Item Discovery Strategy
 

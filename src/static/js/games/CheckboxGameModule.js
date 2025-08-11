@@ -118,10 +118,6 @@ class CheckboxGameModule extends GameModule {
 
         this.gameAreaElement.innerHTML = `
             <div class="checkbox-game-container">
-                <div class="game-info">
-                    <h3>Shared Checkbox Grid</h3>
-                    <p>Click any checkbox to toggle it. Changes are shared with all players in real-time!</p>
-                </div>
                 
                 <div class="game-layout">
                     <!-- Scoreboard on the left -->
