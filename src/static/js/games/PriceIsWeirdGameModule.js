@@ -57,7 +57,6 @@ class PriceGameModule extends GameModule {
      */
     handlePlayerAction(playerId, action) {
         // Will be implemented when game is ready
-        console.log('The Price is Dumb - Action received:', action);
     }
 
     /**

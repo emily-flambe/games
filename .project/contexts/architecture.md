@@ -1,59 +1,37 @@
-# Architecture Documentation
+# Architecture
 
-## System Overview
-The multiplayer games platform is built as a single Cloudflare Worker that manages multiple game types through a unified WebSocket architecture using Durable Objects for session management.
+## Overview
+Single Cloudflare Worker managing multiple game types through WebSocket + Durable Objects.
 
-## Architecture Layers
+## Core Components
 
-### 1. Edge Layer (Cloudflare Workers)
-- **Entry Point**: Single Worker handling all requests
-- **Static Assets**: Bundled HTML/CSS/JS served directly from Worker
-- **Routing**: URL-based routing to different game interfaces
-- **WebSocket Upgrade**: HTTP → WebSocket connection establishment
+### Edge Layer (Worker)
+- HTTP → WebSocket upgrade
+- Static asset serving
+- URL routing: `/api/game/{sessionId}/ws`
 
-### 2. Session Management Layer (Durable Objects)
-- **GameSession**: Base session management for all games
-- **Game-Specific Objects**: Specialized Durable Objects per game type
-- **State Persistence**: In-memory state with optional persistence
-- **Connection Management**: WebSocket connection lifecycle
+### Durable Objects
+- **GameSession**: Base class for all games
+- Per-session isolation
+- 100 WebSocket connections max
+- In-memory state management
 
-### 3. Game Logic Layer
-- **Drawing Game**: Canvas synchronization, brush strokes, collaborative editing
-- **Bracket Tournament**: Tournament tree management, match progression
-- **Voting System**: Real-time vote tallying, result broadcasting
-- **Price Guessing**: Round management, scoring, leaderboards
+### Frontend (GameShell/GameModule)
+- **GameShell.js**: Core WebSocket management, player state
+- **GameModule.js**: Base class for game implementations
+- Game modules extend GameModule for specific logic
+- Automatic reconnection with exponential backoff
+- 23KB bundled JavaScript
 
-### 4. Client Layer (Frontend)
-- **Vanilla TypeScript**: No framework dependencies
-- **WebSocket Client**: Persistent connection to game sessions with automatic reconnection
-- **HTML5 Canvas**: For drawing game rendering
-- **Responsive UI**: Mobile-first design approach
-- **Modular Components**: GamePortal.ts for game selection, GameRoom.ts for game interfaces
-- **Custom Build System**: TypeScript compiler with no external dependencies
+## Message Protocol
 
-## Durable Objects Design
-
-### GameSession (Base Class)
-```typescript
-interface GameSession {
-  sessionId: string;
-  gameType: 'drawing' | 'bracket' | 'voting' | 'price_guessing';
-  players: Map<string, Player>;
-  state: GameState;
-  websockets: Set<WebSocket>;
-  
-  handleMessage(message: GameMessage): void;
-  broadcastToAll(message: GameMessage): void;
-  addPlayer(playerId: string, websocket: WebSocket): void;
-  removePlayer(playerId: string): void;
-}
-```
-
-### Specialized Game Objects
-- **DrawingSession**: Extends GameSession with canvas state, brush data
-- **BracketSession**: Tournament tree, match results, progression logic  
-- **VotingSession**: Vote counts, options, timing controls
-- **PriceGuessingSession**: Round data, guesses, scoring calculations
+### Core Message Types
+- `JOIN`: Player joining
+- `LEAVE`: Player leaving
+- `START_GAME`: Host starts game
+- `game_action`: Game-specific actions
+- `gameState`: Full state sync
+- `host_assigned`: Host role changes
 
 ## WebSocket Communication Flow
 

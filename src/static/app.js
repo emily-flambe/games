@@ -212,7 +212,5 @@ class GameApp {
 
 // Initialize the application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🎮 Initializing Game Shell Architecture...');
     window.gameApp = new GameApp();
-    console.log('✅ Game Shell Architecture initialized successfully');
 });

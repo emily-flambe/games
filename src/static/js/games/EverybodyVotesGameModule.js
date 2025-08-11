@@ -70,7 +70,6 @@ class EverybodyVotesGameModule extends GameModule {
      */
     handlePlayerAction(playerId, action) {
         // Will be implemented when game is ready
-        console.log('Everybody Votes - Action received:', action);
     }
 
     /**

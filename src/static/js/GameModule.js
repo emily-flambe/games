@@ -67,7 +67,6 @@ class GameModule {
      */
     handlePlayerAction(playerId, action) {
         // Default implementation - subclasses should override
-        console.log(`Player ${playerId} performed action:`, action);
     }
 
     /**

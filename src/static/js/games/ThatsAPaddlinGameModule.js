@@ -57,7 +57,6 @@ class PaddlinGameModule extends GameModule {
      */
     handlePlayerAction(playerId, action) {
         // Will be implemented when game is ready
-        console.log('That\'s a Paddlin\' - Action received:', action);
     }
 
     /**

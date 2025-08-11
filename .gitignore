@@ -34,3 +34,5 @@ coverage/
 # Test artifacts
 screenshots/
 src/lib/
+.cache/
+test-results/

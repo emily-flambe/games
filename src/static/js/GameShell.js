@@ -243,18 +243,15 @@ class GameShell {
             const gameTypeParam = this.gameType ? `?gameType=${encodeURIComponent(this.gameType)}` : '';
             const wsUrl = `${protocol}//${window.location.host}/api/game/${this.sessionId}/ws${gameTypeParam}`;
             
-            console.log('Attempting to connect to WebSocket:', wsUrl, 'with gameType:', this.gameType);
             this.ws = new WebSocket(wsUrl);
             
             this.ws.onopen = () => {
-                console.log('✅ Connected to game session:', this.sessionId);
                 this.isConnected = true;
                 resolve();
             };
             
             this.ws.onmessage = (event) => this.handleWebSocketMessage(event);
             this.ws.onclose = (event) => {
-                console.log('❌ WebSocket closed with code:', event.code, 'reason:', event.reason);
                 this.handleWebSocketClose();
             };
             this.ws.onerror = (error) => {
@@ -344,7 +341,6 @@ class GameShell {
         // Extract game type from server state
         if (message.gameState.type) {
             this.gameType = message.gameState.type;
-            console.log('Game type from server:', this.gameType);
         }
         
         // Update spectators if present
@@ -470,12 +466,10 @@ class GameShell {
      */
     async loadGameModule(gameType) {
         try {
-            console.log(`Loading game module: ${gameType}`);
             
             if (gameType === 'checkbox-game') {
                 if (typeof CheckboxGameModule !== 'undefined') {
                     this.gameModule = new CheckboxGameModule();
-                    console.log('✅ CheckboxGameModule loaded successfully');
                 } else {
                     console.error('CheckboxGameModule class not found - check script loading');
                     this.gameModule = null;
@@ -483,7 +477,6 @@ class GameShell {
             } else if (gameType === 'votes-game') {
                 if (typeof EverybodyVotesGameModule !== 'undefined') {
                     this.gameModule = new EverybodyVotesGameModule();
-                    console.log('✅ EverybodyVotesGameModule loaded successfully');
                 } else {
                     console.error('EverybodyVotesGameModule class not found - check script loading');
                     this.gameModule = null;
@@ -503,7 +496,6 @@ class GameShell {
      */
     sendPlayerAction(action) {
         if (this.ws && this.isConnected) {
-            console.log('Sending player action:', action);
             this.ws.send(JSON.stringify(action));
         } else {
             console.error('Cannot send action - WebSocket not connected');
@@ -516,7 +508,6 @@ class GameShell {
     onGameStateChange(state) {
         // Module is notifying us of state changes
         // We can use this to update shell UI or send to server
-        console.log('Game module state change:', state);
     }
 
     /**
@@ -1207,7 +1198,6 @@ class GameShell {
         const spectatorCount = Object.keys(this.spectators).length;
         if (spectatorCount > 0) {
             // Show spectator count somewhere in UI
-            console.log(`${spectatorCount} spectators watching`);
         }
         // Update the chat users list to show spectators
         this.updateChatUsersList();
@@ -1359,7 +1349,6 @@ class GameShell {
      */
     loadActiveRooms() {
         // This will integrate with the existing active rooms logic
-        console.log('Loading active rooms...');
     }
 
     /**
@@ -1367,7 +1356,6 @@ class GameShell {
      */
     startActiveRoomsRefresh() {
         // Integrate with existing refresh logic
-        console.log('Starting active rooms refresh...');
     }
 
     stopActiveRoomsRefresh() {
