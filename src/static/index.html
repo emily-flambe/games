@@ -118,12 +118,14 @@
                         <div class="player-info-container">
                             <h3 style="margin: 0 0 20px 0; color: #333;">Who Are You?</h3>
                             <div class="player-info" style="display: flex; flex-direction: column; gap: 18px;">
-                                <div class="name-control" style="display: flex; gap: 12px; align-items: center;">
-                                    <label style="font-weight: 600; min-width: 55px; color: #555;">Name:</label>
-                                    <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20" style="padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; flex: 1; font-size: 14px;">
-                                    <button id="update-name-btn" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">Update</button>
+                                <div class="name-control responsive-name-control">
+                                    <label class="name-label" style="font-weight: 600; min-width: 55px; color: #555;">Name:</label>
+                                    <div class="name-input-group">
+                                        <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20" class="name-input">
+                                        <button id="update-name-btn" class="update-btn" onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">Update</button>
+                                    </div>
                                 </div>
-                                <div class="emoji-control" style="display: flex; gap: 12px; align-items: center;">
+                                <div class="emoji-control" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                                     <label style="font-weight: 600; min-width: 55px; color: #555;">Avatar:</label>
                                     <button id="current-emoji-btn" style="padding: 10px 16px; background: white; border: 2px solid #007bff; border-radius: 6px; cursor: pointer; font-size: 28px; transition: all 0.2s; min-width: 60px;" onmouseover="this.style.background='#e3f2fd'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='white'; this.style.transform='scale(1)'">🐶</button>
                                     <span style="color: #888; font-size: 13px;">Click to change</span>

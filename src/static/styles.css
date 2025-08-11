@@ -1877,6 +1877,92 @@ input:focus {
     font-weight: bold;
 }
 
+/* Name control responsive styles */
+.responsive-name-control {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.name-input-group {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    align-items: center;
+}
+
+.name-input {
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    flex: 1;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.update-btn {
+    padding: 10px 20px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+/* Responsive breakpoint for narrow screens */
+@media (max-width: 500px) {
+    .responsive-name-control {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .name-label {
+        min-width: unset !important;
+    }
+    
+    .name-input-group {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .name-input {
+        width: 100%;
+    }
+    
+    .update-btn {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 16px; /* Better touch target */
+    }
+    
+    /* Adjust player controls padding on mobile */
+    #player-controls {
+        padding-left: 20px !important;
+        min-width: unset !important;
+    }
+    
+    /* Stack the Players and Who Are You sections vertically */
+    .waiting-room-content > div {
+        flex-direction: column !important;
+        gap: 30px;
+    }
+    
+    .waiting-room-content > div > .players-list {
+        border-right: none !important;
+        padding-right: 0 !important;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 30px;
+    }
+    
+    .waiting-room-content > div > #player-controls {
+        border-left: none !important;
+    }
+}
+
 /* Mobile responsive styles for new layout */
 @media (max-width: 768px) {
     .checkbox-grid {
