@@ -50,6 +50,11 @@ export default {
       return handleActiveRoomsAPI(env);
     }
 
+    // Handle favicon.ico requests - redirect to PNG
+    if (path === '/favicon.ico') {
+      return Response.redirect(new URL('/static/favicon.png', request.url), 301);
+    }
+
     // Serve static assets
     try {
       const asset = getStaticAsset(path);
@@ -61,6 +66,22 @@ export default {
             'Access-Control-Allow-Origin': '*',
           },
         });
+      }
+
+      // Check if this is a room URL (6 character alphanumeric code)
+      const roomMatch = path.match(/^\/([A-Z0-9]{6})$/);
+      if (roomMatch) {
+        // Serve the main HTML page for room URLs
+        const htmlAsset = staticAssets['/static/index.html'];
+        if (htmlAsset) {
+          return new Response(htmlAsset, {
+            headers: {
+              'Content-Type': 'text/html; charset=UTF-8',
+              'Cache-Control': 'public, max-age=3600',
+              'Access-Control-Allow-Origin': '*',
+            },
+          });
+        }
       }
 
       // Default to serving the main HTML page
@@ -144,7 +165,7 @@ async function handleActiveRoomsAPI(env: Env): Promise<Response> {
 /**
  * Get static asset by path
  */
-function getStaticAsset(path: string): { content: string; contentType: string } | null {
+function getStaticAsset(path: string): { content: string | ArrayBuffer; contentType: string } | null {
   // Normalize path
   if (path === '/' || path === '') {
     path = '/static/index.html';
@@ -165,10 +186,28 @@ function getStaticAsset(path: string): { content: string; contentType: string } 
     contentType = 'application/javascript; charset=UTF-8';
   } else if (path.endsWith('.json')) {
     contentType = 'application/json; charset=UTF-8';
+  } else if (path.endsWith('.png')) {
+    contentType = 'image/png';
+  } else if (path.endsWith('.ico')) {
+    contentType = 'image/x-icon';
+  }
+
+  // Handle base64 encoded binary assets
+  if (typeof asset === 'object' && 'encoding' in asset && asset.encoding === 'base64') {
+    // Convert base64 to ArrayBuffer for binary files
+    const binaryString = atob(asset.content);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return {
+      content: bytes.buffer,
+      contentType,
+    };
   }
 
   return {
-    content: asset,
+    content: asset as string,
     contentType,
   };
 }
@@ -183,22 +222,72 @@ export class GameSession implements DurableObject {
   private spectators: Map<string, any> = new Map(); 
   private gameState: any;
   private sessionId: string = '';
+  private initialized: boolean = false;
+  private chatHistory: Array<{playerId: string, message: string, timestamp: number}> = [];
 
   constructor(private state: DurableObjectState, private env: Env) {
-    // Initialize game state
-    this.gameState = {
-      type: 'checkbox-game',
-      status: 'waiting',
-      players: {},
-      hostId: null,
-      checkboxStates: new Array(9).fill(false),
-      checkboxPlayers: new Array(9).fill(null),
-      playerScores: {},
-      gameStarted: false,
-      gameFinished: false,
-      spectatorCount: 0,
-      spectators: {}
-    };
+    // Game state will be loaded lazily in initializeGameState()
+    this.gameState = null;
+  }
+
+  /**
+   * Initialize or load existing game state from Durable Object storage
+   */
+  private async initializeGameState(gameType: string = 'checkbox-game') {
+    if (this.initialized) return;
+    
+    // Try to load existing game state from storage
+    const storedState = await this.state.storage.get('gameState');
+    const storedPlayers = await this.state.storage.get('players');
+    const storedSpectators = await this.state.storage.get('spectators');
+    const storedChatHistory = await this.state.storage.get('chatHistory');
+    
+    if (storedState) {
+      // Load existing game state
+      this.gameState = storedState;
+      console.log(`🔄 Loaded existing game state - type: ${this.gameState.type}, gameStarted: ${this.gameState.gameStarted}`);
+    } else {
+      // Initialize fresh game state with the specified game type
+      this.gameState = {
+        type: gameType,  // Use the provided game type
+        status: 'waiting',
+        players: {},
+        hostId: null,
+        checkboxStates: new Array(9).fill(false),
+        checkboxPlayers: new Array(9).fill(null),
+        playerScores: {},
+        gameStarted: false,
+        gameFinished: false,
+        spectatorCount: 0,
+        spectators: {}
+      };
+      console.log(`🆕 Initialized fresh game state with type: ${gameType}`);
+    }
+    
+    // Restore players and spectators maps
+    if (storedPlayers) {
+      this.players = new Map(storedPlayers);
+    }
+    if (storedSpectators) {
+      this.spectators = new Map(storedSpectators);
+    }
+    if (storedChatHistory) {
+      this.chatHistory = storedChatHistory as Array<{playerId: string, message: string, timestamp: number}>;
+    }
+    
+    this.initialized = true;
+  }
+
+  /**
+   * Save current game state to Durable Object storage
+   */
+  private async saveGameState() {
+    await this.state.storage.put({
+      gameState: this.gameState,
+      players: Array.from(this.players.entries()),
+      spectators: Array.from(this.spectators.entries()),
+      chatHistory: this.chatHistory
+    });
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -209,6 +298,12 @@ export class GameSession implements DurableObject {
     if (pathMatch) {
       this.sessionId = pathMatch[1];
     }
+
+    // Extract game type from query params
+    const gameType = url.searchParams.get('gameType') || 'checkbox-game';
+
+    // Initialize game state before processing any requests
+    await this.initializeGameState(gameType);
 
     // Check for WebSocket upgrade
     const upgradeHeader = request.headers.get('Upgrade');
@@ -251,7 +346,8 @@ export class GameSession implements DurableObject {
   async addPlayer(playerId: string, ws: WebSocket, sessionId?: string) {
     // Check if game has already started - if so, add as spectator
     if (this.gameState.gameStarted) {
-      this.addSpectator(playerId, ws);
+      console.log(`\ud83d\udc40 Game already started - adding ${playerId} as spectator`);
+      await this.addSpectator(playerId, ws);
       return;
     }
 
@@ -270,6 +366,9 @@ export class GameSession implements DurableObject {
     this.gameState.players[playerId] = player;
     this.gameState.playerScores[playerId] = 0;
 
+    // Save state after adding player
+    await this.saveGameState();
+
     // Set host if this is the first player
     if (isFirstPlayer) {
       this.gameState.hostId = playerId;
@@ -286,6 +385,26 @@ export class GameSession implements DurableObject {
       gameState: this.gameState,
       playerId: playerId
     }));
+    
+    // Send chat history to new player
+    if (this.chatHistory.length > 0) {
+      ws.send(JSON.stringify({
+        type: 'chat_history',
+        data: {
+          messages: this.chatHistory.map(msg => {
+            const sender = this.players.get(msg.playerId) || this.spectators.get(msg.playerId);
+            return {
+              playerId: msg.playerId,
+              playerName: sender?.name || 'Unknown',
+              playerEmoji: sender?.emoji || '👤',
+              message: msg.message,
+              timestamp: msg.timestamp,
+              isSpectator: this.spectators.has(msg.playerId)
+            };
+          })
+        }
+      }));
+    }
 
     // Broadcast player joined
     this.broadcast({
@@ -308,8 +427,8 @@ export class GameSession implements DurableObject {
     console.log(`Player ${playerId} joined session ${this.sessionId}`);
   }
 
-  addSpectator(spectatorId: string, ws: WebSocket) {
-    console.log(`Adding spectator ${spectatorId} to game in progress`);
+  async addSpectator(spectatorId: string, ws: WebSocket) {
+    console.log(`\ud83d\udc40 Adding spectator ${spectatorId} to game in progress`);
     
     const spectator = {
       id: spectatorId,
@@ -323,6 +442,9 @@ export class GameSession implements DurableObject {
     this.spectators.set(spectatorId, spectator);
     this.gameState.spectatorCount = this.spectators.size;
     this.gameState.spectators[spectatorId] = spectator;
+    
+    // Save state after adding spectator
+    await this.saveGameState();
     
     // Send spectator identity
     ws.send(JSON.stringify({
@@ -342,6 +464,26 @@ export class GameSession implements DurableObject {
       spectatorId: spectatorId,
       isSpectator: true
     }));
+    
+    // Send chat history to spectator
+    if (this.chatHistory.length > 0) {
+      ws.send(JSON.stringify({
+        type: 'chat_history',
+        data: {
+          messages: this.chatHistory.map(msg => {
+            const sender = this.players.get(msg.playerId) || this.spectators.get(msg.playerId);
+            return {
+              playerId: msg.playerId,
+              playerName: sender?.name || 'Unknown',
+              playerEmoji: sender?.emoji || '👤',
+              message: msg.message,
+              timestamp: msg.timestamp,
+              isSpectator: this.spectators.has(msg.playerId)
+            };
+          })
+        }
+      }));
+    }
     
     // Broadcast spectator joined
     this.broadcast({
@@ -459,7 +601,7 @@ export class GameSession implements DurableObject {
         case 'toggle_checkbox':
         case 'TOGGLE_CHECKBOX':
           if (this.players.has(playerId) && !isSpectator) {
-            this.handleCheckboxToggle(data, playerId);
+            await this.handleCheckboxToggle(data, playerId);
           } else if (isSpectator) {
             ws.send(JSON.stringify({
               type: 'error',
@@ -471,9 +613,12 @@ export class GameSession implements DurableObject {
 
         case 'START_GAME':
           if (this.players.has(playerId) && !isSpectator && this.gameState.hostId === playerId) {
-            console.log(`Host ${playerId} starting game`);
+            console.log(`\ud83c\udfc1 Host ${playerId} starting game`);
             this.gameState.status = 'started';
             this.gameState.gameStarted = true;
+            
+            // Save state immediately after starting game
+            await this.saveGameState();
             
             // Update registry to mark game as in-progress
             this.updateRegistryStatus('in-progress');
@@ -531,6 +676,41 @@ export class GameSession implements DurableObject {
             }
           }
           break;
+        case 'chat_message':
+          const messageText = data.data?.message || data.message;
+          if (messageText && messageText.trim()) {
+            const chatMessage = {
+              playerId: playerId,
+              message: messageText.trim(),
+              timestamp: Date.now()
+            };
+            
+            // Add to chat history (keep last 50 messages)
+            this.chatHistory.push(chatMessage);
+            if (this.chatHistory.length > 50) {
+              this.chatHistory.shift();
+            }
+            
+            // Save state with updated chat history
+            await this.saveGameState();
+            
+            // Get sender info (could be player or spectator)
+            const sender = this.players.get(playerId) || this.spectators.get(playerId);
+            
+            // Broadcast to all connected clients
+            this.broadcast({
+              type: 'chat_message',
+              data: {
+                playerId: playerId,
+                playerName: sender?.name || 'Unknown',
+                playerEmoji: sender?.emoji || '👤',
+                message: messageText.trim(),
+                timestamp: chatMessage.timestamp,
+                isSpectator: this.spectators.has(playerId)
+              }
+            });
+          }
+          break;
 
         case 'RETURN_TO_HOME':
           console.log(`Player ${playerId} returning to home screen`);
@@ -542,7 +722,7 @@ export class GameSession implements DurableObject {
     }
   }
 
-  handleCheckboxToggle(data: any, playerId: string) {
+  async handleCheckboxToggle(data: any, playerId: string) {
     const checkboxIndex = data.checkboxIndex !== undefined ? data.checkboxIndex : data.data?.checkboxIndex;
     
     if (typeof checkboxIndex !== 'number' || checkboxIndex < 0 || checkboxIndex > 8) {
@@ -577,7 +757,7 @@ export class GameSession implements DurableObject {
     const allBoxesChecked = this.gameState.checkboxStates.every(state => state === true);
     
     if (allBoxesChecked && this.gameState.gameStarted) {
-      this.handleGameEnd();
+      await this.handleGameEnd();
     } else {
       this.broadcast({
         type: 'checkbox_toggled',
@@ -593,13 +773,16 @@ export class GameSession implements DurableObject {
     }
   }
 
-  handleGameEnd() {
-    console.log('Game ended - all checkboxes checked');
+  async handleGameEnd() {
+    console.log('\ud83c\udfc6 Game ended - all checkboxes checked');
     
     // Update game state to mark game as finished
     this.gameState.gameStarted = false;  // Game is no longer in progress
     this.gameState.gameFinished = true;  // Game is finished
     this.gameState.status = 'finished';  // Update status
+    
+    // Save state after game ends
+    await this.saveGameState();
     
     // Find the highest score
     const scores = this.gameState.playerScores;

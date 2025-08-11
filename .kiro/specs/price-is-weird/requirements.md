@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The Price Is Wrong game is a multiplayer guessing game where players view product images and names, then guess the actual price to earn points based on accuracy. The game integrates with external product APIs (like Etsy) to provide real product data, creating an engaging and educational experience about market pricing. Players compete across multiple rounds with different product categories, and points are awarded based on how close their guesses are to the actual prices.
+The Price Is Weird game is a multiplayer guessing game where players view product images and names from real Etsy listings, then guess the actual price to earn points based on accuracy. The game leverages the Etsy Open API v3 to fetch live product data, specifically focusing on quirky, unusual, and off-the-beaten-path items that make price guessing more challenging and entertaining. Players compete across multiple rounds with different product categories, and points are awarded based on how close their guesses are to the actual prices.
 
 ## Requirements
 
@@ -12,12 +12,12 @@ The Price Is Wrong game is a multiplayer guessing game where players view produc
 
 #### Acceptance Criteria
 
-1. WHEN the host creates a new Price Is Wrong game THEN the system SHALL provide options to select product categories (vintage, handmade, electronics, etc.)
+1. WHEN the host creates a new Price Is Weird game THEN the system SHALL provide options to select Etsy product categories including vintage, handmade, art & collectibles, craft supplies, jewelry, and home & living
 2. WHEN the host configures the game THEN the system SHALL allow setting the number of rounds (minimum 3, maximum 20)
 3. WHEN the host starts a round THEN the system SHALL control the pace of revealing prices after all guesses are submitted
 4. WHEN players are guessing THEN the host SHALL be able to view a real-time leaderboard showing current scores and rankings
 5. WHEN the game ends THEN the host SHALL see final rankings with detailed scoring breakdown
-6. WHEN the host selects a category THEN the system SHALL fetch and display available products from that category
+6. WHEN the host selects a category THEN the system SHALL fetch quirky and unusual products from that Etsy category using specialized search algorithms to find off-the-beaten-path items
 
 ### Requirement 2
 
@@ -31,7 +31,7 @@ The Price Is Wrong game is a multiplayer guessing game where players view produc
 4. WHEN the actual price is revealed THEN the system SHALL show how close my guess was to the actual price (percentage difference)
 5. WHEN points are calculated THEN the system SHALL award points based on accuracy using a scoring algorithm (closer guesses earn more points)
 6. WHEN viewing my progress THEN the system SHALL display my current score and ranking among all players
-7. WHEN the results are shown THEN the system SHALL provide a link to view the actual product listing
+7. WHEN the results are shown THEN the system SHALL provide a link to view the actual Etsy product listing
 8. WHEN all guesses are revealed THEN the system SHALL display all players' guesses compared to the actual price on a visual scale
 
 ### Requirement 3
@@ -52,11 +52,11 @@ The Price Is Wrong game is a multiplayer guessing game where players view produc
 
 #### Acceptance Criteria
 
-1. WHEN fetching product data THEN the system SHALL integrate with Etsy API (or similar product APIs) to retrieve real product information
-2. WHEN API requests are made THEN the system SHALL implement proper rate limiting and error handling
-3. WHEN product data is unavailable THEN the system SHALL have fallback mechanisms or cached product data
-4. WHEN storing API data THEN the system SHALL comply with API terms of service regarding data usage and caching
-5. WHEN handling product images THEN the system SHALL optimize image loading and provide fallback images for broken links
+1. WHEN fetching product data THEN the system SHALL integrate with Etsy Open API v3 using API key authentication to retrieve real product information
+2. WHEN API requests are made THEN the system SHALL implement proper rate limiting (10 requests/second, 10,000 requests/day) and error handling according to Etsy API v3 requirements
+3. WHEN product data is unavailable THEN the system SHALL have fallback mechanisms using cached quirky Etsy product data with appropriate cache expiry (1 hour for active listings)
+4. WHEN storing API data THEN the system SHALL comply with Etsy API Terms of Use including proper attribution ("The term 'Etsy' is a trademark of Etsy, Inc."), caching policies, and data retention requirements
+5. WHEN handling product images THEN the system SHALL use Etsy's provided image URLs (url_570xN for display, url_75x75 for thumbnails) with lazy loading and fallback images for broken links
 6. WHEN processing multiple concurrent games THEN the system SHALL maintain performance and not exceed API rate limits
 
 ### Requirement 5
@@ -87,3 +87,18 @@ The Price Is Wrong game is a multiplayer guessing game where players view produc
 5. WHEN revealing results THEN the system SHALL show a dramatic reveal sequence with actual price, all guesses, and point awards
 6. WHEN a round ends THEN the system SHALL automatically advance to the next round after a brief pause (10 seconds)
 7. WHEN the final round completes THEN the system SHALL display comprehensive final results and winner announcement
+
+### Requirement 7
+
+**User Story:** As a system, I want to implement sophisticated Etsy API integration with quirky item discovery algorithms, so that players are presented with unusual and surprising products that make the game more entertaining.
+
+#### Acceptance Criteria
+
+1. WHEN initializing the game THEN the system SHALL authenticate with Etsy API v3 using x-api-key header authentication
+2. WHEN searching for products THEN the system SHALL use quirky search modifiers like "bizarre", "peculiar", "oddity", "unusual", "weird", "avant-garde", "unconventional" to find off-the-beaten-path items
+3. WHEN evaluating products THEN the system SHALL calculate a quirkiness score (1-10 scale) based on factors like low view count (<100), unusual materials, niche tags, and new shops
+4. WHEN selecting products THEN the system SHALL prioritize items with high quirkiness scores to ensure surprising and challenging gameplay
+5. WHEN fetching products THEN the system SHALL use the /listings/active endpoint with parameters including taxonomy_id, min_price ($5), max_price ($500), and shop_location filters
+6. WHEN caching products THEN the system SHALL maintain a quirky product cache with 1-hour TTL and categorization by quirkiness score
+7. WHEN Etsy API is unavailable THEN the system SHALL fallback to cached quirky products sorted by quirkiness score
+8. WHEN displaying attribution THEN the system SHALL show "The term 'Etsy' is a trademark of Etsy, Inc. This application uses the Etsy API but is not endorsed or certified by Etsy, Inc."

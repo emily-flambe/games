@@ -39,15 +39,16 @@ const mimeTypes = {
 
 // Simple in-memory game sessions
 class GameSession {
-  constructor(sessionId) {
+  constructor(sessionId, gameType = 'checkbox-game') {
     this.sessionId = sessionId;
     this.players = new Map();
     this.spectators = new Map(); // Track spectators separately
     this.websockets = new Set();
     this.playerSockets = new Map(); // Track player ID -> WebSocket mapping
     this.spectatorSockets = new Map(); // Track spectator ID -> WebSocket mapping
+    this.chatHistory = []; // Store chat messages
     this.gameState = {
-      type: 'checkbox-game',
+      type: gameType,
       status: 'waiting',
       players: {},
       hostId: null,
@@ -115,6 +116,26 @@ class GameSession {
       gameState: this.gameState,
       playerId: playerId
     }));
+    
+    // Send chat history to new player
+    if (this.chatHistory.length > 0) {
+      ws.send(JSON.stringify({
+        type: 'chat_history',
+        data: {
+          messages: this.chatHistory.map(msg => {
+            const sender = this.players.get(msg.playerId) || this.spectators.get(msg.playerId);
+            return {
+              playerId: msg.playerId,
+              playerName: sender?.name || 'Unknown',
+              playerEmoji: sender?.emoji || '👤',
+              message: msg.message,
+              timestamp: msg.timestamp,
+              isSpectator: this.spectators.has(msg.playerId)
+            };
+          })
+        }
+      }));
+    }
   }
 
   addSpectator(spectatorId, ws) {
@@ -153,6 +174,26 @@ class GameSession {
       spectatorId: spectatorId,
       isSpectator: true
     }));
+    
+    // Send chat history to spectator
+    if (this.chatHistory.length > 0) {
+      ws.send(JSON.stringify({
+        type: 'chat_history',
+        data: {
+          messages: this.chatHistory.map(msg => {
+            const sender = this.players.get(msg.playerId) || this.spectators.get(msg.playerId);
+            return {
+              playerId: msg.playerId,
+              playerName: sender?.name || 'Unknown',
+              playerEmoji: sender?.emoji || '👤',
+              message: msg.message,
+              timestamp: msg.timestamp,
+              isSpectator: this.spectators.has(msg.playerId)
+            };
+          })
+        }
+      }));
+    }
     
     // Notify all users that a spectator joined
     this.broadcast({
@@ -516,6 +557,39 @@ class GameSession {
           ws.close();
           break;
           
+        case 'chat_message':
+          const messageText = data.data?.message || data.message;
+          if (messageText && messageText.trim()) {
+            const chatMessage = {
+              playerId: playerId,
+              message: messageText.trim(),
+              timestamp: Date.now()
+            };
+            
+            // Add to chat history (keep last 50 messages)
+            this.chatHistory.push(chatMessage);
+            if (this.chatHistory.length > 50) {
+              this.chatHistory.shift();
+            }
+            
+            // Get sender info (could be player or spectator)
+            const sender = this.players.get(playerId) || this.spectators.get(playerId);
+            
+            // Broadcast to all connected clients
+            this.broadcast({
+              type: 'chat_message',
+              data: {
+                playerId: playerId,
+                playerName: sender?.name || 'Unknown',
+                playerEmoji: sender?.emoji || '👤',
+                message: messageText.trim(),
+                timestamp: chatMessage.timestamp,
+                isSpectator: this.spectators.has(playerId)
+              }
+            });
+          }
+          break;
+          
         default:
           console.log('Unknown message type:', data.type);
       }
@@ -593,15 +667,16 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Static file serving
+  // Static file serving  
   let filePath;
+  const projectRoot = path.join(__dirname, '..');
   if (pathname === '/' || pathname === '/index.html') {
-    filePath = path.join(__dirname, 'src', 'static', 'index.html');
+    filePath = path.join(projectRoot, 'src', 'static', 'index.html');
   } else if (pathname.startsWith('/static/')) {
-    filePath = path.join(__dirname, 'src', pathname);
+    filePath = path.join(projectRoot, 'src', pathname);
   } else {
     // Default to index.html for SPA routing
-    filePath = path.join(__dirname, 'src', 'static', 'index.html');
+    filePath = path.join(projectRoot, 'src', 'static', 'index.html');
   }
 
   // Check if file exists
@@ -634,8 +709,10 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws, req) => {
-  const pathname = url.parse(req.url).pathname;
-  console.log('WebSocket connection:', pathname);
+  const parsedUrl = url.parse(req.url, true);
+  const pathname = parsedUrl.pathname;
+  const gameType = parsedUrl.query.gameType || 'checkbox-game';
+  console.log('WebSocket connection:', pathname, 'gameType:', gameType);
   
   // Extract session ID from URL (e.g., /ws, /api/game/test-session/ws)
   let sessionId = 'default-session';
@@ -646,9 +723,9 @@ wss.on('connection', (ws, req) => {
     sessionId = 'test-session';
   }
   
-  // Get or create game session
+  // Get or create game session with the specified game type
   if (!gameSessions.has(sessionId)) {
-    gameSessions.set(sessionId, new GameSession(sessionId));
+    gameSessions.set(sessionId, new GameSession(sessionId, gameType));
   }
   const gameSession = gameSessions.get(sessionId);
   
