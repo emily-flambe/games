@@ -110,8 +110,6 @@ class GameApp {
             const roomDiv = document.createElement('div');
             roomDiv.className = 'room-item';
             
-            const playerCount = room.playerCount || 0;
-            const maxPlayers = room.maxPlayers || 8;
             const gameType = this.formatGameName(room.gameType || 'Unknown');
             const status = room.gameStatus || 'waiting';
             
@@ -124,8 +122,7 @@ class GameApp {
                 <div class="room-info">
                     <div class="room-title">\${gameType}</div>
                     <div class="room-code">\${room.sessionId}</div>
-                    <div class="room-players">\${playerCount}/\${maxPlayers} players</div>
-                    \${playerEmojis ? \`<div class="room-emojis">\${playerEmojis}</div>\` : ''}
+                    <div class="room-emojis">\${playerEmojis || 'No players yet'}</div>
                     <div class="room-time">Status: \${this.formatStatus(status)}</div>
                 </div>
                 <button class="join-room-btn" data-room-code="\${room.sessionId}" data-game-type="\${room.gameType}">
@@ -3081,19 +3078,15 @@ main {
     letter-spacing: 1px;
 }
 
-.room-players {
-    font-size: 0.9rem;
-    color: #495057;
-    margin-bottom: 0.3rem;
-    font-weight: 500;
-}
-
 /* CRITICAL: Player emoji display in active rooms - DO NOT REMOVE */
 .room-emojis {
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     line-height: 1.5;
     margin: 0.5rem 0;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.3em;
+    min-height: 2rem;
+    color: #333;
+    font-weight: 500;
 }
 
 .room-time {
@@ -4876,9 +4869,9 @@ main {
   "version": "1.0.0-alpha",
   "baseVersion": "1.0.0",
   "branch": "game-shell-architecture",
-  "commit": "887075b",
-  "timestamp": "2025-08-11T03:19:42.719Z",
-  "deployedAt": "Aug 10, 2025, 09:19 PM MDT"
+  "commit": "a03ebb8",
+  "timestamp": "2025-08-11T03:25:37.322Z",
+  "deployedAt": "Aug 10, 2025, 09:25 PM MDT"
 }`
 };
 

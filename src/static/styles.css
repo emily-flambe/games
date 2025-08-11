@@ -464,19 +464,15 @@ main {
     letter-spacing: 1px;
 }
 
-.room-players {
-    font-size: 0.9rem;
-    color: #495057;
-    margin-bottom: 0.3rem;
-    font-weight: 500;
-}
-
 /* CRITICAL: Player emoji display in active rooms - DO NOT REMOVE */
 .room-emojis {
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     line-height: 1.5;
     margin: 0.5rem 0;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.3em;
+    min-height: 2rem;
+    color: #333;
+    font-weight: 500;
 }
 
 .room-time {

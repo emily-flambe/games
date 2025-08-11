@@ -104,8 +104,6 @@ class GameApp {
             const roomDiv = document.createElement('div');
             roomDiv.className = 'room-item';
             
-            const playerCount = room.playerCount || 0;
-            const maxPlayers = room.maxPlayers || 8;
             const gameType = this.formatGameName(room.gameType || 'Unknown');
             const status = room.gameStatus || 'waiting';
             
@@ -118,8 +116,7 @@ class GameApp {
                 <div class="room-info">
                     <div class="room-title">${gameType}</div>
                     <div class="room-code">${room.sessionId}</div>
-                    <div class="room-players">${playerCount}/${maxPlayers} players</div>
-                    ${playerEmojis ? `<div class="room-emojis">${playerEmojis}</div>` : ''}
+                    <div class="room-emojis">${playerEmojis || 'No players yet'}</div>
                     <div class="room-time">Status: ${this.formatStatus(status)}</div>
                 </div>
                 <button class="join-room-btn" data-room-code="${room.sessionId}" data-game-type="${room.gameType}">
