@@ -30,6 +30,9 @@ class GameShell {
         // Auto-refresh for active rooms
         this.refreshInterval = null;
         this.isRefreshing = false;
+        
+        // Chat state
+        this.chatMessages = [];
     }
 
     /**
@@ -111,6 +114,9 @@ class GameShell {
         if (startGameBtn) {
             startGameBtn.addEventListener('click', () => this.startGameSession());
         }
+        
+        // Chat controls
+        this.setupChatControls();
 
         // Handle browser back/forward buttons
         window.addEventListener('popstate', (event) => {
@@ -128,6 +134,47 @@ class GameShell {
         });
     }
 
+    /**
+     * Setup chat control event listeners
+     */
+    setupChatControls() {
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        
+        if (chatInput && chatSendBtn) {
+            // Enable chat when connected
+            const enableChat = () => {
+                if (this.isConnected && (this.gameState === 'playing' || this.gameState === 'finished')) {
+                    chatInput.disabled = false;
+                    chatSendBtn.disabled = false;
+                }
+            };
+            
+            // Send message handler
+            const sendMessage = () => {
+                const message = chatInput.value.trim();
+                if (message && this.ws && this.isConnected) {
+                    this.ws.send(JSON.stringify({
+                        type: 'chat_message',
+                        data: { message }
+                    }));
+                    chatInput.value = '';
+                }
+            };
+            
+            chatSendBtn.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+            
+            // Store enableChat function for later use
+            this.enableChat = enableChat;
+        }
+    }
+    
     /**
      * Setup player control event listeners
      */
@@ -242,6 +289,12 @@ class GameShell {
                 case 'spectator_joined':
                 case 'spectator_left':
                     this.handleSpectatorUpdate(message);
+                    break;
+                case 'chat_message':
+                    this.handleChatMessage(message);
+                    break;
+                case 'chat_history':
+                    this.handleChatHistory(message);
                     break;
                 case 'checkbox_toggled':
                     // Handle checkbox specific messages
@@ -527,6 +580,70 @@ class GameShell {
     }
 
     /**
+     * Handle incoming chat message
+     */
+    handleChatMessage(message) {
+        if (message.data) {
+            this.addChatMessage(message.data);
+        }
+    }
+    
+    /**
+     * Handle chat history
+     */
+    handleChatHistory(message) {
+        if (message.data && message.data.messages) {
+            // Clear placeholder messages
+            const chatMessagesEl = document.getElementById('chat-messages');
+            if (chatMessagesEl) {
+                chatMessagesEl.innerHTML = '';
+            }
+            
+            // Add historical messages
+            message.data.messages.forEach(msg => {
+                this.addChatMessage(msg, false);
+            });
+        }
+    }
+    
+    /**
+     * Add a chat message to the UI
+     */
+    addChatMessage(messageData, scrollToBottom = true) {
+        const chatMessagesEl = document.getElementById('chat-messages');
+        if (!chatMessagesEl) return;
+        
+        // Clear placeholder messages if this is the first real message
+        if (this.chatMessages.length === 0 && chatMessagesEl.querySelector('.chat-message')) {
+            chatMessagesEl.innerHTML = '';
+        }
+        
+        const messageEl = document.createElement('div');
+        messageEl.className = 'chat-message';
+        
+        const authorEl = document.createElement('span');
+        authorEl.className = 'chat-author';
+        authorEl.textContent = `${messageData.playerEmoji} ${messageData.playerName}${messageData.isSpectator ? ' (spectator)' : ''}:`;
+        
+        const textEl = document.createElement('span');
+        textEl.className = 'chat-text';
+        textEl.textContent = messageData.message;
+        
+        messageEl.appendChild(authorEl);
+        messageEl.appendChild(textEl);
+        
+        chatMessagesEl.appendChild(messageEl);
+        
+        // Store message
+        this.chatMessages.push(messageData);
+        
+        // Scroll to bottom if requested
+        if (scrollToBottom) {
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+    }
+    
+    /**
      * Handle spectator update messages
      */
     handleSpectatorUpdate(message) {
@@ -743,6 +860,8 @@ class GameShell {
     updateGameControls() {
         const gameArea = document.getElementById('game-area');
         const chatArea = document.getElementById('chat-area');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
         const playerControls = document.getElementById('player-controls');
         const playersList = document.querySelector('.players-list');
 
@@ -753,12 +872,21 @@ class GameShell {
             
             if (this.gameState === 'playing') {
                 if (gameArea) gameArea.style.display = 'block';
-                if (chatArea) chatArea.style.display = 'block'; // Show chat during game
+                if (chatArea) {
+                    chatArea.style.display = 'block'; // Show chat during game
+                    // Enable chat for spectators too
+                    if (chatInput) chatInput.disabled = false;
+                    if (chatSendBtn) chatSendBtn.disabled = false;
+                }
                 if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
                 if (playersList) playersList.style.display = 'none'; // Hide during gameplay
             } else {
                 if (gameArea) gameArea.style.display = 'none';
-                if (chatArea) chatArea.style.display = 'none'; // Hide chat when not playing
+                if (chatArea) {
+                    chatArea.style.display = 'none'; // Hide chat when not playing
+                    if (chatInput) chatInput.disabled = true;
+                    if (chatSendBtn) chatSendBtn.disabled = true;
+                }
                 if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
                 if (playersList) playersList.style.display = 'block'; // Show player list
             }
@@ -768,17 +896,31 @@ class GameShell {
         // Normal player controls
         if (this.gameState === 'playing') {
             if (gameArea) gameArea.style.display = 'block';
-            if (chatArea) chatArea.style.display = 'block'; // Show chat during game
+            if (chatArea) {
+                chatArea.style.display = 'block'; // Show chat during game
+                // Enable chat for players
+                if (chatInput) chatInput.disabled = false;
+                if (chatSendBtn) chatSendBtn.disabled = false;
+            }
             if (playerControls) playerControls.style.display = 'none'; // Hide during gameplay
             if (playersList) playersList.style.display = 'none'; // Hide during gameplay
         } else if (this.gameState === 'finished') {
             if (gameArea) gameArea.style.display = 'block'; // Keep game visible for end screen
-            if (chatArea) chatArea.style.display = 'block'; // Keep chat visible at game end
+            if (chatArea) {
+                chatArea.style.display = 'block'; // Keep chat visible at game end
+                // Keep chat enabled at game end
+                if (chatInput) chatInput.disabled = false;
+                if (chatSendBtn) chatSendBtn.disabled = false;
+            }
             if (playerControls) playerControls.style.display = 'none'; 
             if (playersList) playersList.style.display = 'none';
         } else if (this.gameState === 'waiting') {
             if (gameArea) gameArea.style.display = 'none';
-            if (chatArea) chatArea.style.display = 'none'; // Hide chat when waiting
+            if (chatArea) {
+                chatArea.style.display = 'none'; // Hide chat when waiting
+                if (chatInput) chatInput.disabled = true;
+                if (chatSendBtn) chatSendBtn.disabled = true;
+            }
             if (playerControls) playerControls.style.display = 'block';
             if (playersList) playersList.style.display = 'block';
         }
@@ -924,11 +1066,25 @@ class GameShell {
             gameArea.innerHTML = '';
         }
         
-        // Hide chat area
+        // Hide and reset chat area
         const chatArea = document.getElementById('chat-area');
         if (chatArea) {
             chatArea.style.display = 'none';
         }
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) {
+            chatMessages.innerHTML = '';
+        }
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput) {
+            chatInput.value = '';
+            chatInput.disabled = true;
+        }
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        if (chatSendBtn) {
+            chatSendBtn.disabled = true;
+        }
+        this.chatMessages = [];
         
         // Hide end game screen
         const endScreen = document.getElementById('end-game-screen');

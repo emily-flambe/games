@@ -223,6 +223,7 @@ export class GameSession implements DurableObject {
   private gameState: any;
   private sessionId: string = '';
   private initialized: boolean = false;
+  private chatHistory: Array<{playerId: string, message: string, timestamp: number}> = [];
 
   constructor(private state: DurableObjectState, private env: Env) {
     // Game state will be loaded lazily in initializeGameState()
@@ -239,6 +240,7 @@ export class GameSession implements DurableObject {
     const storedState = await this.state.storage.get('gameState');
     const storedPlayers = await this.state.storage.get('players');
     const storedSpectators = await this.state.storage.get('spectators');
+    const storedChatHistory = await this.state.storage.get('chatHistory');
     
     if (storedState) {
       // Load existing game state
@@ -269,6 +271,9 @@ export class GameSession implements DurableObject {
     if (storedSpectators) {
       this.spectators = new Map(storedSpectators);
     }
+    if (storedChatHistory) {
+      this.chatHistory = storedChatHistory as Array<{playerId: string, message: string, timestamp: number}>;
+    }
     
     this.initialized = true;
   }
@@ -280,7 +285,8 @@ export class GameSession implements DurableObject {
     await this.state.storage.put({
       gameState: this.gameState,
       players: Array.from(this.players.entries()),
-      spectators: Array.from(this.spectators.entries())
+      spectators: Array.from(this.spectators.entries()),
+      chatHistory: this.chatHistory
     });
   }
 
@@ -376,6 +382,26 @@ export class GameSession implements DurableObject {
       gameState: this.gameState,
       playerId: playerId
     }));
+    
+    // Send chat history to new player
+    if (this.chatHistory.length > 0) {
+      ws.send(JSON.stringify({
+        type: 'chat_history',
+        data: {
+          messages: this.chatHistory.map(msg => {
+            const sender = this.players.get(msg.playerId) || this.spectators.get(msg.playerId);
+            return {
+              playerId: msg.playerId,
+              playerName: sender?.name || 'Unknown',
+              playerEmoji: sender?.emoji || '👤',
+              message: msg.message,
+              timestamp: msg.timestamp,
+              isSpectator: this.spectators.has(msg.playerId)
+            };
+          })
+        }
+      }));
+    }
 
     // Broadcast player joined
     this.broadcast({
@@ -435,6 +461,26 @@ export class GameSession implements DurableObject {
       spectatorId: spectatorId,
       isSpectator: true
     }));
+    
+    // Send chat history to spectator
+    if (this.chatHistory.length > 0) {
+      ws.send(JSON.stringify({
+        type: 'chat_history',
+        data: {
+          messages: this.chatHistory.map(msg => {
+            const sender = this.players.get(msg.playerId) || this.spectators.get(msg.playerId);
+            return {
+              playerId: msg.playerId,
+              playerName: sender?.name || 'Unknown',
+              playerEmoji: sender?.emoji || '👤',
+              message: msg.message,
+              timestamp: msg.timestamp,
+              isSpectator: this.spectators.has(msg.playerId)
+            };
+          })
+        }
+      }));
+    }
     
     // Broadcast spectator joined
     this.broadcast({
@@ -625,6 +671,41 @@ export class GameSession implements DurableObject {
             if (this.sessionId) {
               await this.updateRegistry();
             }
+          }
+          break;
+        case 'chat_message':
+          const messageText = data.data?.message || data.message;
+          if (messageText && messageText.trim()) {
+            const chatMessage = {
+              playerId: playerId,
+              message: messageText.trim(),
+              timestamp: Date.now()
+            };
+            
+            // Add to chat history (keep last 50 messages)
+            this.chatHistory.push(chatMessage);
+            if (this.chatHistory.length > 50) {
+              this.chatHistory.shift();
+            }
+            
+            // Save state with updated chat history
+            await this.saveGameState();
+            
+            // Get sender info (could be player or spectator)
+            const sender = this.players.get(playerId) || this.spectators.get(playerId);
+            
+            // Broadcast to all connected clients
+            this.broadcast({
+              type: 'chat_message',
+              data: {
+                playerId: playerId,
+                playerName: sender?.name || 'Unknown',
+                playerEmoji: sender?.emoji || '👤',
+                message: messageText.trim(),
+                timestamp: chatMessage.timestamp,
+                isSpectator: this.spectators.has(playerId)
+              }
+            });
           }
           break;
 
