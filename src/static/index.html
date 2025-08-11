@@ -26,25 +26,25 @@
                         <h3>Checkbox Game</h3>
                         <p>Not really a game lol</p>
                     </button>
+                    <button class="game-card" data-game="votes-game">
+                        <h3>Everybody Votes</h3>
+                        <p>Vote on fun questions and predict what others will choose</p>
+                        <div class="coming-soon-badge">WIP</div>
+                    </button>
                     <button class="game-card coming-soon" data-game="paddlin-game">
                         <h3>That's a Paddlin'</h3>
                         <p>N-way pong with paddles around a shared arena</p>
-                        <div class="coming-soon-badge">Coming Soon</div>
-                    </button>
-                    <button class="game-card coming-soon" data-game="votes-game">
-                        <h3>Everybody Votes</h3>
-                        <p>Vote on fun questions and predict what others will choose</p>
-                        <div class="coming-soon-badge">Coming Soon</div>
+                        <div class="coming-soon-badge">WIP</div>
                     </button>
                     <button class="game-card coming-soon" data-game="bracketeering-game">
                         <h3>Bracketeering</h3>
                         <p>Tournament-style voting on head-to-head matchups</p>
-                        <div class="coming-soon-badge">Coming Soon</div>
+                        <div class="coming-soon-badge">WIP</div>
                     </button>
                     <button class="game-card coming-soon" data-game="price-game">
-                        <h3>The Price is Dumb</h3>
+                        <h3>The Price is Weird</h3>
                         <p>Guess prices of real Etsy products without going over</p>
-                        <div class="coming-soon-badge">Coming Soon</div>
+                        <div class="coming-soon-badge">WIP</div>
                     </button>
                 </div>
                 
@@ -85,11 +85,21 @@
             <!-- Game Room View -->
             <div id="game-room" class="view">
                 <div class="room-header">
-                    <div class="room-info">
-                        <h2 id="game-title">Game Room</h2>
-                        <div class="room-code">Room: <span id="room-code-display"></span></div>
+                    <div class="header-left">
+                        <div class="rules-box" id="rules-box" style="display: none;">
+                            <h3>How to Play</h3>
+                            <div id="game-rules-content">
+                                <!-- Game-specific rules will be populated here -->
+                            </div>
+                        </div>
                     </div>
-                    <button id="leave-room-btn">Leave Room</button>
+                    <div class="header-right">
+                        <div class="room-info">
+                            <h2 id="game-title">Game Room</h2>
+                            <div class="room-code">Room: <span id="room-code-display"></span></div>
+                        </div>
+                        <button id="leave-room-btn">Leave Room</button>
+                    </div>
                 </div>
                 
                 <!-- Universal Player Controls - for ALL games -->
@@ -107,7 +117,7 @@
                             <button id="current-emoji-btn" style="padding: 8px 12px; background: #f8f9fa; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 24px;">🐶</button>
                             
                             <!-- Emoji Picker Popup -->
-                            <div id="emoji-picker" style="display: none; position: absolute; top: 40px; left: 0; background: white; border: 2px solid #ccc; border-radius: 8px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 10001; width: 300px;">
+                            <div id="emoji-picker" style="display: none; position: absolute; top: 40px; left: 0; background: white; border: 2px solid #ccc; border-radius: 8px; padding: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 99999; width: 300px;">
                                 <h4 style="margin: 0 0 10px 0;">Choose Your Animal:</h4>
                                 <div id="emoji-grid" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; max-height: 200px; overflow-y: auto;">
                                     <!-- Animal emojis will be populated by JavaScript -->
@@ -136,12 +146,21 @@
                     <div class="chat-header">
                         <h3>💬 Game Chat</h3>
                     </div>
-                    <div class="chat-messages" id="chat-messages">
-                        <!-- Chat messages will appear here -->
-                    </div>
-                    <div class="chat-input-area">
-                        <input type="text" id="chat-input" placeholder="Type a message...">
-                        <button id="chat-send-btn">Send</button>
+                    <div class="chat-main-container">
+                        <div class="chat-messages-section">
+                            <div class="chat-messages" id="chat-messages">
+                                <!-- Chat messages will appear here -->
+                            </div>
+                            <div class="chat-input-area">
+                                <input type="text" id="chat-input" placeholder="Type a message...">
+                                <button id="chat-send-btn">Send</button>
+                            </div>
+                        </div>
+                        <div class="chat-users-panel">
+                            <div class="chat-users-list" id="chat-users-list">
+                                <!-- Player and spectator list will appear here -->
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -181,10 +200,10 @@
     <!-- Game Shell Architecture -->
     <script src="/static/js/GameModule.js"></script>
     <script src="/static/js/games/CheckboxGameModule.js"></script>
-    <script src="/static/js/games/PaddlinGameModule.js"></script>
-    <script src="/static/js/games/VotesGameModule.js"></script>
+    <script src="/static/js/games/ThatsAPaddlinGameModule.js"></script>
+    <script src="/static/js/games/EverybodyVotesGameModule.js"></script>
     <script src="/static/js/games/BracketeeringGameModule.js"></script>
-    <script src="/static/js/games/PriceGameModule.js"></script>
+    <script src="/static/js/games/PriceIsWeirdGameModule.js"></script>
     <script src="/static/js/GameShell.js"></script>
     <script src="/static/app.js"></script>
 </body>

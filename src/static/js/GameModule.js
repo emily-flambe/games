@@ -19,14 +19,25 @@ class GameModule {
      * @param {Object} initialState - Initial game state from server
      * @param {Function} onPlayerAction - Callback for player actions (playerId, action)
      * @param {Function} onStateChange - Callback for state changes
+     * @param {HTMLElement} rulesElement - Optional DOM element for game rules
      */
-    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange) {
+    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement) {
         this.gameAreaElement = gameAreaElement;
         this.players = players;
         this.gameState = initialState || {};
         this.onPlayerAction = onPlayerAction;
         this.onStateChange = onStateChange;
+        this.rulesElement = rulesElement;
         this.isActive = true;
+        
+        // Populate rules if element provided and game has rules
+        if (this.rulesElement && typeof this.getRules === 'function') {
+            const rules = this.getRules();
+            if (rules) {
+                this.rulesElement.innerHTML = rules;
+            }
+        }
+        
         this.render();
     }
 
@@ -80,6 +91,14 @@ class GameModule {
     }
 
     /**
+     * Get game rules HTML (optional - override in subclasses)
+     * @returns {string|null} HTML string for game rules or null if no rules
+     */
+    getRules() {
+        return null;
+    }
+    
+    /**
      * Clean up resources when game module is destroyed
      */
     cleanup() {
@@ -87,7 +106,11 @@ class GameModule {
         if (this.gameAreaElement) {
             this.gameAreaElement.innerHTML = '';
         }
+        if (this.rulesElement) {
+            this.rulesElement.innerHTML = '';
+        }
         this.gameAreaElement = null;
+        this.rulesElement = null;
         this.players = {};
         this.gameState = {};
         this.onPlayerAction = null;

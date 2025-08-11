@@ -39,7 +39,7 @@ const mimeTypes = {
 
 // Simple in-memory game sessions
 class GameSession {
-  constructor(sessionId) {
+  constructor(sessionId, gameType = 'checkbox-game') {
     this.sessionId = sessionId;
     this.players = new Map();
     this.spectators = new Map(); // Track spectators separately
@@ -48,7 +48,7 @@ class GameSession {
     this.spectatorSockets = new Map(); // Track spectator ID -> WebSocket mapping
     this.chatHistory = []; // Store chat messages
     this.gameState = {
-      type: 'checkbox-game',
+      type: gameType,
       status: 'waiting',
       players: {},
       hostId: null,
@@ -709,8 +709,10 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws, req) => {
-  const pathname = url.parse(req.url).pathname;
-  console.log('WebSocket connection:', pathname);
+  const parsedUrl = url.parse(req.url, true);
+  const pathname = parsedUrl.pathname;
+  const gameType = parsedUrl.query.gameType || 'checkbox-game';
+  console.log('WebSocket connection:', pathname, 'gameType:', gameType);
   
   // Extract session ID from URL (e.g., /ws, /api/game/test-session/ws)
   let sessionId = 'default-session';
@@ -721,9 +723,9 @@ wss.on('connection', (ws, req) => {
     sessionId = 'test-session';
   }
   
-  // Get or create game session
+  // Get or create game session with the specified game type
   if (!gameSessions.has(sessionId)) {
-    gameSessions.set(sessionId, new GameSession(sessionId));
+    gameSessions.set(sessionId, new GameSession(sessionId, gameType));
   }
   const gameSession = gameSessions.get(sessionId);
   

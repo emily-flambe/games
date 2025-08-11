@@ -1,8 +1,8 @@
 /**
- * VotesGameModule - Implements "Everybody Votes" (Nintendo Wii clone)
- * A voting game where players answer fun questions and predict what others will choose
+ * PriceGameModule - Implements "The Price is Weird" 
+ * A Price is Right clone using Etsy API for real product pricing
  */
-class VotesGameModule extends GameModule {
+class PriceGameModule extends GameModule {
     constructor() {
         super();
         // Game state will be initialized when implemented
@@ -29,14 +29,14 @@ class VotesGameModule extends GameModule {
                 align-items: center;
                 justify-content: center;
                 height: 400px;
-                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
                 border-radius: 12px;
                 color: white;
                 text-align: center;
                 padding: 2rem;
             ">
-                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">🗳️ Everybody Votes 🗳️</h2>
-                <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem;">Nintendo Wii Channel Clone</p>
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">💰 The Price is Weird 💰</h2>
+                <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem;">Price is Right Clone with Etsy Products</p>
                 <div style="
                     background: rgba(255, 255, 255, 0.2);
                     border-radius: 8px;
@@ -45,7 +45,7 @@ class VotesGameModule extends GameModule {
                 ">
                     <p style="font-size: 1.1rem; margin: 0;">🚧 Coming Soon! 🚧</p>
                     <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">
-                        Vote on fun questions and predict what others will choose!
+                        Guess the price of real Etsy products without going over!
                     </p>
                 </div>
             </div>
@@ -57,7 +57,7 @@ class VotesGameModule extends GameModule {
      */
     handlePlayerAction(playerId, action) {
         // Will be implemented when game is ready
-        console.log('Everybody Votes - Action received:', action);
+        console.log('The Price is Dumb - Action received:', action);
     }
 
     /**
@@ -79,7 +79,7 @@ class VotesGameModule extends GameModule {
 
 // Export for use
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = VotesGameModule;
+    module.exports = PriceGameModule;
 } else {
-    window.VotesGameModule = VotesGameModule;
+    window.PriceGameModule = PriceGameModule;
 }

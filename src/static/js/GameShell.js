@@ -240,9 +240,10 @@ class GameShell {
     connectToGame() {
         return new Promise((resolve, reject) => {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/api/game/${this.sessionId}/ws`;
+            const gameTypeParam = this.gameType ? `?gameType=${encodeURIComponent(this.gameType)}` : '';
+            const wsUrl = `${protocol}//${window.location.host}/api/game/${this.sessionId}/ws${gameTypeParam}`;
             
-            console.log('Attempting to connect to WebSocket:', wsUrl);
+            console.log('Attempting to connect to WebSocket:', wsUrl, 'with gameType:', this.gameType);
             this.ws = new WebSocket(wsUrl);
             
             this.ws.onopen = () => {
@@ -325,11 +326,21 @@ class GameShell {
             this.spectatorId = message.spectatorId;
         } else {
             this.currentPlayerId = message.playerId;
-            this.currentPlayer = this.players[this.currentPlayerId];
         }
         
         this.roomState = message.gameState;
         this.players = message.gameState.players || {};
+        
+        // Set currentPlayer after updating players
+        if (this.currentPlayerId && this.players[this.currentPlayerId]) {
+            this.currentPlayer = this.players[this.currentPlayerId];
+        }
+        
+        // Extract game type from server state
+        if (message.gameState.type) {
+            this.gameType = message.gameState.type;
+            console.log('Game type from server:', this.gameType);
+        }
         
         // Update spectators if present
         if (message.gameState.spectators) {
@@ -353,6 +364,16 @@ class GameShell {
         this.updateUI();
         this.hideLoadingOverlay();
         
+        // Load game module in waiting room to show rules
+        if (this.gameState === 'waiting' && !this.gameModule && this.gameType) {
+            this.loadGameModule(this.gameType).then(() => {
+                if (this.gameModule) {
+                    // Show rules box if game provides rules
+                    this.updateRulesDisplay();
+                }
+            });
+        }
+        
         // If spectator and game is in progress, load the game module
         if (this.isSpectator && this.gameState === 'playing' && !this.gameModule) {
             this.loadGameModule(this.gameType || 'checkbox-game').then(() => {
@@ -360,13 +381,20 @@ class GameShell {
                     this.gameModule.currentPlayerId = null; // No player ID for spectator
                     this.gameModule.isSpectator = true;
                     
+                    // Get rules element
+                    const rulesElement = document.getElementById('game-rules-content');
+                    
                     this.gameModule.init(
                         this.gameAreaElement,
                         this.players,
                         message.gameState,
                         (action) => this.sendPlayerAction(action),
-                        (state) => this.onGameStateChange(state)
+                        (state) => this.onGameStateChange(state),
+                        rulesElement
                     );
+                    
+                    // Show rules box if game provides rules
+                    this.updateRulesDisplay();
                 }
             });
         }
@@ -396,13 +424,20 @@ class GameShell {
                 this.gameModule.currentPlayerId = this.currentPlayerId;
                 this.gameModule.isSpectator = this.isSpectator;
                 
+                // Get rules element
+                const rulesElement = document.getElementById('game-rules-content');
+                
                 this.gameModule.init(
                     this.gameAreaElement,
                     this.players,
                     message.data?.gameSpecificState,
                     (action) => this.sendPlayerAction(action),
-                    (state) => this.onGameStateChange(state)
+                    (state) => this.onGameStateChange(state),
+                    rulesElement
                 );
+                
+                // Show rules box if game provides rules
+                this.updateRulesDisplay();
             }
         });
 
@@ -438,6 +473,14 @@ class GameShell {
                     console.log('✅ CheckboxGameModule loaded successfully');
                 } else {
                     console.error('CheckboxGameModule class not found - check script loading');
+                    this.gameModule = null;
+                }
+            } else if (gameType === 'votes-game') {
+                if (typeof EverybodyVotesGameModule !== 'undefined') {
+                    this.gameModule = new EverybodyVotesGameModule();
+                    console.log('✅ EverybodyVotesGameModule loaded successfully');
+                } else {
+                    console.error('EverybodyVotesGameModule class not found - check script loading');
                     this.gameModule = null;
                 }
             } else {
@@ -514,9 +557,10 @@ class GameShell {
     /**
      * Join an existing room
      */
-    async joinExistingRoom(roomCode) {
+    async joinExistingRoom(roomCode, gameType = null) {
         try {
-            this.gameType = 'checkbox-game'; // Default for now
+            // Don't set gameType yet - we'll get it from the server
+            this.gameType = gameType; // May be null, will be set by server response
             this.sessionId = roomCode;
             this.showLoadingOverlay();
             this.stopActiveRoomsRefresh();
@@ -570,12 +614,18 @@ class GameShell {
         if (message.gameState) {
             this.players = message.gameState.players || {};
             
+            // Update currentPlayer if it's the current player who was updated
+            if (this.currentPlayerId && this.players[this.currentPlayerId]) {
+                this.currentPlayer = this.players[this.currentPlayerId];
+            }
+            
             // Update players in the game module too
             if (this.gameModule) {
                 this.gameModule.updatePlayers(this.players);
             }
             
             this.updatePlayersList();
+            this.updateCurrentPlayerInfo();
         }
     }
 
@@ -613,9 +663,12 @@ class GameShell {
         const chatMessagesEl = document.getElementById('chat-messages');
         if (!chatMessagesEl) return;
         
-        // Clear placeholder messages if this is the first real message
-        if (this.chatMessages.length === 0 && chatMessagesEl.querySelector('.chat-message')) {
-            chatMessagesEl.innerHTML = '';
+        // Create a wrapper for messages if it doesn't exist
+        let messagesWrapper = chatMessagesEl.querySelector('.chat-messages-wrapper');
+        if (!messagesWrapper) {
+            messagesWrapper = document.createElement('div');
+            messagesWrapper.className = 'chat-messages-wrapper';
+            chatMessagesEl.appendChild(messagesWrapper);
         }
         
         const messageEl = document.createElement('div');
@@ -632,7 +685,7 @@ class GameShell {
         messageEl.appendChild(authorEl);
         messageEl.appendChild(textEl);
         
-        chatMessagesEl.appendChild(messageEl);
+        messagesWrapper.appendChild(messageEl);
         
         // Store message
         this.chatMessages.push(messageData);
@@ -663,6 +716,7 @@ class GameShell {
         if (message.data && message.data.spectators) {
             this.spectators = message.data.spectators;
             this.updateSpectatorsDisplay();
+            this.updateChatUsersList();
         }
         
         // Update game controls for spectator
@@ -817,6 +871,7 @@ class GameShell {
 
         this.updateStartGameButton();
         this.updateCurrentPlayerInfo();
+        this.updateChatUsersList();
     }
 
     /**
@@ -854,6 +909,26 @@ class GameShell {
         }
     }
 
+    /**
+     * Update rules display based on game module
+     */
+    updateRulesDisplay() {
+        const rulesBox = document.getElementById('rules-box');
+        const rulesContent = document.getElementById('game-rules-content');
+        
+        if (this.gameModule && typeof this.gameModule.getRules === 'function') {
+            const rules = this.gameModule.getRules();
+            if (rules && rulesContent) {
+                rulesContent.innerHTML = rules;
+                if (rulesBox) {
+                    rulesBox.style.display = 'block';
+                }
+            }
+        } else if (rulesBox) {
+            rulesBox.style.display = 'none';
+        }
+    }
+    
     /**
      * Update game controls based on game state
      */
@@ -917,9 +992,10 @@ class GameShell {
         } else if (this.gameState === 'waiting') {
             if (gameArea) gameArea.style.display = 'none';
             if (chatArea) {
-                chatArea.style.display = 'none'; // Hide chat when waiting
-                if (chatInput) chatInput.disabled = true;
-                if (chatSendBtn) chatSendBtn.disabled = true;
+                chatArea.style.display = 'block'; // Show chat in waiting room
+                // Enable chat for waiting room
+                if (chatInput) chatInput.disabled = false;
+                if (chatSendBtn) chatSendBtn.disabled = false;
             }
             if (playerControls) playerControls.style.display = 'block';
             if (playersList) playersList.style.display = 'block';
@@ -965,6 +1041,72 @@ class GameShell {
     }
 
     /**
+     * Update the chat users list with players and spectators
+     */
+    updateChatUsersList() {
+        const chatUsersList = document.getElementById('chat-users-list');
+        if (!chatUsersList) return;
+        
+        chatUsersList.innerHTML = '';
+        
+        // Add players section if there are any players
+        if (Object.keys(this.players).length > 0) {
+            const playersSection = document.createElement('div');
+            playersSection.className = 'chat-users-section';
+            
+            const playersHeader = document.createElement('div');
+            playersHeader.className = 'chat-users-header';
+            playersHeader.textContent = `Players (${Object.keys(this.players).length})`;
+            playersSection.appendChild(playersHeader);
+            
+            Object.values(this.players).forEach(player => {
+                const userItem = document.createElement('div');
+                userItem.className = 'chat-user-item';
+                
+                const isHost = this.roomState.hostId === player.id;
+                const isCurrentPlayer = player.id === this.currentPlayerId;
+                
+                userItem.innerHTML = `
+                    <span class="chat-user-emoji">${player.emoji}</span>
+                    <span class="chat-user-name">${player.name}${isCurrentPlayer ? ' (you!)' : ''}</span>
+                    ${isHost ? '<span class="chat-user-badge">👑</span>' : ''}
+                `;
+                
+                playersSection.appendChild(userItem);
+            });
+            
+            chatUsersList.appendChild(playersSection);
+        }
+        
+        // Add spectators section if there are any spectators
+        if (Object.keys(this.spectators).length > 0) {
+            const spectatorsSection = document.createElement('div');
+            spectatorsSection.className = 'chat-users-section';
+            
+            const spectatorsHeader = document.createElement('div');
+            spectatorsHeader.className = 'chat-users-header';
+            spectatorsHeader.textContent = `Spectators (${Object.keys(this.spectators).length})`;
+            spectatorsSection.appendChild(spectatorsHeader);
+            
+            Object.values(this.spectators).forEach(spectator => {
+                const userItem = document.createElement('div');
+                userItem.className = 'chat-user-item spectator';
+                
+                const isCurrentSpectator = spectator.id === this.spectatorId;
+                
+                userItem.innerHTML = `
+                    <span class="chat-user-emoji">${spectator.emoji}</span>
+                    <span class="chat-user-name">${spectator.name}${isCurrentSpectator ? ' (you!)' : ''}</span>
+                `;
+                
+                spectatorsSection.appendChild(userItem);
+            });
+            
+            chatUsersList.appendChild(spectatorsSection);
+        }
+    }
+
+    /**
      * Update spectators display
      */
     updateSpectatorsDisplay() {
@@ -973,6 +1115,8 @@ class GameShell {
             // Show spectator count somewhere in UI
             console.log(`${spectatorCount} spectators watching`);
         }
+        // Update the chat users list to show spectators
+        this.updateChatUsersList();
     }
 
     /**
@@ -1066,6 +1210,16 @@ class GameShell {
             gameArea.innerHTML = '';
         }
         
+        // Hide rules box
+        const rulesBox = document.getElementById('rules-box');
+        if (rulesBox) {
+            rulesBox.style.display = 'none';
+        }
+        const rulesContent = document.getElementById('game-rules-content');
+        if (rulesContent) {
+            rulesContent.innerHTML = '';
+        }
+        
         // Hide and reset chat area
         const chatArea = document.getElementById('chat-area');
         if (chatArea) {
@@ -1133,7 +1287,16 @@ class GameShell {
      * Format game name for display
      */
     formatGameName(gameType) {
-        return gameType
+        // Special cases for specific games
+        const gameNames = {
+            'checkbox-game': 'Checkbox Game',
+            'votes-game': 'Everybody Votes',
+            'paddlin-game': "That's a Paddlin'",
+            'bracketeering-game': 'Bracketeering',
+            'price-game': 'The Price is Weird'
+        };
+        
+        return gameNames[gameType] || gameType
             .split('-')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' ');

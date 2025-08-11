@@ -233,7 +233,7 @@ export class GameSession implements DurableObject {
   /**
    * Initialize or load existing game state from Durable Object storage
    */
-  private async initializeGameState() {
+  private async initializeGameState(gameType: string = 'checkbox-game') {
     if (this.initialized) return;
     
     // Try to load existing game state from storage
@@ -245,11 +245,11 @@ export class GameSession implements DurableObject {
     if (storedState) {
       // Load existing game state
       this.gameState = storedState;
-      console.log(`🔄 Loaded existing game state - gameStarted: ${this.gameState.gameStarted}`);
+      console.log(`🔄 Loaded existing game state - type: ${this.gameState.type}, gameStarted: ${this.gameState.gameStarted}`);
     } else {
-      // Initialize fresh game state
+      // Initialize fresh game state with the specified game type
       this.gameState = {
-        type: 'checkbox-game',
+        type: gameType,  // Use the provided game type
         status: 'waiting',
         players: {},
         hostId: null,
@@ -261,7 +261,7 @@ export class GameSession implements DurableObject {
         spectatorCount: 0,
         spectators: {}
       };
-      console.log('🆕 Initialized fresh game state');
+      console.log(`🆕 Initialized fresh game state with type: ${gameType}`);
     }
     
     // Restore players and spectators maps
@@ -299,8 +299,11 @@ export class GameSession implements DurableObject {
       this.sessionId = pathMatch[1];
     }
 
+    // Extract game type from query params
+    const gameType = url.searchParams.get('gameType') || 'checkbox-game';
+
     // Initialize game state before processing any requests
-    await this.initializeGameState();
+    await this.initializeGameState(gameType);
 
     // Check for WebSocket upgrade
     const upgradeHeader = request.headers.get('Upgrade');

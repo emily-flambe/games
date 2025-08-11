@@ -122,7 +122,7 @@ class GameApp {
                     ${playerEmojis ? `<div class="room-emojis">${playerEmojis}</div>` : ''}
                     <div class="room-time">Status: ${this.formatStatus(status)}</div>
                 </div>
-                <button class="join-room-btn" data-room-code="${room.sessionId}">
+                <button class="join-room-btn" data-room-code="${room.sessionId}" data-game-type="${room.gameType}">
                     Join
                 </button>
                 <!--
@@ -135,7 +135,7 @@ class GameApp {
             const joinBtn = roomDiv.querySelector('.join-room-btn');
             if (joinBtn) {
                 joinBtn.addEventListener('click', () => {
-                    this.gameShell.joinExistingRoom(room.sessionId);
+                    this.gameShell.joinExistingRoom(room.sessionId, room.gameType);
                 });
             }
             

@@ -13,8 +13,8 @@ class CheckboxGameModule extends GameModule {
     /**
      * Initialize the checkbox game
      */
-    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange) {
-        super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange);
+    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement) {
+        super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement);
         
         // Initialize game state
         if (initialState) {
@@ -68,6 +68,18 @@ class CheckboxGameModule extends GameModule {
         }
     }
 
+    /**
+     * Get game rules HTML
+     */
+    getRules() {
+        return `
+            <ul>
+                <li>Click the boxes</li>
+                <li>It's not much of a game, is it</li>
+            </ul>
+        `;
+    }
+    
     /**
      * Check win condition - all checkboxes must be checked
      */
