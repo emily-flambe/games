@@ -774,24 +774,47 @@ class GameShell {
                     this.initializeEmojiGrid();
                 }
                 
+                // Move picker to body if not already there (to escape parent containers)
+                if (picker.parentElement !== document.body) {
+                    document.body.appendChild(picker);
+                }
+                
                 // Show the picker first
                 picker.style.display = 'block';
+                
+                // Force position: fixed for proper positioning
+                picker.style.position = 'fixed';
                 
                 // Then position it relative to the button
                 const rect = emojiBtn.getBoundingClientRect();
                 const pickerWidth = 340; // Width set in HTML
+                const pickerHeight = picker.getBoundingClientRect().height;
                 
-                // Position below button, centered if possible
+                // Calculate horizontal position - center below button
                 let left = rect.left + (rect.width / 2) - (pickerWidth / 2);
                 
-                // Keep within viewport bounds
+                // Keep within viewport bounds horizontally
                 if (left < 10) left = 10;
                 if (left + pickerWidth > window.innerWidth - 10) {
                     left = window.innerWidth - pickerWidth - 10;
                 }
                 
-                picker.style.left = left + 'px';
-                picker.style.top = (rect.bottom + 5) + 'px';
+                // Calculate vertical position - prefer below button
+                let top = rect.bottom + 5;
+                
+                // If picker would go off bottom of screen, show above button instead
+                if (top + pickerHeight > window.innerHeight - 10) {
+                    top = rect.top - pickerHeight - 5;
+                    // Make sure it doesn't go off top of screen
+                    if (top < 10) {
+                        top = rect.bottom + 5; // Fall back to below if no room above
+                    }
+                }
+                
+                // Apply positioning with important flag to override any conflicting styles
+                picker.style.setProperty('left', left + 'px', 'important');
+                picker.style.setProperty('top', top + 'px', 'important');
+                picker.style.setProperty('z-index', '999999', 'important');
             } else {
                 picker.style.display = 'none';
             }
