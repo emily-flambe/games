@@ -37,9 +37,26 @@ class GameShell {
      */
     init() {
         this.setupEventListeners();
+        this.checkURLForRoom();
         this.loadActiveRooms();
         this.startActiveRoomsRefresh();
         this.initializeGameArea();
+    }
+
+    /**
+     * Check URL for room code and auto-join if present
+     */
+    checkURLForRoom() {
+        const path = window.location.pathname;
+        const roomMatch = path.match(/^\/([A-Z0-9]{6})$/);
+        
+        if (roomMatch) {
+            const roomCode = roomMatch[1];
+            // Auto-join the room after a short delay to ensure DOM is ready
+            setTimeout(() => {
+                this.joinExistingRoom(roomCode);
+            }, 100);
+        }
     }
 
     /**
@@ -94,6 +111,21 @@ class GameShell {
         if (startGameBtn) {
             startGameBtn.addEventListener('click', () => this.startGameSession());
         }
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', (event) => {
+            const path = window.location.pathname;
+            const roomMatch = path.match(/^\/([A-Z0-9]{6})$/);
+            
+            if (roomMatch && !this.sessionId) {
+                // User navigated to a room URL
+                const roomCode = roomMatch[1];
+                this.joinExistingRoom(roomCode);
+            } else if (!roomMatch && this.sessionId) {
+                // User navigated back to root from a room
+                this.leaveGame();
+            }
+        });
     }
 
     /**
@@ -142,6 +174,10 @@ class GameShell {
             
             // Generate session ID and connect
             this.sessionId = this.generateSessionId();
+            
+            // Update URL to include room code
+            window.history.pushState({roomCode: this.sessionId}, '', `/${this.sessionId}`);
+            
             await this.connectToGame();
             
         } catch (error) {
@@ -234,7 +270,6 @@ class GameShell {
         if (message.isSpectator || message.spectatorId) {
             this.isSpectator = true;
             this.spectatorId = message.spectatorId;
-            console.log('📺 Received game state as spectator');
         } else {
             this.currentPlayerId = message.playerId;
             this.currentPlayer = this.players[this.currentPlayerId];
@@ -267,7 +302,6 @@ class GameShell {
         
         // If spectator and game is in progress, load the game module
         if (this.isSpectator && this.gameState === 'playing' && !this.gameModule) {
-            console.log('🎮 Loading game module for spectator');
             this.loadGameModule(this.gameType || 'checkbox-game').then(() => {
                 if (this.gameModule) {
                     this.gameModule.currentPlayerId = null; // No player ID for spectator
@@ -401,17 +435,12 @@ class GameShell {
         const portalView = document.getElementById('game-portal');
         const roomView = document.getElementById('game-room');
         
-        console.log('🔄 updateView called - currentView:', this.currentView, 'sessionId:', this.sessionId);
-        console.log('🔍 DOM elements found - portal:', !!portalView, 'room:', !!roomView);
-        
         if (this.currentView === 'portal') {
             portalView?.classList.add('active');
             roomView?.classList.remove('active');
-            console.log('📱 Switched to PORTAL view');
         } else {
             portalView?.classList.remove('active');
             roomView?.classList.add('active');
-            console.log('🏠 Switched to ROOM view');
         }
     }
 
@@ -438,6 +467,12 @@ class GameShell {
             this.sessionId = roomCode;
             this.showLoadingOverlay();
             this.stopActiveRoomsRefresh();
+            
+            // Update URL to include room code if not already there
+            if (window.location.pathname !== `/${roomCode}`) {
+                window.history.pushState({roomCode: roomCode}, '', `/${roomCode}`);
+            }
+            
             await this.connectToGame();
         } catch (error) {
             console.error('Failed to join room:', error);
@@ -461,18 +496,15 @@ class GameShell {
      * Handle WebSocket close
      */
     handleWebSocketClose() {
-        console.log('❌ WebSocket connection closed - currentView:', this.currentView, 'sessionId:', this.sessionId);
         this.isConnected = false;
         this.ws = null;
         
         // Don't automatically return to portal on unexpected disconnections
         // Only do this if we're intentionally leaving (sessionId is cleared)
         if (!this.sessionId) {
-            console.log('🏠 Intentional disconnect - returning to portal');
             this.currentView = 'portal';
             this.updateView();
         } else {
-            console.log('⚠️ Unexpected disconnect - maintaining room view');
             // Keep the room view active even without connection
             // This allows users to see the room state even if connection drops
         }
@@ -498,8 +530,6 @@ class GameShell {
      * Handle spectator update messages
      */
     handleSpectatorUpdate(message) {
-        console.log('Spectator update:', message.type, message);
-        
         if (message.type === 'spectator_identity') {
             this.isSpectator = true;
             this.spectatorId = message.data.spectatorId;
@@ -511,8 +541,6 @@ class GameShell {
             this.showSpectatorUI();
             this.updateView();
             this.hideLoadingOverlay();
-            
-            console.log('✅ Spectator mode activated - maintaining room view');
         }
         
         if (message.data && message.data.spectators) {
@@ -714,17 +742,23 @@ class GameShell {
      */
     updateGameControls() {
         const gameArea = document.getElementById('game-area');
+        const chatArea = document.getElementById('chat-area');
         const playerControls = document.getElementById('player-controls');
         const playersList = document.querySelector('.players-list');
 
         // Special handling for spectators
         if (this.isSpectator) {
+            // Always ensure spectator UI is visible
+            this.showSpectatorUI();
+            
             if (this.gameState === 'playing') {
                 if (gameArea) gameArea.style.display = 'block';
+                if (chatArea) chatArea.style.display = 'block'; // Show chat during game
                 if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
                 if (playersList) playersList.style.display = 'none'; // Hide during gameplay
             } else {
                 if (gameArea) gameArea.style.display = 'none';
+                if (chatArea) chatArea.style.display = 'none'; // Hide chat when not playing
                 if (playerControls) playerControls.style.display = 'none'; // Spectators can't control
                 if (playersList) playersList.style.display = 'block'; // Show player list
             }
@@ -734,14 +768,17 @@ class GameShell {
         // Normal player controls
         if (this.gameState === 'playing') {
             if (gameArea) gameArea.style.display = 'block';
+            if (chatArea) chatArea.style.display = 'block'; // Show chat during game
             if (playerControls) playerControls.style.display = 'none'; // Hide during gameplay
             if (playersList) playersList.style.display = 'none'; // Hide during gameplay
         } else if (this.gameState === 'finished') {
             if (gameArea) gameArea.style.display = 'block'; // Keep game visible for end screen
+            if (chatArea) chatArea.style.display = 'block'; // Keep chat visible at game end
             if (playerControls) playerControls.style.display = 'none'; 
             if (playersList) playersList.style.display = 'none';
         } else if (this.gameState === 'waiting') {
             if (gameArea) gameArea.style.display = 'none';
+            if (chatArea) chatArea.style.display = 'none'; // Hide chat when waiting
             if (playerControls) playerControls.style.display = 'block';
             if (playersList) playersList.style.display = 'block';
         }
@@ -766,12 +803,22 @@ class GameShell {
                 font-weight: bold;
                 margin: 10px 0;
                 text-align: center;
+                position: sticky;
+                top: 0;
+                z-index: 10000;
             `;
             
-            const roomInfo = document.querySelector('.room-info');
-            if (roomInfo) {
-                roomInfo.appendChild(spectatorIndicator);
+            // Insert after room-header instead of inside room-info
+            const roomHeader = document.querySelector('.room-header');
+            if (roomHeader && roomHeader.parentNode) {
+                roomHeader.parentNode.insertBefore(spectatorIndicator, roomHeader.nextSibling);
             }
+        }
+        
+        // Make sure it stays visible even when game area is shown
+        const indicator = document.getElementById('spectator-indicator');
+        if (indicator) {
+            indicator.style.display = 'block';
         }
     }
 
@@ -856,6 +903,9 @@ class GameShell {
         // Clean up UI
         this.cleanupGameUI();
         
+        // Restore root URL
+        window.history.pushState({}, '', '/');
+        
         // Return to portal
         this.currentView = 'portal';
         this.updateView();
@@ -872,6 +922,12 @@ class GameShell {
         if (gameArea) {
             gameArea.style.display = 'none';
             gameArea.innerHTML = '';
+        }
+        
+        // Hide chat area
+        const chatArea = document.getElementById('chat-area');
+        if (chatArea) {
+            chatArea.style.display = 'none';
         }
         
         // Hide end game screen

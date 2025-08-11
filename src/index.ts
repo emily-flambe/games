@@ -50,6 +50,11 @@ export default {
       return handleActiveRoomsAPI(env);
     }
 
+    // Handle favicon.ico requests - redirect to PNG
+    if (path === '/favicon.ico') {
+      return Response.redirect(new URL('/static/favicon.png', request.url), 301);
+    }
+
     // Serve static assets
     try {
       const asset = getStaticAsset(path);
@@ -61,6 +66,22 @@ export default {
             'Access-Control-Allow-Origin': '*',
           },
         });
+      }
+
+      // Check if this is a room URL (6 character alphanumeric code)
+      const roomMatch = path.match(/^\/([A-Z0-9]{6})$/);
+      if (roomMatch) {
+        // Serve the main HTML page for room URLs
+        const htmlAsset = staticAssets['/static/index.html'];
+        if (htmlAsset) {
+          return new Response(htmlAsset, {
+            headers: {
+              'Content-Type': 'text/html; charset=UTF-8',
+              'Cache-Control': 'public, max-age=3600',
+              'Access-Control-Allow-Origin': '*',
+            },
+          });
+        }
       }
 
       // Default to serving the main HTML page
@@ -144,7 +165,7 @@ async function handleActiveRoomsAPI(env: Env): Promise<Response> {
 /**
  * Get static asset by path
  */
-function getStaticAsset(path: string): { content: string; contentType: string } | null {
+function getStaticAsset(path: string): { content: string | ArrayBuffer; contentType: string } | null {
   // Normalize path
   if (path === '/' || path === '') {
     path = '/static/index.html';
@@ -165,10 +186,28 @@ function getStaticAsset(path: string): { content: string; contentType: string } 
     contentType = 'application/javascript; charset=UTF-8';
   } else if (path.endsWith('.json')) {
     contentType = 'application/json; charset=UTF-8';
+  } else if (path.endsWith('.png')) {
+    contentType = 'image/png';
+  } else if (path.endsWith('.ico')) {
+    contentType = 'image/x-icon';
+  }
+
+  // Handle base64 encoded binary assets
+  if (typeof asset === 'object' && 'encoding' in asset && asset.encoding === 'base64') {
+    // Convert base64 to ArrayBuffer for binary files
+    const binaryString = atob(asset.content);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return {
+      content: bytes.buffer,
+      contentType,
+    };
   }
 
   return {
-    content: asset,
+    content: asset as string,
     contentType,
   };
 }

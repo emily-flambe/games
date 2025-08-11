@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Premium Web Games Online Incorporated LLC Esq. GPT CBD</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link rel="shortcut icon" type="image/png" href="/static/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&display=swap" rel="stylesheet">
@@ -127,6 +129,28 @@
                 <!-- Game Area - Where all game modules render -->
                 <div id="game-area" class="game-area" style="display: none;">
                     <!-- Game modules will be injected here dynamically -->
+                </div>
+                
+                <!-- Chat Area - For in-game communication -->
+                <div id="chat-area" class="chat-area" style="display: none;">
+                    <div class="chat-header">
+                        <h3>💬 Game Chat</h3>
+                    </div>
+                    <div class="chat-messages" id="chat-messages">
+                        <!-- Chat messages will appear here -->
+                        <div class="chat-message">
+                            <span class="chat-author">🐶 Player 1:</span>
+                            <span class="chat-text">This is a placeholder message!</span>
+                        </div>
+                        <div class="chat-message">
+                            <span class="chat-author">🐱 Player 2:</span>
+                            <span class="chat-text">Chat feature coming soon...</span>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Type a message..." disabled>
+                        <button id="chat-send-btn" disabled>Send</button>
+                    </div>
                 </div>
                 
                 <!-- Universal End Game Screen -->
