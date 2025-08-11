@@ -2,99 +2,36 @@
   "project": {
     "name": "multiplayer-games-platform",
     "version": "1.0.0",
-    "type": "cloudflare-workers",
-    "language": "typescript",
-    "framework": "vanilla"
+    "type": "cloudflare-workers"
   },
   "cloudflare": {
     "worker_name": "games-platform",
     "compatibility_date": "2024-01-01",
-    "node_compat": false,
-    "durable_objects": {
-      "GameSession": "GameSession",
-      "DrawingSession": "DrawingSession",
-      "BracketSession": "BracketSession",
-      "VotingSession": "VotingSession",
-      "PriceGuessingSession": "PriceGuessingSession"
-    }
+    "durable_objects": ["GameSession"]
   },
   "development": {
     "port": 8777,
-    "host": "localhost",
-    "hot_reload": true,
-    "source_maps": true,
-    "minification": false
-  },
-  "production": {
-    "minification": true,
-    "source_maps": false,
-    "compression": true,
-    "optimization_level": "high"
+    "hot_reload": true
   },
   "websocket": {
     "max_connections_per_object": 100,
     "heartbeat_interval": 30000,
-    "connection_timeout": 60000,
     "message_size_limit": 1048576
   },
   "games": {
-    "drawing": {
-      "canvas_size": { "width": 800, "height": 600 },
-      "max_players": 8,
-      "brush_sizes": [1, 2, 4, 8, 16],
-      "color_palette_size": 12
-    },
-    "bracket": {
-      "max_participants": 64,
-      "tournament_types": ["single_elimination", "double_elimination"],
-      "match_duration": 300000
-    },
-    "voting": {
-      "max_options": 10,
-      "max_voters": 100,
-      "voting_duration": 60000,
-      "anonymous_voting": true
-    },
-    "price_guessing": {
-      "max_players": 20,
-      "guess_time_limit": 30000,
-      "scoring_algorithm": "proximity_based",
-      "price_range": { "min": 1, "max": 10000 }
-    }
-  },
-  "assets": {
-    "bundling_strategy": "inline",
-    "max_asset_size": 1048576,
-    "supported_formats": ["html", "css", "js", "png", "jpg", "svg"],
-    "compression": true
+    "checkbox": { "max_players": 8 },
+    "voting": { "max_voters": 100 },
+    "drawing": { "canvas_size": { "width": 800, "height": 600 } },
+    "price_guessing": { "max_players": 20 }
   },
   "security": {
     "rate_limiting": {
       "websocket_connections": 10,
-      "messages_per_minute": 60,
-      "api_requests": 100
-    },
-    "cors": {
-      "allowed_origins": ["*"],
-      "allowed_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      "allowed_headers": ["Content-Type", "Authorization"]
+      "messages_per_minute": 60
     },
     "input_validation": {
       "max_message_length": 1000,
-      "sanitize_html": true,
-      "validate_json": true
+      "sanitize_html": true
     }
-  },
-  "logging": {
-    "level": "info",
-    "include_websocket_events": true,
-    "include_performance_metrics": true,
-    "retention_days": 7
-  },
-  "monitoring": {
-    "enable_analytics": true,
-    "track_game_sessions": true,
-    "performance_monitoring": true,
-    "error_tracking": true
   }
 }
