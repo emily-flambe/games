@@ -768,20 +768,30 @@ class GameShell {
         
         if (picker && emojiBtn) {
             if (picker.style.display === 'none' || picker.style.display === '') {
-                // Wait a tick to ensure button is properly positioned
-                setTimeout(() => {
-                    // Position the picker relative to the emoji button
-                    const rect = emojiBtn.getBoundingClientRect();
-                    picker.style.left = rect.left + 'px';
-                    picker.style.top = (rect.bottom + 5) + 'px';
-                    picker.style.display = 'block';
-                    
-                    // Initialize emoji grid if not already done
-                    const emojiGrid = document.getElementById('emoji-grid');
-                    if (emojiGrid && emojiGrid.children.length === 0) {
-                        this.initializeEmojiGrid();
-                    }
-                }, 10);
+                // Initialize emoji grid first if needed
+                const emojiGrid = document.getElementById('emoji-grid');
+                if (emojiGrid && emojiGrid.children.length === 0) {
+                    this.initializeEmojiGrid();
+                }
+                
+                // Show the picker first
+                picker.style.display = 'block';
+                
+                // Then position it relative to the button
+                const rect = emojiBtn.getBoundingClientRect();
+                const pickerWidth = 340; // Width set in HTML
+                
+                // Position below button, centered if possible
+                let left = rect.left + (rect.width / 2) - (pickerWidth / 2);
+                
+                // Keep within viewport bounds
+                if (left < 10) left = 10;
+                if (left + pickerWidth > window.innerWidth - 10) {
+                    left = window.innerWidth - pickerWidth - 10;
+                }
+                
+                picker.style.left = left + 'px';
+                picker.style.top = (rect.bottom + 5) + 'px';
             } else {
                 picker.style.display = 'none';
             }
