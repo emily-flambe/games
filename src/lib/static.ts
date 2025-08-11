@@ -1363,18 +1363,21 @@ class GameShell {
         const emojiBtn = document.getElementById('current-emoji-btn');
         
         if (picker && emojiBtn) {
-            if (picker.style.display === 'none') {
-                // Position the picker relative to the emoji button
-                const rect = emojiBtn.getBoundingClientRect();
-                picker.style.left = rect.left + 'px';
-                picker.style.top = (rect.bottom + 5) + 'px';
-                picker.style.display = 'block';
-                
-                // Initialize emoji grid if not already done
-                const emojiGrid = document.getElementById('emoji-grid');
-                if (emojiGrid && emojiGrid.children.length === 0) {
-                    this.initializeEmojiGrid();
-                }
+            if (picker.style.display === 'none' || picker.style.display === '') {
+                // Wait a tick to ensure button is properly positioned
+                setTimeout(() => {
+                    // Position the picker relative to the emoji button
+                    const rect = emojiBtn.getBoundingClientRect();
+                    picker.style.left = rect.left + 'px';
+                    picker.style.top = (rect.bottom + 5) + 'px';
+                    picker.style.display = 'block';
+                    
+                    // Initialize emoji grid if not already done
+                    const emojiGrid = document.getElementById('emoji-grid');
+                    if (emojiGrid && emojiGrid.children.length === 0) {
+                        this.initializeEmojiGrid();
+                    }
+                }, 10);
             } else {
                 picker.style.display = 'none';
             }
@@ -4806,9 +4809,9 @@ main {
   "version": "1.0.0-alpha",
   "baseVersion": "1.0.0",
   "branch": "game-shell-architecture",
-  "commit": "f8a498e",
-  "timestamp": "2025-08-11T01:36:39.262Z",
-  "deployedAt": "Aug 10, 2025, 07:36 PM MDT"
+  "commit": "e70dcec",
+  "timestamp": "2025-08-11T01:40:34.391Z",
+  "deployedAt": "Aug 10, 2025, 07:40 PM MDT"
 }`
 };
 
