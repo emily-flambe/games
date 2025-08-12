@@ -14,6 +14,8 @@ class EverybodyVotesGameModule extends GameModule {
         this.results = null;
         this.timeRemaining = 0;
         this.timerInterval = null;
+        this.lastVoterName = null;
+        this.allVoted = false;
     }
 
     /**
@@ -103,7 +105,9 @@ class EverybodyVotesGameModule extends GameModule {
             case 'VOTING':
                 content = this.renderVotingPhase();
                 break;
-            // RESULTS case removed - now using standard game end screen
+            case 'RESULTS':
+                content = this.renderResultsPhase();
+                break;
             default:
                 content = this.renderWaitingPhase();
         }
@@ -160,7 +164,29 @@ class EverybodyVotesGameModule extends GameModule {
                     margin-bottom: 2rem;
                     backdrop-filter: blur(10px);
                 ">
-                    <h3 style="font-size: 1.8rem; margin: 0;">${this.question}</h3>
+                    <h3 style="font-size: 1.8rem; margin: 0 0 1rem 0;">${this.question}</h3>
+                    ${this.votesCount > 0 ? `
+                        <div style="
+                            background: rgba(255, 255, 255, 0.2);
+                            padding: 1rem;
+                            border-radius: 6px;
+                            margin-top: 1rem;
+                        ">
+                            <p style="margin: 0; font-size: 1.2rem;">
+                                📊 ${this.votesCount}/${this.totalPlayers} players voted
+                            </p>
+                            ${this.lastVoterName ? `
+                                <p style="margin: 0.5rem 0 0 0; font-size: 1rem; opacity: 0.8;">
+                                    Latest: ${this.lastVoterName}
+                                </p>
+                            ` : ''}
+                            ${this.allVoted ? `
+                                <p style="margin: 0.5rem 0 0 0; font-size: 1rem; color: #4CAF50; font-weight: bold;">
+                                    ✅ All players voted! Calculating results...
+                                </p>
+                            ` : ''}
+                        </div>
+                    ` : ''}
                 </div>
                 
                 <div style="
@@ -208,7 +234,114 @@ class EverybodyVotesGameModule extends GameModule {
     /**
      * Render results phase
      */
-    // renderResultsPhase method removed - now using standard game end screen handled by GameShell
+    renderResultsPhase() {
+        console.log('🎨 Rendering results phase...');
+        
+        if (!this.results) {
+            return `<div class="everybody-votes-container">Loading results...</div>`;
+        }
+        
+        const pizzaVotes = this.results['Pizza'] || 0;
+        const burgersVotes = this.results['Burgers'] || 0;
+        const totalVotes = this.results.totalVotes || 0;
+        
+        const pizzaPercentage = totalVotes > 0 ? Math.round((pizzaVotes / totalVotes) * 100) : 0;
+        const burgersPercentage = totalVotes > 0 ? Math.round((burgersVotes / totalVotes) * 100) : 0;
+        
+        return `
+            <div class="everybody-votes-container" style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 2rem;
+                background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+                border-radius: 12px;
+                color: white;
+                text-align: center;
+            ">
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">📊 Results</h2>
+                
+                <div style="
+                    background: rgba(255, 255, 255, 0.1);
+                    padding: 1.5rem;
+                    border-radius: 8px;
+                    margin-bottom: 2rem;
+                    backdrop-filter: blur(10px);
+                    width: 100%;
+                    max-width: 500px;
+                ">
+                    <h3 style="font-size: 1.8rem; margin: 0 0 1rem 0;">${this.question}</h3>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-bottom: 0.5rem;
+                            padding: 1rem;
+                            background: rgba(255, 255, 255, 0.2);
+                            border-radius: 8px;
+                        ">
+                            <span style="font-size: 1.5rem;">🍕 Pizza</span>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="
+                                    background: #ff6b6b;
+                                    height: 20px;
+                                    border-radius: 10px;
+                                    min-width: 100px;
+                                    width: ${pizzaPercentage * 2}px;
+                                    max-width: 200px;
+                                "></div>
+                                <span style="font-weight: bold; min-width: 60px;">${pizzaVotes} (${pizzaPercentage}%)</span>
+                            </div>
+                        </div>
+                        
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 1rem;
+                            background: rgba(255, 255, 255, 0.2);
+                            border-radius: 8px;
+                        ">
+                            <span style="font-size: 1.5rem;">🍔 Burgers</span>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="
+                                    background: #4ecdc4;
+                                    height: 20px;
+                                    border-radius: 10px;
+                                    min-width: 100px;
+                                    width: ${burgersPercentage * 2}px;
+                                    max-width: 200px;
+                                "></div>
+                                <span style="font-weight: bold; min-width: 60px;">${burgersVotes} (${burgersPercentage}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p style="font-size: 1.2rem; margin: 1rem 0;">
+                        Total votes: ${totalVotes}
+                    </p>
+                </div>
+                
+                <button id="end-game-btn" style="
+                    background: #ff6b6b;
+                    color: white;
+                    border: none;
+                    padding: 1rem 2rem;
+                    font-size: 1.5rem;
+                    font-weight: bold;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    min-width: 200px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    🏁 End Game
+                </button>
+            </div>
+        `;
+    }
 
     /**
      * Attach event listeners after rendering
@@ -229,6 +362,18 @@ class EverybodyVotesGameModule extends GameModule {
                 }
             });
         });
+        
+        // End Game button
+        const endGameBtn = this.gameAreaElement.querySelector('#end-game-btn');
+        if (endGameBtn && this.onPlayerAction) {
+            endGameBtn.addEventListener('click', () => {
+                console.log('🏁 End Game button clicked');
+                this.onPlayerAction({
+                    type: 'end_game',
+                    data: {}
+                });
+            });
+        }
     }
 
     /**
@@ -317,6 +462,23 @@ class EverybodyVotesGameModule extends GameModule {
                 this.render();
                 break;
                 
+            case 'vote_progress':
+                console.log('📊 Vote progress update:', message.data);
+                this.votesCount = message.data.votesCount || 0;
+                this.totalPlayers = message.data.totalPlayers || 0;
+                this.lastVoterName = message.data.voterName;
+                this.allVoted = message.data.allVoted || false;
+                this.render();
+                break;
+                
+            case 'voting_results':
+                console.log('📊 Voting results received:', message.data);
+                this.currentPhase = 'RESULTS';
+                this.results = message.data.results;
+                this.question = message.data.question;
+                this.render();
+                break;
+                
             // game_results removed - now using standard game_ended message handled by GameShell
                 
             case 'error':
@@ -337,6 +499,8 @@ class EverybodyVotesGameModule extends GameModule {
         this.votesCount = 0;
         this.totalPlayers = 0;
         this.timeRemaining = 0;
+        this.lastVoterName = null;
+        this.allVoted = false;
     }
 }
 
