@@ -474,7 +474,7 @@ class GameShell {
                     console.error('CheckboxGameModule class not found - check script loading');
                     this.gameModule = null;
                 }
-            } else if (gameType === 'votes-game') {
+            } else if (gameType === 'everybody-votes') {
                 if (typeof EverybodyVotesGameModule !== 'undefined') {
                     this.gameModule = new EverybodyVotesGameModule();
                 } else {
