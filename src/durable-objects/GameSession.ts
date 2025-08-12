@@ -352,6 +352,8 @@ export class GameSession implements DurableObject {
       const data = JSON.parse(message);
       const isSpectator = this.spectators.has(playerId);
       
+      console.log(`🔍 GameSession received message from ${playerId}:`, data.type, data);
+      
       switch (data.type) {
         case 'ping':
           ws.send(JSON.stringify({ type: 'pong' }));

@@ -309,8 +309,8 @@ class GameShell {
                 default:
                     
                     // Pass unknown messages to game module
-                    if (this.gameModule) {
-                        this.gameModule.handlePlayerAction(message.playerId, message);
+                    if (this.gameModule && this.gameModule.handleMessage) {
+                        this.gameModule.handleMessage(message);
                     }
             }
         } catch (error) {

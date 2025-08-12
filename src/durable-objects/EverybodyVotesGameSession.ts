@@ -1,16 +1,9 @@
 /**
- * Everybody Votes Game Session
- * Simple MVP: One question, vote, predict, see results
+ * Everybody Votes Game Session - MVP
+ * Simple: One question (Pizza or Burgers), vote, see results
  */
 
 import { GameSession } from './GameSession';
-
-interface Question {
-  id: string;
-  text: string;
-  choiceA: string;
-  choiceB: string;
-}
 
 interface EverybodyVotesGameState {
   type: 'everybody-votes';
@@ -22,23 +15,23 @@ interface EverybodyVotesGameState {
   spectatorCount: number;
   spectators: Record<string, any>;
   
-  // Everybody Votes specific
-  phase: 'waiting' | 'voting' | 'prediction' | 'results';
-  currentQuestion: Question | null;
-  votes: Record<string, 'A' | 'B'>;
-  predictions: Record<string, 'A' | 'B'>;
+  // Everybody Votes MVP
+  phase: 'WAITING' | 'VOTING' | 'RESULTS';
+  question: string;
+  options: string[];
+  votes: Record<string, string>; // playerId -> 'Pizza' or 'Burgers'
+  votingEndTime: number | null;
   results?: {
-    aVotes: number;
-    bVotes: number;
+    'Pizza': number;
+    'Burgers': number;
     totalVotes: number;
-    aPercentage: number;
-    bPercentage: number;
-    winner: 'A' | 'B' | 'tie';
+    winner: string; // 'Pizza', 'Burgers', or 'TIE'
   };
 }
 
 export class EverybodyVotesGameSession extends GameSession {
   protected gameState: EverybodyVotesGameState;
+  private votingTimer: any = null;
 
   protected createInitialGameState(gameType: string): EverybodyVotesGameState {
     return {
@@ -51,46 +44,45 @@ export class EverybodyVotesGameSession extends GameSession {
       spectatorCount: 0,
       spectators: {},
       
-      // Everybody Votes specific
-      phase: 'waiting',
-      currentQuestion: null,
+      // Everybody Votes MVP
+      phase: 'WAITING',
+      question: 'Pizza or Burgers?',
+      options: ['Pizza', 'Burgers'],
       votes: {},
-      predictions: {}
+      votingEndTime: null
     };
   }
 
   protected async handleStartGame() {
-    console.log(`🗳️ Starting Everybody Votes game`);
+    console.log(`🗳️🗳️🗳️ EVERYBODY VOTES GAME STARTING!!! 🗳️🗳️🗳️`);
+    
+    // Start the game immediately
     this.gameState.status = 'started';
     this.gameState.gameStarted = true;
-    this.gameState.phase = 'voting';
-    
-    // Simple fixed question for MVP
-    this.gameState.currentQuestion = {
-      id: 'q1',
-      text: 'Which would you rather have for breakfast?',
-      choiceA: '🥞 Pancakes',
-      choiceB: '🧇 Waffles'
-    };
-    
-    // Clear any previous votes/predictions
+    this.gameState.phase = 'VOTING';
     this.gameState.votes = {};
-    this.gameState.predictions = {};
     
     await this.saveGameState();
     this.updateRegistryStatus('in-progress');
     
+    // Send game started with voting phase immediately
     this.broadcast({
       type: 'game_started',
       data: {
         gameType: 'everybody-votes',
-        phase: 'voting',
-        question: this.gameState.currentQuestion,
-        gameState: this.gameState
+        gameState: this.gameState,
+        phase: 'VOTING',
+        question: this.gameState.question,
+        options: this.gameState.options
       },
       timestamp: Date.now()
     });
-
+    
+    // Show results immediately for testing
+    console.log('🧪 FORCE SHOWING RESULTS FOR TESTING');
+    this.gameState.votes['test'] = 'Pizza';
+    await this.showResults();
+    
     if (this.sessionId) {
       await this.updateRegistry();
     }
@@ -102,10 +94,6 @@ export class EverybodyVotesGameSession extends GameSession {
         await this.handleVote(data, ws, playerId, isSpectator);
         break;
         
-      case 'submit_prediction':
-        await this.handlePrediction(data, ws, playerId, isSpectator);
-        break;
-        
       default:
         // Let parent class handle other messages
         break;
@@ -113,16 +101,10 @@ export class EverybodyVotesGameSession extends GameSession {
   }
 
   private async handleVote(data: any, ws: WebSocket, playerId: string, isSpectator: boolean) {
-    if (isSpectator) {
-      ws.send(JSON.stringify({
-        type: 'error',
-        message: 'Spectators cannot vote',
-        timestamp: Date.now()
-      }));
-      return;
-    }
+    console.log(`📝 Vote received from ${playerId}:`, data);
 
-    if (this.gameState.phase !== 'voting') {
+    // Must be in voting phase
+    if (this.gameState.phase !== 'VOTING') {
       ws.send(JSON.stringify({
         type: 'error',
         message: 'Not in voting phase',
@@ -131,150 +113,79 @@ export class EverybodyVotesGameSession extends GameSession {
       return;
     }
 
-    const choice = data.data?.choice || data.choice;
-    if (choice !== 'A' && choice !== 'B') {
+    // Validate vote - check both data.vote and data.data.vote
+    const vote = data.vote || data.data?.vote;
+    if (vote !== 'Pizza' && vote !== 'Burgers') {
       ws.send(JSON.stringify({
         type: 'error',
-        message: 'Invalid choice',
+        message: 'Invalid vote option',
         timestamp: Date.now()
       }));
       return;
     }
 
     // Record the vote
-    this.gameState.votes[playerId] = choice;
-    console.log(`Player ${playerId} voted for ${choice}`);
+    this.gameState.votes[playerId] = vote;
+    console.log(`✅ Player ${playerId} voted for ${vote}`);
     
-    // Check if all players have voted
-    const totalPlayers = Object.keys(this.gameState.players).length;
-    const totalVotes = Object.keys(this.gameState.votes).length;
-    
-    this.broadcast({
-      type: 'vote_submitted',
-      data: {
-        votesCount: totalVotes,
-        totalPlayers: totalPlayers,
-        playerId: playerId // Let clients know who voted (not what they voted)
-      },
-      timestamp: Date.now()
-    });
-    
-    if (totalVotes === totalPlayers) {
-      // All players have voted, move to prediction phase
-      this.gameState.phase = 'prediction';
-      
-      this.broadcast({
-        type: 'phase_changed',
-        data: {
-          phase: 'prediction',
-          question: this.gameState.currentQuestion,
-          gameState: this.gameState
-        },
-        timestamp: Date.now()
-      });
-    }
-    
-    await this.saveGameState();
+    // IMMEDIATELY show results after any vote
+    await this.showResults();
   }
 
-  private async handlePrediction(data: any, ws: WebSocket, playerId: string, isSpectator: boolean) {
-    if (isSpectator) {
-      ws.send(JSON.stringify({
-        type: 'error',
-        message: 'Spectators cannot predict',
-        timestamp: Date.now()
-      }));
-      return;
-    }
-
-    if (this.gameState.phase !== 'prediction') {
-      ws.send(JSON.stringify({
-        type: 'error',
-        message: 'Not in prediction phase',
-        timestamp: Date.now()
-      }));
-      return;
-    }
-
-    const prediction = data.data?.prediction || data.prediction;
-    if (prediction !== 'A' && prediction !== 'B') {
-      ws.send(JSON.stringify({
-        type: 'error',
-        message: 'Invalid prediction',
-        timestamp: Date.now()
-      }));
-      return;
-    }
-
-    // Record the prediction
-    this.gameState.predictions[playerId] = prediction;
-    console.log(`Player ${playerId} predicted ${prediction} will win`);
+  private async showResults() {
+    console.log('📊 Showing results immediately...');
     
-    // Check if all players have predicted
-    const totalPlayers = Object.keys(this.gameState.players).length;
-    const totalPredictions = Object.keys(this.gameState.predictions).length;
-    
-    this.broadcast({
-      type: 'prediction_submitted',
-      data: {
-        predictionsCount: totalPredictions,
-        totalPlayers: totalPlayers,
-        playerId: playerId
-      },
-      timestamp: Date.now()
-    });
-    
-    if (totalPredictions === totalPlayers) {
-      // All players have predicted, calculate and show results
-      await this.calculateAndShowResults();
-    }
-    
-    await this.saveGameState();
-  }
-
-  private async calculateAndShowResults() {
+    // Calculate results
     const votes = Object.values(this.gameState.votes);
-    const aVotes = votes.filter(v => v === 'A').length;
-    const bVotes = votes.filter(v => v === 'B').length;
+    const pizzaVotes = votes.filter(v => v === 'Pizza').length;
+    const burgersVotes = votes.filter(v => v === 'Burgers').length;
     const totalVotes = votes.length;
     
+    let winner: string;
+    if (pizzaVotes > burgersVotes) {
+      winner = 'Pizza';
+    } else if (burgersVotes > pizzaVotes) {
+      winner = 'Burgers';
+    } else {
+      winner = 'TIE';
+    }
+    
     this.gameState.results = {
-      aVotes,
-      bVotes,
-      totalVotes,
-      aPercentage: totalVotes > 0 ? Math.round((aVotes / totalVotes) * 100) : 0,
-      bPercentage: totalVotes > 0 ? Math.round((bVotes / totalVotes) * 100) : 0,
-      winner: aVotes > bVotes ? 'A' : (bVotes > aVotes ? 'B' : 'tie')
+      'Pizza': pizzaVotes,
+      'Burgers': burgersVotes,
+      totalVotes: totalVotes,
+      winner: winner
     };
     
-    this.gameState.phase = 'results';
+    // Update phase and status
+    this.gameState.phase = 'RESULTS';
     this.gameState.gameFinished = true;
     this.gameState.status = 'finished';
     
-    console.log(`Results: A=${aVotes} (${this.gameState.results.aPercentage}%), B=${bVotes} (${this.gameState.results.bPercentage}%)`);
+    console.log(`✅ Results: Pizza=${pizzaVotes}, Burgers=${burgersVotes}, Winner=${winner}`);
     
-    // Calculate who got their predictions right
-    const correctPredictions: string[] = [];
-    for (const [playerId, prediction] of Object.entries(this.gameState.predictions)) {
-      if (prediction === this.gameState.results.winner || this.gameState.results.winner === 'tie') {
-        correctPredictions.push(playerId);
-      }
-    }
-    
+    // Send results directly
     this.broadcast({
       type: 'game_results',
-      data: {
-        question: this.gameState.currentQuestion,
-        results: this.gameState.results,
-        votes: this.gameState.votes,
-        predictions: this.gameState.predictions,
-        correctPredictions,
-        gameState: this.gameState
-      },
+      question: this.gameState.question,
+      results: this.gameState.results,
+      totalVotes: totalVotes,
+      winner: winner,
       timestamp: Date.now()
     });
     
     this.updateRegistryStatus('finished');
     await this.saveGameState();
+  }
+  
+  // Clean up timer on disconnect
+  async webSocketClose(ws: WebSocket) {
+    await super.webSocketClose(ws);
+    
+    // If no players left and timer is running, clear it
+    if (Object.keys(this.gameState.players).length === 0 && this.votingTimer) {
+      clearTimeout(this.votingTimer);
+      this.votingTimer = null;
+    }
   }
 }

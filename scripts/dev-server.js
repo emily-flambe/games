@@ -443,6 +443,49 @@ class GameSession {
     }
   }
 
+  handleVote(data, playerId) {
+    console.log('🗳️ Player voted:', playerId, 'for', data.data?.vote);
+    
+    // Get player name for win message
+    const player = this.players.get(playerId);
+    const playerName = player ? player.name : 'Unknown Player';
+    const vote = data.data?.vote || 'Pizza';
+    
+    // For MVP: immediately end game after any vote
+    console.log('Game ended - vote received');
+    
+    // Update game state
+    this.gameState.status = 'ended';
+    this.gameState.gameStarted = false;
+    this.gameState.gameFinished = true;
+    this.gameState.gameStatus = 'finished';
+    
+    // Create simple scores object (can be expanded later for multi-player)
+    const scores = {};
+    scores[playerId] = 1; // Winner gets 1 point
+    
+    const resultMessage = `${playerName} chose ${vote}! You win!`;
+    
+    console.log('Game result:', resultMessage);
+    
+    // Send consistent game_ended message (same as checkbox game)
+    this.broadcast({
+      type: 'game_ended',
+      data: {
+        message: resultMessage,
+        winners: [playerId],
+        scores: scores,
+        gameState: this.gameState,
+        // Keep voting-specific data for any game-specific handling
+        vote: vote,
+        question: 'Pizza or Burgers?'
+      },
+      timestamp: Date.now()
+    });
+    
+    console.log('✅ Sent game_ended message');
+  }
+
   handleMessage(message, ws, playerId) {
     try {
       const data = JSON.parse(message);
@@ -591,7 +634,14 @@ class GameSession {
           break;
           
         default:
-          console.log('Unknown message type:', data.type);
+          // Forward unknown messages to Durable Object (for game-specific actions)
+          console.log('Forwarding game-specific message:', data.type);
+          if (this.gameState.type === 'everybody-votes' && data.type === 'submit_vote') {
+            console.log('📝 Processing vote:', data.data?.vote);
+            this.handleVote(data, playerId);
+          } else {
+            console.log('Unknown message type:', data.type);
+          }
       }
     } catch (error) {
       console.error('Error handling message:', error);
