@@ -1,0 +1,104 @@
+/**
+ * GameSessionRegistry Durable Object
+ * Tracks active game sessions for room discovery
+ */
+
+import { DurableObject, DurableObjectState } from '@cloudflare/workers-types';
+import { Env } from './GameSession';
+
+interface SessionMetadata {
+  sessionId: string;
+  gameType: string;
+  playerCount: number;
+  players: Array<{name: string; emoji: string}>;
+  createdAt: number;
+  lastHeartbeat: number;
+  roomStatus: 'active' | 'inactive';
+  gameStatus: 'waiting' | 'in-progress' | 'finished';
+}
+
+export class GameSessionRegistry implements DurableObject {
+  private sessions: Map<string, SessionMetadata> = new Map();
+
+  constructor(private state: DurableObjectState, private env: Env) {}
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    
+    try {
+      if (request.method === 'POST' && url.pathname === '/register') {
+        const data: SessionMetadata = await request.json();
+        this.sessions.set(data.sessionId, {
+          ...data,
+          roomStatus: 'active',
+          gameStatus: 'waiting',
+          lastHeartbeat: Date.now()
+        });
+        console.log(`Registered session: ${data.sessionId} (${data.gameType})`);
+        return new Response('OK');
+      }
+      
+      if (request.method === 'PUT' && url.pathname.startsWith('/update/')) {
+        const sessionId = url.pathname.split('/')[2];
+        const updateData = await request.json();
+        
+        const existingSession = this.sessions.get(sessionId);
+        if (existingSession) {
+          this.sessions.set(sessionId, {
+            ...existingSession,
+            ...updateData,
+            lastHeartbeat: Date.now()
+          });
+          console.log(`Updated session: ${sessionId}`);
+        }
+        return new Response('OK');
+      }
+      
+      if (request.method === 'POST' && url.pathname === '/update-game-status') {
+        const { sessionId, gameStatus } = await request.json();
+        const existingSession = this.sessions.get(sessionId);
+        
+        if (existingSession) {
+          this.sessions.set(sessionId, {
+            ...existingSession,
+            gameStatus: gameStatus,
+            lastHeartbeat: Date.now()
+          });
+          console.log(`Updated game status for session ${sessionId} to: ${gameStatus}`);
+        }
+        return new Response('OK');
+      }
+      
+      if (request.method === 'DELETE' && url.pathname.startsWith('/unregister/')) {
+        const sessionId = url.pathname.split('/')[2];
+        this.sessions.delete(sessionId);
+        console.log(`Unregistered session: ${sessionId}`);
+        return new Response('OK');
+      }
+      
+      if (request.method === 'GET' && url.pathname === '/list') {
+        this.cleanupStale();
+        const activeGames = Array.from(this.sessions.values())
+          .filter(session => session.gameStatus !== 'finished');
+        return Response.json({ rooms: activeGames });
+      }
+      
+      return new Response('Not Found', { status: 404 });
+    } catch (error) {
+      console.error('GameSessionRegistry error:', error);
+      return new Response('Internal Server Error', { status: 500 });
+    }
+  }
+
+  private cleanupStale() {
+    const now = Date.now();
+    const TTL = 30 * 60 * 1000; // 30 minutes
+    
+    for (const [id, session] of this.sessions) {
+      if (now - session.lastHeartbeat > TTL) {
+        this.sessions.delete(id);
+        console.log(`Cleaned up stale session: ${id}`);
+      }
+    }
+  }
+}
