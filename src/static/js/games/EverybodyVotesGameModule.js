@@ -479,7 +479,13 @@ class EverybodyVotesGameModule extends GameModule {
                 this.render();
                 break;
                 
-            // game_results removed - now using standard game_ended message handled by GameShell
+            case 'game_results':
+                console.log('📊 Game results received:', message);
+                this.currentPhase = 'RESULTS';
+                this.results = message.results;
+                this.question = message.question;
+                this.render();
+                break;
                 
             case 'error':
                 console.error('Game error:', message.message);

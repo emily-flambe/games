@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug WebSocket Connection</title>
+</head>
+<body>
+    <h1>Debug WebSocket Connection to Production</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    
+    <script>
+        const statusDiv = document.getElementById('status');
+        const messagesDiv = document.getElementById('messages');
+        
+        function log(message) {
+            console.log(message);
+            const div = document.createElement('div');
+            div.textContent = new Date().toISOString() + ': ' + message;
+            messagesDiv.appendChild(div);
+        }
+        
+        // Generate a test session ID
+        const sessionId = Math.random().toString(36).substr(2, 6).toUpperCase();
+        
+        // Test WebSocket connection to production
+        const wsUrl = `wss://games.emilycogsdill.com/api/game/${sessionId}/ws?gameType=everybody-votes`;
+        log('Connecting to: ' + wsUrl);
+        
+        const ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+            log('✅ WebSocket opened successfully!');
+            statusDiv.textContent = 'Connected!';
+        };
+        
+        ws.onmessage = (event) => {
+            log('📥 Received: ' + event.data);
+            try {
+                const data = JSON.parse(event.data);
+                log('📋 Parsed message type: ' + data.type);
+            } catch (e) {
+                log('❌ Failed to parse message: ' + e.message);
+            }
+        };
+        
+        ws.onclose = (event) => {
+            log(`❌ WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`);
+            statusDiv.textContent = `Closed (${event.code}: ${event.reason})`;
+        };
+        
+        ws.onerror = (error) => {
+            log('💥 WebSocket error: ' + error);
+            statusDiv.textContent = 'Error occurred';
+        };
+        
+        // Send a test message after 2 seconds
+        setTimeout(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'ping',
+                    timestamp: Date.now()
+                }));
+                log('📤 Sent ping message');
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

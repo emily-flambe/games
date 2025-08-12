@@ -78,10 +78,8 @@ export class EverybodyVotesGameSession extends GameSession {
       timestamp: Date.now()
     });
     
-    // Show results immediately for testing
-    console.log('🧪 FORCE SHOWING RESULTS FOR TESTING');
-    this.gameState.votes['test'] = 'Pizza';
-    await this.showResults();
+    // Game starts in voting phase - wait for player votes
+    console.log('✅ Everybody Votes game started - waiting for player votes');
     
     if (this.sessionId) {
       await this.updateRegistry();
@@ -92,6 +90,10 @@ export class EverybodyVotesGameSession extends GameSession {
     switch (data.type) {
       case 'submit_vote':
         await this.handleVote(data, ws, playerId, isSpectator);
+        break;
+        
+      case 'end_game':
+        await this.handleEndGame(playerId);
         break;
         
       default:
@@ -128,8 +130,46 @@ export class EverybodyVotesGameSession extends GameSession {
     this.gameState.votes[playerId] = vote;
     console.log(`✅ Player ${playerId} voted for ${vote}`);
     
-    // IMMEDIATELY show results after any vote
-    await this.showResults();
+    // Check if all players have voted
+    const totalPlayers = Object.keys(this.gameState.players).length;
+    const totalVotes = Object.keys(this.gameState.votes).length;
+    
+    console.log(`📊 Vote progress: ${totalVotes}/${totalPlayers} players voted`);
+    
+    // Only show results when all players have voted
+    if (totalVotes >= totalPlayers) {
+      console.log('🎉 All players have voted - showing results');
+      await this.showResults();
+    }
+  }
+
+  private async handleEndGame(playerId: string) {
+    console.log(`🏁 End game requested by ${playerId}`);
+    
+    // Create scores for all players (everyone gets 1 point)
+    const scores: Record<string, number> = {};
+    Object.keys(this.gameState.players).forEach(id => {
+      scores[id] = 1;
+    });
+    
+    // Send game ended message
+    this.broadcast({
+      type: 'game_ended',
+      data: {
+        message: 'Game Complete!',
+        scores: scores
+      }
+    });
+    
+    // Update game state
+    this.gameState.status = 'finished';
+    this.gameState.gameFinished = true;
+    this.gameState.gameStarted = false;
+    
+    await this.saveGameState();
+    this.updateRegistryStatus('finished');
+    
+    console.log('✅ Game ended successfully');
   }
 
   private async showResults() {
@@ -164,14 +204,25 @@ export class EverybodyVotesGameSession extends GameSession {
     
     console.log(`✅ Results: Pizza=${pizzaVotes}, Burgers=${burgersVotes}, Winner=${winner}`);
     
-    // Send results directly
+    // Send results with updated game state
     this.broadcast({
       type: 'game_results',
       question: this.gameState.question,
       results: this.gameState.results,
       totalVotes: totalVotes,
       winner: winner,
+      gameState: this.gameState,
       timestamp: Date.now()
+    });
+    
+    // Also send a state update to ensure client receives phase change
+    this.broadcast({
+      type: 'gameState',
+      gameState: this.gameState,
+      gameSpecificState: {
+        phase: this.gameState.phase,
+        results: this.gameState.results
+      }
     });
     
     this.updateRegistryStatus('finished');

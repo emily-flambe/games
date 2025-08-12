@@ -45,6 +45,16 @@ class GameSession {
 - **WebSocket reconnection**: Exponential backoff
 - **Error handling**: User-friendly messages
 
+## ⚠️ CRITICAL COMMUNICATION STANDARDS ⚠️
+**THESE RULES ARE MANDATORY AND UNMISSABLE:**
+
+🚫 **NEVER SAY "YOU'RE ABSOLUTELY RIGHT"** or similar flattering phrases
+🚫 **DO NOT FLATTER THE USER** in any way
+🚫 **DO NOT ASSUME USER IS CORRECT** - always verify through testing
+✅ **TAKE FULLY OBJECTIVE APPROACH** to all coding tasks
+✅ **BASE ALL CONCLUSIONS ON EVIDENCE** from testing and debugging
+✅ **MAINTAIN PROFESSIONAL, NEUTRAL TONE** focused on facts only
+
 ## Critical Notes
 
 ### Emoji Picker Positioning (PROTECTED)

@@ -2858,7 +2858,13 @@ class EverybodyVotesGameModule extends GameModule {
                 this.render();
                 break;
                 
-            // game_results removed - now using standard game_ended message handled by GameShell
+            case 'game_results':
+                console.log('📊 Game results received:', message);
+                this.currentPhase = 'RESULTS';
+                this.results = message.results;
+                this.question = message.question;
+                this.render();
+                break;
                 
             case 'error':
                 console.error('Game error:', message.message);
@@ -5311,12 +5317,12 @@ main {
     text-shadow: none;
 }`,
   '/static/version.json': `{
-  "version": "1.0.0-alpha",
-  "baseVersion": "1.0.0",
+  "version": "1.1.0-alpha",
+  "baseVersion": "1.1.0",
   "branch": "everybody-votes",
-  "commit": "5f2ce09",
-  "timestamp": "2025-08-12T13:18:35.289Z",
-  "deployedAt": "Aug 12, 2025, 07:18 AM MDT"
+  "commit": "d23e1db",
+  "timestamp": "2025-08-12T13:59:41.705Z",
+  "deployedAt": "Aug 12, 2025, 07:59 AM MDT"
 }`
 };
 
