@@ -1,7 +1,7 @@
 # Architecture
 
 ## Overview
-Single Cloudflare Worker managing multiple game types through WebSocket + Durable Objects.
+Modular Cloudflare Workers platform with separate Durable Objects for each game type, sharing common functionality through inheritance.
 
 ## Core Components
 
@@ -11,10 +11,12 @@ Single Cloudflare Worker managing multiple game types through WebSocket + Durabl
 - URL routing: `/api/game/{sessionId}/ws`
 
 ### Durable Objects
-- **GameSession**: Base class for all games
-- Per-session isolation
-- 100 WebSocket connections max
-- In-memory state management
+- **GameSession**: Abstract base class with shared functionality (chat, spectators, player management)
+- **CheckboxGameSession**: Checkbox game implementation
+- **EverybodyVotesGameSession**: Everybody Votes game implementation  
+- **GameSessionRegistry**: Tracks and manages active game sessions
+- Per-session isolation with 100 WebSocket connections max
+- In-memory state management with storage persistence
 
 ### Frontend (GameShell/GameModule)
 - **GameShell.js**: Core WebSocket management, player state
@@ -25,17 +27,33 @@ Single Cloudflare Worker managing multiple game types through WebSocket + Durabl
 
 ## Message Protocol
 
-### Core Message Types
+### Core Message Types (Base GameSession)
 - `JOIN`: Player joining
-- `LEAVE`: Player leaving
+- `LEAVE`: Player leaving  
 - `START_GAME`: Host starts game
-- `game_action`: Game-specific actions
 - `gameState`: Full state sync
 - `host_assigned`: Host role changes
+- `chat_message`: Chat functionality
+- `change_name`/`change_emoji`: Player customization
+
+### Game-Specific Messages
+**CheckboxGameSession:**
+- `toggle_checkbox`: Toggle checkbox state
+
+**EverybodyVotesGameSession:**
+- `submit_vote`: Submit vote choice
+- `submit_prediction`: Submit prediction
+- `phase_changed`: Game phase transitions
+- `game_results`: Final results
 
 ## Data Flow
 ```
-Client → Worker → Durable Object → Broadcast → All Clients
+Client → Worker → Game-Specific Durable Object → Broadcast → All Clients
+         ↓
+    Route by gameType:
+    - 'checkbox-game' → CheckboxGameSession
+    - 'everybody-votes' → EverybodyVotesGameSession
+    - others → Base GameSession
 ```
 
 ### State Management
@@ -51,7 +69,12 @@ Client → Worker → Durable Object → Broadcast → All Clients
 ## File Structure
 ```
 src/
-├── index.ts              # Worker entry point
+├── index.ts              # Worker entry point (routes to appropriate DO)
+├── durable-objects/
+│   ├── GameSession.ts    # Base class with shared functionality
+│   ├── CheckboxGameSession.ts      # Checkbox game logic
+│   ├── EverybodyVotesGameSession.ts # Everybody Votes logic
+│   └── GameSessionRegistry.ts      # Active session tracking
 ├── static/
 │   ├── index.html        # Main HTML
 │   ├── app.js            # Frontend entry

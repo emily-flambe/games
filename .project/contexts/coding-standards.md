@@ -8,33 +8,36 @@
 
 ## WebSocket Patterns
 ```typescript
-// Standard connection handling
+// Standard connection handling in base GameSession
 class GameSession {
-  private websockets = new Set<WebSocket>();
+  protected websockets = new Map<WebSocket, string>(); // WS -> playerId
   
-  async handleWebSocket(ws: WebSocket) {
-    ws.accept();
-    this.websockets.add(ws);
-    
-    ws.addEventListener('message', (e) => this.handleMessage(JSON.parse(e.data)));
-    ws.addEventListener('close', () => this.websockets.delete(ws));
+  async fetch(request: Request) {
+    // Handle WebSocket upgrade
+    const [client, server] = Object.values(new WebSocketPair());
+    server.accept();
+    // Store mapping, handle messages, etc.
   }
   
   broadcast(message: any) {
     const data = JSON.stringify(message);
-    this.websockets.forEach(ws => {
-      try { ws.send(data); } 
-      catch { this.websockets.delete(ws); }
-    });
+    for (const ws of this.websockets.keys()) {
+      if (ws.readyState === WebSocket.READY_STATE_OPEN) {
+        try { ws.send(data); } 
+        catch { this.websockets.delete(ws); }
+      }
+    }
   }
 }
 ```
 
-## Durable Objects
-- Immutable state updates
-- Periodic persistence, not per-change
+## Durable Objects Architecture
+- **Base GameSession**: Shared functionality (chat, spectators, players)
+- **Game-Specific Classes**: Extend GameSession for each game type
+- **Override Pattern**: Use `handleGameSpecificMessage()` for game logic
+- **State Persistence**: Use `saveGameState()` after important changes
 - Handle 100 WebSocket connection limit
-- Clean up inactive sessions
+- Clean up inactive sessions via GameSessionRegistry
 
 ## Frontend Standards
 - **No frameworks**: Vanilla TypeScript only
