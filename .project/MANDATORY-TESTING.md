@@ -24,26 +24,41 @@
    - No more "the changes should..."
    - Test it or don't claim it's done
 
-3. **Puppeteer Test Template:**
+3. **Puppeteer Test Template - USE HEADLESS MODE:**
 ```javascript
 const puppeteer = require('puppeteer');
 
 async function testChanges() {
   const browser = await puppeteer.launch({ 
-    headless: false,
-    devtools: true 
+    headless: true,  // 🚨 MUST BE TRUE FOR AUTOMATED TESTING
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
   
   const page = await browser.newPage();
   await page.goto('http://localhost:8777');
   
   // ACTUALLY TEST THE SPECIFIC CHANGE
-  // Take screenshots
-  // Verify the UI/behavior
+  // Take screenshots for verification
+  // Verify the behavior programmatically
+  // Log results to console
   
   await page.screenshot({ path: 'proof-of-testing.png' });
+  
+  // VERIFY RESULTS PROGRAMMATICALLY
+  const result = await page.evaluate(() => {
+    // Check DOM elements, game state, etc.
+    return { /* test results */ };
+  });
+  
+  console.log('Test results:', result);
+  await browser.close();
 }
+
+// RUN THE TEST
+testChanges().catch(console.error);
 ```
+
+**🚨 HEADLESS MODE IS MANDATORY FOR CI/CD 🚨**
 
 4. **For Everybody Votes specifically:**
    - Create a room

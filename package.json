@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "puppeteer": "^24.16.0",
-    "sillyname": "^0.1.0"
+    "sillyname": "^0.1.0",
+    "ws": "^8.18.3"
   }
 }
