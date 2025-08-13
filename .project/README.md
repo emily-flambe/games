@@ -3,7 +3,7 @@
 ## 🚨 CRITICAL - READ BEFORE DEVELOPMENT
 
 ### Essential Rules
-1. **[DEVELOPMENT_GUIDELINES.md](DEVELOPMENT_GUIDELINES.md)** - 🚫 DO NOT commit troubleshooting artifacts
+1. **[development-guidelines.md](development-guidelines.md)** - 🚫 DO NOT commit troubleshooting artifacts
 2. **Port 8777 ONLY** - Never change development port
 3. **Test everything** - Use Puppeteer on localhost:8777 before claiming fixes
 
@@ -40,18 +40,21 @@ npm run bump-major  # 1.1.1 → 2.0.0
 ## Documentation Structure
 ```
 .project/
-├── README.md (this file)           # Quick start and overview  
-├── DEVELOPMENT_GUIDELINES.md       # 🚫 Critical artifact prevention rules
-├── VERSIONING.md                   # Simple patch-bump convention
-├── contexts/                       # Detailed technical docs
+├── readme.md (this file)           # Quick start and overview  
+├── development-guidelines.md       # 🚫 Critical artifact prevention rules
+├── versioning.md                   # Simple patch-bump convention
+├── docs/                           # Technical documentation
 │   ├── architecture.md            # System design and data flow
 │   ├── coding-standards.md         # TypeScript/WebSocket patterns  
-│   └── deployment.md              # Build and deployment processes
-├── troubleshooting/                # Historical issues and solutions
-│   ├── DEPLOYMENT_LESSONS_LEARNED.md
-│   ├── TROUBLESHOOTING.md
-│   └── github-issue-wrangler-dev.md
-└── pre-commit-check.sh            # Artifact prevention script
+│   ├── deployment.md              # Build and deployment processes
+│   ├── debugging.md               # Testing and debugging guides
+│   └── dependencies.md            # Package requirements
+├── guides/                         # Best practices
+│   └── deployment-best-practices.md
+└── troubleshooting/                # Historical issues and solutions
+    ├── deployment-lessons.md
+    ├── everybody-votes-debug.md
+    └── wrangler-dev-proposal.md
 ```
 
 ## Key Performance Targets
