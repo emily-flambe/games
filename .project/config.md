@@ -32,3 +32,9 @@ Multiplayer games platform on Cloudflare Workers with WebSocket support via Dura
 - Rate limiting
 - CORS configuration
 - Session isolation via Durable Objects
+
+## Documentation
+- **DEPLOYMENT_BEST_PRACTICES.md**: Core deployment and development guidelines
+- **DEPLOYMENT_LESSONS_LEARNED.md**: Historical deployment issues and solutions
+- **TROUBLESHOOTING.md**: Everybody Votes MVP troubleshooting guide
+- **github-issue-wrangler-dev.md**: Proposal to switch to wrangler dev environment

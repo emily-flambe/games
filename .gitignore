@@ -36,3 +36,11 @@ screenshots/
 src/lib/
 .cache/
 test-results/
+
+# Troubleshooting artifacts
+*.png
+!src/static/favicon.png
+debug-*.html
+test-*.js
+test-*.html
+frame_*.png
