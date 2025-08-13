@@ -16,6 +16,14 @@ name = "GAME_SESSIONS"
 class_name = "GameSession"
 
 [[durable_objects.bindings]]
+name = "CHECKBOX_SESSIONS"
+class_name = "CheckboxGameSession"
+
+[[durable_objects.bindings]]
+name = "EVERYBODY_VOTES_SESSIONS"
+class_name = "EverybodyVotesGameSession"
+
+[[durable_objects.bindings]]
 name = "GAME_REGISTRY"
 class_name = "GameSessionRegistry"
 
@@ -27,3 +35,7 @@ new_classes = [ "GameSession" ]
 [[migrations]]
 tag = "v2"
 new_classes = [ "GameSessionRegistry" ]
+
+[[migrations]]
+tag = "v3"
+new_classes = [ "CheckboxGameSession", "EverybodyVotesGameSession" ]

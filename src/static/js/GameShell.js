@@ -309,8 +309,8 @@ class GameShell {
                 default:
                     
                     // Pass unknown messages to game module
-                    if (this.gameModule) {
-                        this.gameModule.handlePlayerAction(message.playerId, message);
+                    if (this.gameModule && this.gameModule.handleMessage) {
+                        this.gameModule.handleMessage(message);
                     }
             }
         } catch (error) {
@@ -474,7 +474,7 @@ class GameShell {
                     console.error('CheckboxGameModule class not found - check script loading');
                     this.gameModule = null;
                 }
-            } else if (gameType === 'votes-game') {
+            } else if (gameType === 'everybody-votes') {
                 if (typeof EverybodyVotesGameModule !== 'undefined') {
                     this.gameModule = new EverybodyVotesGameModule();
                 } else {

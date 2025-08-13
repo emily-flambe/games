@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test: No Double Start Button</title>
+    <style>
+        body { font-family: system-ui; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .success { color: green; font-weight: bold; }
+        .fail { color: red; font-weight: bold; }
+        code { background: #f0f0f0; padding: 2px 4px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>✅ Fixed: No More Double "Start Game" Button!</h1>
+    
+    <h2>What was the issue?</h2>
+    <p>The game flow had two "Start Game" steps:</p>
+    <ol>
+        <li>Players join waiting room → Host clicks <code>Start Game</code></li>
+        <li>Everybody Votes loads → Shows ANOTHER <code>Start Game</code> button 🤦</li>
+    </ol>
+    
+    <h2>What's fixed:</h2>
+    <p class="success">✅ When host clicks "Start Game" in the waiting room, Everybody Votes immediately shows the voting question!</p>
+    
+    <h2>New Flow:</h2>
+    <ol>
+        <li>Players join waiting room</li>
+        <li>Host clicks <code>Start Game</code> in waiting room</li>
+        <li><strong>Immediately see:</strong> "Which would you rather have for breakfast?" with 🥞 Pancakes vs 🧇 Waffles</li>
+        <li>Everyone votes</li>
+        <li>Everyone predicts</li>
+        <li>See results!</li>
+    </ol>
+    
+    <h2>Test it yourself:</h2>
+    <p><a href="http://localhost:8777" target="_blank">Open the game →</a></p>
+    
+    <h3>Steps:</h3>
+    <ol>
+        <li>Click "Everybody Votes!" to create a room</li>
+        <li>In the waiting room, click "Start Game"</li>
+        <li>You should <strong>immediately</strong> see the voting question (no extra button!)</li>
+    </ol>
+    
+    <script>
+        // Check server is running
+        fetch('http://localhost:8777')
+            .then(() => {
+                document.body.insertAdjacentHTML('beforeend', '<p class="success">✅ Server is running at http://localhost:8777</p>');
+            })
+            .catch(() => {
+                document.body.insertAdjacentHTML('beforeend', '<p class="fail">❌ Server not running. Run: npm run dev</p>');
+            });
+    </script>
+</body>
+</html>

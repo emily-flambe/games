@@ -1,0 +1,7 @@
+{
+  "success": false,
+  "error": "Waiting for selector `#waiting-room` failed: Waiting failed: 5000ms exceeded",
+  "stack": "TimeoutError: Waiting for selector `#waiting-room` failed: Waiting failed: 5000ms exceeded\n    at new WaitTask (/Users/emilycogsdill/Documents/GitHub/games/node_modules/puppeteer-core/lib/cjs/puppeteer/common/WaitTask.js:48:34)\n    at IsolatedWorld.waitForFunction (/Users/emilycogsdill/Documents/GitHub/games/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Realm.js:25:26)\n    at CSSQueryHandler.waitFor (/Users/emilycogsdill/Documents/GitHub/games/node_modules/puppeteer-core/lib/cjs/puppeteer/common/QueryHandler.js:178:95)\n    at async CdpFrame.waitForSelector (/Users/emilycogsdill/Documents/GitHub/games/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Frame.js:548:21)\n    at async CdpPage.waitForSelector (/Users/emilycogsdill/Documents/GitHub/games/node_modules/puppeteer-core/lib/cjs/puppeteer/api/Page.js:1382:20)\n    at async testEverybodyVotesMVP (/Users/emilycogsdill/Documents/GitHub/games/worktrees/everybody-votes/test-ev-mvp.js:48:9)",
+  "roomCode": "TESTO2HD",
+  "timestamp": "2025-08-12T03:09:07.161Z"
+}

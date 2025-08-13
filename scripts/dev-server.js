@@ -443,6 +443,121 @@ class GameSession {
     }
   }
 
+  handleVote(data, playerId) {
+    console.log('🗳️ Player voted:', playerId, 'for', data.data?.vote);
+    
+    const player = this.players.get(playerId);
+    const playerName = player ? player.name : 'Unknown Player';
+    const vote = data.data?.vote || 'Pizza';
+    
+    // Validate vote option
+    if (vote !== 'Pizza' && vote !== 'Burgers') {
+      console.log('❌ Invalid vote option:', vote);
+      return;
+    }
+    
+    // Initialize votes object if not exists
+    if (!this.gameState.votes) {
+      this.gameState.votes = {};
+    }
+    
+    // Record the vote
+    this.gameState.votes[playerId] = vote;
+    console.log(`✅ Player ${playerName} voted for ${vote}`);
+    
+    // Calculate voting progress
+    const totalPlayers = this.players.size;
+    const totalVotes = Object.keys(this.gameState.votes).length;
+    
+    console.log(`📊 Voting progress: ${totalVotes}/${totalPlayers} players voted`);
+    
+    // Send voting progress update to all players
+    this.broadcast({
+      type: 'vote_progress',
+      data: {
+        votesCount: totalVotes,
+        totalPlayers: totalPlayers,
+        voterName: playerName,
+        allVoted: totalVotes === totalPlayers
+      },
+      timestamp: Date.now()
+    });
+    
+    // Check if all players have voted
+    if (totalVotes === totalPlayers) {
+      console.log('🎉 All players have voted! Moving to results phase...');
+      this.showVotingResults();
+    }
+  }
+
+  showVotingResults() {
+    // Calculate vote tallies
+    const votes = Object.values(this.gameState.votes);
+    const pizzaVotes = votes.filter(v => v === 'Pizza').length;
+    const burgersVotes = votes.filter(v => v === 'Burgers').length;
+    const totalVotes = votes.length;
+    
+    const results = {
+      'Pizza': pizzaVotes,
+      'Burgers': burgersVotes,
+      totalVotes: totalVotes
+    };
+    
+    console.log('📊 Vote results:', results);
+    
+    // Update game state to results phase (but don't end game yet)
+    this.gameState.phase = 'RESULTS';
+    this.gameState.results = results;
+    
+    // Send results to all players
+    this.broadcast({
+      type: 'voting_results',
+      data: {
+        question: 'Pizza or Burgers?',
+        results: results,
+        phase: 'RESULTS'
+      },
+      timestamp: Date.now()
+    });
+  }
+
+  handleEndGame(data, playerId) {
+    console.log('🏁 End game requested by:', playerId);
+    
+    // Update game state to finished
+    this.gameState.status = 'ended';
+    this.gameState.gameStarted = false;
+    this.gameState.gameFinished = true;
+    this.gameState.gameStatus = 'finished';
+    
+    // Get all player IDs for winners (everyone wins!)
+    const allPlayerIds = Array.from(this.players.keys());
+    
+    // Create scores where everyone gets 1 point
+    const scores = {};
+    allPlayerIds.forEach(id => {
+      scores[id] = 1;
+    });
+    
+    const resultMessage = 'Everyone wins!';
+    
+    console.log('🎉 Game completed - Everyone wins!');
+    
+    // Send standard game_ended message
+    this.broadcast({
+      type: 'game_ended',
+      data: {
+        message: resultMessage,
+        winners: allPlayerIds,
+        scores: scores,
+        gameState: this.gameState
+      },
+      timestamp: Date.now()
+    });
+    
+    console.log('✅ Sent game_ended message');
+  }
+
   handleMessage(message, ws, playerId) {
     try {
       const data = JSON.parse(message);
@@ -591,7 +706,21 @@ class GameSession {
           break;
           
         default:
-          console.log('Unknown message type:', data.type);
+          // Forward unknown messages to Durable Object (for game-specific actions)
+          console.log('Forwarding game-specific message:', data.type);
+          if (this.gameState.type === 'everybody-votes') {
+            if (data.type === 'submit_vote') {
+              console.log('📝 Processing vote:', data.data?.vote);
+              this.handleVote(data, playerId);
+            } else if (data.type === 'end_game') {
+              console.log('🏁 Processing end game request');
+              this.handleEndGame(data, playerId);
+            } else {
+              console.log('Unknown everybody-votes message type:', data.type);
+            }
+          } else {
+            console.log('Unknown message type:', data.type);
+          }
       }
     } catch (error) {
       console.error('Error handling message:', error);
