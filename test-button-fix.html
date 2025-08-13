@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Everybody Votes Button Fix</title>
+</head>
+<body>
+    <h1>Manual Test for Everybody Votes</h1>
+    <p>Instructions:</p>
+    <ol>
+        <li>Open <a href="http://localhost:8777" target="_blank">http://localhost:8777</a> in a new tab</li>
+        <li>Click "Everybody Votes!" to create a room</li>
+        <li>As the host, you should see "Start Voting!" button (not "Start Game")</li>
+        <li>Click "Start Voting!" - the game should immediately show the voting question</li>
+        <li>The flow should be: Waiting → Voting → Prediction → Results</li>
+    </ol>
+    
+    <h2>Expected Behavior:</h2>
+    <ul>
+        <li>✅ Button now says "Start Voting!" instead of "Start Game"</li>
+        <li>✅ Clicking the button immediately transitions to voting phase</li>
+        <li>✅ No redundant "Start Game" state between waiting and voting</li>
+        <li>✅ Player count is properly tracked during voting</li>
+    </ul>
+    
+    <h2>Test Status:</h2>
+    <p>Server is running at: <a href="http://localhost:8777">http://localhost:8777</a></p>
+    
+    <script>
+        // Simple check to verify server is running
+        fetch('http://localhost:8777')
+            .then(() => {
+                document.write('<p style="color: green;">✅ Server is running!</p>');
+            })
+            .catch(() => {
+                document.write('<p style="color: red;">❌ Server is not running. Please start it with npm run dev</p>');
+            });
+    </script>
+</body>
+</html>

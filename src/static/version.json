@@ -1,8 +1,8 @@
 {
-  "version": "1.1.0-alpha",
-  "baseVersion": "1.1.0",
+  "version": "1.1.2",
+  "baseVersion": "1.1.2",
   "branch": "everybody-votes",
-  "commit": "d23e1db",
-  "timestamp": "2025-08-12T13:59:41.705Z",
-  "deployedAt": "Aug 12, 2025, 07:59 AM MDT"
+  "commit": "1c7ba15",
+  "timestamp": "2025-08-13T05:58:36.670Z",
+  "deployedAt": "Aug 12, 2025, 11:58 PM MDT"
 }

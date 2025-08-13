@@ -642,6 +642,17 @@ class GameShell {
      */
     checkURLForRoom() {
         const path = window.location.pathname;
+        
+        // Check for game-specific paths
+        if (path === '/everybody-votes') {
+            console.log('Everybody Votes URL detected - auto-creating room');
+            setTimeout(() => {
+                this.startGame('everybody-votes');
+            }, 100);
+            return;
+        }
+        
+        // Check for room codes
         const roomMatch = path.match(/^\\/([A-Z0-9]{6})$/);
         
         if (roomMatch) {
@@ -1030,6 +1041,11 @@ class GameShell {
                 
                 // Show rules box if game provides rules
                 this.updateRulesDisplay();
+                
+                // Pass the game_started message to the module
+                if (this.gameModule.handleMessage) {
+                    this.gameModule.handleMessage(message);
+                }
             }
         });
 
@@ -1041,6 +1057,11 @@ class GameShell {
      */
     handleGameEnded(message) {
         this.gameState = 'finished';
+        
+        // Pass the game_ended message to the module before cleanup
+        if (this.gameModule && this.gameModule.handleMessage) {
+            this.gameModule.handleMessage(message);
+        }
         
         // Clean up game module but keep it for potential restart
         if (this.gameModule) {
@@ -2378,16 +2399,17 @@ if (typeof module !== 'undefined' && module.exports) {
     window.CheckboxGameModule = CheckboxGameModule;
 }`,
   '/static/js/games/EverybodyVotesGameModule.js': `/**
- * EverybodyVotesGameModule - MVP implementation
- * Simple voting game: Pizza or Burgers?
+ * EverybodyVotesGameModule - Multi-round implementation
+ * Simple voting game: Pizza or Burgers? (and more!)
  */
 class EverybodyVotesGameModule extends GameModule {
     constructor() {
         super();
-        this.currentPhase = 'WAITING'; // WAITING, VOTING, RESULTS
+        this.currentPhase = 'WAITING'; // WAITING, VOTING, PREDICTING, RESULTS, ENDED
         this.question = 'Pizza or Burgers?';
         this.options = ['Pizza', 'Burgers'];
         this.myVote = null;
+        this.myPrediction = null;
         this.votesCount = 0;
         this.totalPlayers = 0;
         this.results = null;
@@ -2395,6 +2417,14 @@ class EverybodyVotesGameModule extends GameModule {
         this.timerInterval = null;
         this.lastVoterName = null;
         this.allVoted = false;
+        
+        // Multi-round state
+        this.currentRound = 1;
+        this.totalRounds = 3;
+        this.roundResults = [];
+        this.playerScores = {};
+        this.finalScores = [];
+        this.isHost = false;
     }
 
     /**
@@ -2407,11 +2437,20 @@ class EverybodyVotesGameModule extends GameModule {
         
         // Set initial state if provided
         if (initialState) {
-            this.currentPhase = initialState.phase || 'VOTING'; // Start directly in voting!
+            this.currentPhase = initialState.phase || 'WAITING'; // Respect server phase
             this.question = initialState.question || 'Pizza or Burgers?';
             this.options = initialState.options || ['Pizza', 'Burgers'];
             this.results = initialState.results || null;
-            console.log(\`📍 Initial phase: \${this.currentPhase}, question: \${this.question}\`);
+            
+            // Multi-round state
+            this.currentRound = initialState.currentRound || 1;
+            this.totalRounds = initialState.totalRounds || 3;
+            this.roundResults = initialState.roundResults || [];
+            this.playerScores = initialState.playerScores || {};
+            this.finalScores = initialState.finalScores || [];
+            this.isHost = initialState.isHost || false;
+            
+            console.log(\`📍 Initial phase: \${this.currentPhase}, question: \${this.question}, round: \${this.currentRound}/\${this.totalRounds}\`);
         } else {
             // Default to VOTING phase
             this.currentPhase = 'VOTING';
@@ -2426,12 +2465,15 @@ class EverybodyVotesGameModule extends GameModule {
     getRules() {
         return \`
             <h3>Everybody Votes!</h3>
-            <p><strong>Simple voting game - Pizza or Burgers?</strong></p>
+            <p><strong>Multi-round voting game with predictions!</strong></p>
             <ol>
                 <li>Vote for your favorite option</li>
-                <li>See how everyone voted!</li>
+                <li>Predict what the majority will vote for</li>
+                <li>Get points for correct predictions</li>
+                <li>Play \${this.totalRounds} rounds total</li>
+                <li>Player with most points wins!</li>
             </ol>
-            <p><em>You have 10 seconds to vote!</em></p>
+            <p><em>You have time limits for both voting and predicting!</em></p>
         \`;
     }
 
@@ -2484,8 +2526,14 @@ class EverybodyVotesGameModule extends GameModule {
             case 'VOTING':
                 content = this.renderVotingPhase();
                 break;
+            case 'PREDICTING':
+                content = this.renderPredictingPhase();
+                break;
             case 'RESULTS':
                 content = this.renderResultsPhase();
+                break;
+            case 'ENDED':
+                content = this.renderFinalResultsPhase();
                 break;
             default:
                 content = this.renderWaitingPhase();
@@ -2493,6 +2541,55 @@ class EverybodyVotesGameModule extends GameModule {
         
         this.gameAreaElement.innerHTML = content;
         this.attachEventListeners();
+    }
+
+    /**
+     * Get round progress indicator HTML
+     */
+    getRoundProgressIndicator() {
+        return \`
+            <div style="
+                background: rgba(255, 255, 255, 0.2);
+                padding: 1rem;
+                border-radius: 8px;
+                margin-bottom: 1.5rem;
+                text-align: center;
+                backdrop-filter: blur(10px);
+            ">
+                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold;">
+                    Round \${this.currentRound} of \${this.totalRounds}
+                </h3>
+                <div style="
+                    display: flex;
+                    justify-content: center;
+                    gap: 0.5rem;
+                    margin-top: 0.5rem;
+                ">
+                    \${Array.from({length: this.totalRounds}, (_, i) => {
+                        const roundNum = i + 1;
+                        const isActive = roundNum === this.currentRound;
+                        const isCompleted = roundNum < this.currentRound;
+                        return \`
+                            <div style="
+                                width: 20px;
+                                height: 20px;
+                                border-radius: 50%;
+                                background: \${isCompleted ? '#4CAF50' : isActive ? '#FFF' : 'rgba(255,255,255,0.3)'};
+                                color: \${isActive && !isCompleted ? '#667eea' : '#FFF'};
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-size: 0.8rem;
+                                font-weight: bold;
+                                border: 2px solid \${isActive ? '#FFF' : 'transparent'};
+                            ">
+                                \${isCompleted ? '✓' : roundNum}
+                            </div>
+                        \`;
+                    }).join('')}
+                </div>
+            </div>
+        \`;
     }
 
     /**
@@ -2512,6 +2609,7 @@ class EverybodyVotesGameModule extends GameModule {
                 color: white;
                 text-align: center;
             ">
+                \${this.getRoundProgressIndicator()}
                 <h2 style="font-size: 2rem; margin-bottom: 1rem;">🗳️ Everybody Votes!</h2>
                 <p style="font-size: 1.2rem;">Game is starting...</p>
             </div>
@@ -2534,6 +2632,7 @@ class EverybodyVotesGameModule extends GameModule {
                 border-radius: 12px;
                 color: white;
             ">
+                \${this.getRoundProgressIndicator()}
                 <h2 style="font-size: 2rem; margin-bottom: 1rem;">🗳️ Time to Vote!</h2>
                 
                 <div style="
@@ -2574,37 +2673,119 @@ class EverybodyVotesGameModule extends GameModule {
                     flex-wrap: wrap;
                     justify-content: center;
                 ">
-                    <button class="vote-btn" data-vote="Pizza" style="
-                        background: white;
-                        color: #667eea;
-                        border: none;
-                        padding: 2rem 3rem;
-                        font-size: 2rem;
-                        font-weight: bold;
-                        border-radius: 12px;
-                        cursor: pointer;
-                        transition: all 0.3s;
-                        min-width: 200px;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                    " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                        🍕 Pizza
-                    </button>
-                    
-                    <button class="vote-btn" data-vote="Burgers" style="
-                        background: white;
-                        color: #764ba2;
-                        border: none;
-                        padding: 2rem 3rem;
-                        font-size: 2rem;
-                        font-weight: bold;
-                        border-radius: 12px;
-                        cursor: pointer;
-                        transition: all 0.3s;
-                        min-width: 200px;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                    " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                        🍔 Burgers
-                    </button>
+                    \${this.options.map((option, index) => {
+                        const emojis = {
+                            'Pizza': '🍕',
+                            'Burgers': '🍔',
+                            'Coffee': '☕',
+                            'Tea': '🍵',
+                            'Beach': '🏖️',
+                            'Mountains': '⛰️'
+                        };
+                        const emoji = emojis[option] || '';
+                        const color = index === 0 ? '#667eea' : '#764ba2';
+                        return \`
+                            <button class="vote-btn" data-vote="\${option}" style="
+                                background: white;
+                                color: \${color};
+                                border: none;
+                                padding: 2rem 3rem;
+                                font-size: 2rem;
+                                font-weight: bold;
+                                border-radius: 12px;
+                                cursor: pointer;
+                                transition: all 0.3s;
+                                min-width: 200px;
+                                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                \${emoji} \${option}
+                            </button>
+                        \`;
+                    }).join('')}
+                </div>
+            </div>
+        \`;
+    }
+
+    /**
+     * Render predicting phase
+     */
+    renderPredictingPhase() {
+        console.log('🎨 Rendering predicting phase...');
+        
+        return \`
+            <div class="everybody-votes-container" style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 2rem;
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+                border-radius: 12px;
+                color: white;
+            ">
+                \${this.getRoundProgressIndicator()}
+                <h2 style="font-size: 2rem; margin-bottom: 1rem;">🔮 Make Your Prediction!</h2>
+                
+                <div style="
+                    background: rgba(255, 255, 255, 0.1);
+                    padding: 1.5rem;
+                    border-radius: 8px;
+                    margin-bottom: 2rem;
+                    backdrop-filter: blur(10px);
+                ">
+                    <h3 style="font-size: 1.8rem; margin: 0 0 1rem 0;">\${this.question}</h3>
+                    <p style="font-size: 1.2rem; margin: 0;">
+                        What do you think the majority voted for?
+                    </p>
+                    \${this.myVote ? \`
+                        <div style="
+                            background: rgba(255, 255, 255, 0.2);
+                            padding: 1rem;
+                            border-radius: 6px;
+                            margin-top: 1rem;
+                        ">
+                            <p style="margin: 0; font-size: 1rem;">
+                                Your vote: <strong>\${this.myVote}</strong>
+                            </p>
+                        </div>
+                    \` : ''}
+                </div>
+                
+                <div style="
+                    display: flex;
+                    gap: 2rem;
+                    flex-wrap: wrap;
+                    justify-content: center;
+                ">
+                    \${this.options.map((option, index) => {
+                        const emojis = {
+                            'Pizza': '🍕',
+                            'Burgers': '🍔',
+                            'Coffee': '☕',
+                            'Tea': '🍵',
+                            'Beach': '🏖️',
+                            'Mountains': '⛰️'
+                        };
+                        const emoji = emojis[option] || '';
+                        const color = index === 0 ? '#ff6b6b' : '#ee5a24';
+                        return \`
+                            <button class="prediction-btn" data-prediction="\${option}" style="
+                                background: white;
+                                color: \${color};
+                                border: none;
+                                padding: 2rem 3rem;
+                                font-size: 2rem;
+                                font-weight: bold;
+                                border-radius: 12px;
+                                cursor: pointer;
+                                transition: all 0.3s;
+                                min-width: 200px;
+                                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                \${emoji} \${option}
+                            </button>
+                        \`;
+                    }).join('')}
                 </div>
             </div>
         \`;
@@ -2620,12 +2801,26 @@ class EverybodyVotesGameModule extends GameModule {
             return \`<div class="everybody-votes-container">Loading results...</div>\`;
         }
         
-        const pizzaVotes = this.results['Pizza'] || 0;
-        const burgersVotes = this.results['Burgers'] || 0;
+        const option1Votes = this.results[this.options[0]] || 0;
+        const option2Votes = this.results[this.options[1]] || 0;
         const totalVotes = this.results.totalVotes || 0;
         
-        const pizzaPercentage = totalVotes > 0 ? Math.round((pizzaVotes / totalVotes) * 100) : 0;
-        const burgersPercentage = totalVotes > 0 ? Math.round((burgersVotes / totalVotes) * 100) : 0;
+        const option1Percentage = totalVotes > 0 ? Math.round((option1Votes / totalVotes) * 100) : 0;
+        const option2Percentage = totalVotes > 0 ? Math.round((option2Votes / totalVotes) * 100) : 0;
+        
+        const winner = option1Votes > option2Votes ? this.options[0] : 
+                      option2Votes > option1Votes ? this.options[1] : 'Tie';
+        
+        const emojis = {
+            'Pizza': '🍕',
+            'Burgers': '🍔',
+            'Coffee': '☕',
+            'Tea': '🍵',
+            'Beach': '🏖️',
+            'Mountains': '⛰️'
+        };
+        
+        const isLastRound = this.currentRound >= this.totalRounds;
         
         return \`
             <div class="everybody-votes-container" style="
@@ -2638,7 +2833,8 @@ class EverybodyVotesGameModule extends GameModule {
                 color: white;
                 text-align: center;
             ">
-                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">📊 Results</h2>
+                \${this.getRoundProgressIndicator()}
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">📊 Round \${this.currentRound} Results</h2>
                 
                 <div style="
                     background: rgba(255, 255, 255, 0.1);
@@ -2660,18 +2856,20 @@ class EverybodyVotesGameModule extends GameModule {
                             padding: 1rem;
                             background: rgba(255, 255, 255, 0.2);
                             border-radius: 8px;
+                            \${option1Votes >= option2Votes ? 'border: 3px solid #FFD700;' : ''}
                         ">
-                            <span style="font-size: 1.5rem;">🍕 Pizza</span>
+                            <span style="font-size: 1.5rem;">\${emojis[this.options[0]] || ''} \${this.options[0]}</span>
                             <div style="display: flex; align-items: center; gap: 1rem;">
                                 <div style="
                                     background: #ff6b6b;
                                     height: 20px;
                                     border-radius: 10px;
-                                    min-width: 100px;
-                                    width: \${pizzaPercentage * 2}px;
+                                    width: \${Math.max(5, option1Percentage * 2)}px;
                                     max-width: 200px;
+                                    transition: width 0.3s ease;
                                 "></div>
-                                <span style="font-weight: bold; min-width: 60px;">\${pizzaVotes} (\${pizzaPercentage}%)</span>
+                                <span style="font-weight: bold; min-width: 60px;">\${option1Votes} (\${option1Percentage}%)</span>
+                                \${option1Votes >= option2Votes && option1Votes !== option2Votes ? '<span style="font-size: 1.5rem;">👑</span>' : ''}
                             </div>
                         </div>
                         
@@ -2682,44 +2880,331 @@ class EverybodyVotesGameModule extends GameModule {
                             padding: 1rem;
                             background: rgba(255, 255, 255, 0.2);
                             border-radius: 8px;
+                            \${option2Votes >= option1Votes ? 'border: 3px solid #FFD700;' : ''}
                         ">
-                            <span style="font-size: 1.5rem;">🍔 Burgers</span>
+                            <span style="font-size: 1.5rem;">\${emojis[this.options[1]] || ''} \${this.options[1]}</span>
                             <div style="display: flex; align-items: center; gap: 1rem;">
                                 <div style="
                                     background: #4ecdc4;
                                     height: 20px;
                                     border-radius: 10px;
-                                    min-width: 100px;
-                                    width: \${burgersPercentage * 2}px;
+                                    width: \${Math.max(5, option2Percentage * 2)}px;
                                     max-width: 200px;
+                                    transition: width 0.3s ease;
                                 "></div>
-                                <span style="font-weight: bold; min-width: 60px;">\${burgersVotes} (\${burgersPercentage}%)</span>
+                                <span style="font-weight: bold; min-width: 60px;">\${option2Votes} (\${option2Percentage}%)</span>
+                                \${option2Votes >= option1Votes && option1Votes !== option2Votes ? '<span style="font-size: 1.5rem;">👑</span>' : ''}
                             </div>
                         </div>
                     </div>
                     
+                    <p style="font-size: 1.4rem; margin: 1rem 0; font-weight: bold;">
+                        Winner: \${winner === 'Tie' ? '🤝 It\\'s a tie!' : \`🏆 \${winner}\`}
+                    </p>
+                    
                     <p style="font-size: 1.2rem; margin: 1rem 0;">
                         Total votes: \${totalVotes}
                     </p>
+                    
+                    \${this.myPrediction ? \`
+                        <div style="
+                            background: rgba(255, 255, 255, 0.2);
+                            padding: 1rem;
+                            border-radius: 6px;
+                            margin-top: 1rem;
+                        ">
+                            <p style="margin: 0; font-size: 1rem;">
+                                Your prediction: <strong>\${this.myPrediction}</strong>
+                                \${this.myPrediction === winner && winner !== 'Tie' ? ' ✅ Correct!' : ' ❌ Wrong'}
+                            </p>
+                        </div>
+                    \` : ''}
                 </div>
                 
-                <button id="end-game-btn" style="
-                    background: #ff6b6b;
-                    color: white;
-                    border: none;
-                    padding: 1rem 2rem;
-                    font-size: 1.5rem;
-                    font-weight: bold;
+                \${isLastRound ? \`
+                    <button id="end-game-btn" style="
+                        background: #ff6b6b;
+                        color: white;
+                        border: none;
+                        padding: 1rem 2rem;
+                        font-size: 1.5rem;
+                        font-weight: bold;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        min-width: 200px;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        margin-top: 1rem;
+                    " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                        🏁 End Game
+                    </button>
+                \` : (this.isHost ? \`
+                    <button id="next-question-btn" style="
+                        background: #FFD700;
+                        color: #4CAF50;
+                        border: none;
+                        padding: 1rem 2rem;
+                        font-size: 1.5rem;
+                        font-weight: bold;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        min-width: 200px;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        margin-top: 1rem;
+                    " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                        ➡️ Next Question
+                    </button>
+                \` : \`
+                    <p style="font-size: 1.2rem; margin: 1rem 0; opacity: 0.8;">
+                        Waiting for host to continue...
+                    </p>
+                \`)}
+            </div>
+        \`;
+    }
+
+    /**
+     * Render round transition phase
+     */
+    renderRoundTransitionPhase() {
+        console.log('🎨 Rendering round transition phase...');
+        
+        // Get current scores display
+        const scoresHtml = this.getPlayerScoresHtml();
+        
+        return \`
+            <div class="everybody-votes-container" style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 2rem;
+                background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+                border-radius: 12px;
+                color: white;
+                text-align: center;
+            ">
+                \${this.getRoundProgressIndicator()}
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">🎯 Round \${this.currentRound} Complete!</h2>
+                
+                <div style="
+                    background: rgba(255, 255, 255, 0.1);
+                    padding: 1.5rem;
                     border-radius: 8px;
+                    margin-bottom: 2rem;
+                    backdrop-filter: blur(10px);
+                    width: 100%;
+                    max-width: 600px;
+                ">
+                    <h3 style="font-size: 1.5rem; margin: 0 0 1rem 0;">Current Standings</h3>
+                    \${scoresHtml}
+                </div>
+                
+                \${this.isHost ? \`
+                    <button id="continue-round-btn" style="
+                        background: #FFD700;
+                        color: #8e44ad;
+                        border: none;
+                        padding: 1.5rem 3rem;
+                        font-size: 1.8rem;
+                        font-weight: bold;
+                        border-radius: 12px;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        min-width: 250px;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                        🚀 Continue to Next Round
+                    </button>
+                \` : \`
+                    <p style="font-size: 1.2rem; margin: 1rem 0; opacity: 0.8;">
+                        Waiting for host to continue...
+                    </p>
+                \`}
+            </div>
+        \`;
+    }
+
+    /**
+     * Render final results phase
+     */
+    renderFinalResultsPhase() {
+        console.log('🎨 Rendering final results phase...');
+        
+        const finalScoresHtml = this.getFinalScoresHtml();
+        const roundSummaryHtml = this.getRoundSummaryHtml();
+        
+        return \`
+            <div class="everybody-votes-container" style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 2rem;
+                background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+                border-radius: 12px;
+                color: white;
+                text-align: center;
+            ">
+                <h2 style="font-size: 3rem; margin-bottom: 1rem;">🏆 Game Complete!</h2>
+                
+                <div style="
+                    background: rgba(255, 255, 255, 0.1);
+                    padding: 1.5rem;
+                    border-radius: 8px;
+                    margin-bottom: 2rem;
+                    backdrop-filter: blur(10px);
+                    width: 100%;
+                    max-width: 700px;
+                ">
+                    <h3 style="font-size: 2rem; margin: 0 0 1rem 0;">🥇 Final Leaderboard</h3>
+                    \${finalScoresHtml}
+                </div>
+                
+                <div style="
+                    background: rgba(255, 255, 255, 0.1);
+                    padding: 1.5rem;
+                    border-radius: 8px;
+                    margin-bottom: 2rem;
+                    backdrop-filter: blur(10px);
+                    width: 100%;
+                    max-width: 700px;
+                ">
+                    <h3 style="font-size: 1.5rem; margin: 0 0 1rem 0;">📊 Round Summary</h3>
+                    \${roundSummaryHtml}
+                </div>
+                
+                <button id="new-game-btn" style="
+                    background: #FFD700;
+                    color: #c0392b;
+                    border: none;
+                    padding: 1.5rem 3rem;
+                    font-size: 1.8rem;
+                    font-weight: bold;
+                    border-radius: 12px;
                     cursor: pointer;
                     transition: all 0.3s;
-                    min-width: 200px;
+                    min-width: 250px;
                     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                 " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    🏁 End Game
+                    🎮 Play Again
                 </button>
             </div>
         \`;
+    }
+
+    /**
+     * Get player scores HTML
+     */
+    getPlayerScoresHtml() {
+        if (!this.playerScores || Object.keys(this.playerScores).length === 0) {
+            return '<p>No scores available</p>';
+        }
+        
+        const sortedScores = Object.entries(this.playerScores)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 10); // Show top 10
+        
+        return \`
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                \${sortedScores.map(([playerId, score], index) => \`
+                    <div style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 0.75rem;
+                        background: rgba(255, 255, 255, \${index === 0 ? '0.3' : '0.15'});
+                        border-radius: 6px;
+                        \${index === 0 ? 'border: 2px solid #FFD700;' : ''}
+                    ">
+                        <span style="font-weight: bold;">
+                            \${index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : \`\${index + 1}.\`}
+                            \${this.getPlayerName(playerId)}
+                        </span>
+                        <span style="font-weight: bold; font-size: 1.2rem;">
+                            \${score} point\${score !== 1 ? 's' : ''}
+                        </span>
+                    </div>
+                \`).join('')}
+            </div>
+        \`;
+    }
+
+    /**
+     * Get final scores HTML with more details
+     */
+    getFinalScoresHtml() {
+        if (!this.finalScores || this.finalScores.length === 0) {
+            return this.getPlayerScoresHtml(); // Fallback to basic scores
+        }
+        
+        return \`
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                \${this.finalScores.slice(0, 10).map((player, index) => \`
+                    <div style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 1rem;
+                        background: rgba(255, 255, 255, \${index === 0 ? '0.3' : '0.15'});
+                        border-radius: 8px;
+                        \${index === 0 ? 'border: 3px solid #FFD700; box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);' : ''}
+                    ">
+                        <span style="font-weight: bold; font-size: 1.2rem;">
+                            \${index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : \`\${index + 1}.\`}
+                            \${player.name}
+                        </span>
+                        <div style="text-align: right;">
+                            <div style="font-weight: bold; font-size: 1.4rem;">
+                                \${player.score} point\${player.score !== 1 ? 's' : ''}
+                            </div>
+                            <div style="font-size: 0.9rem; opacity: 0.8;">
+                                \${player.correctPredictions}/\${this.totalRounds} correct
+                            </div>
+                        </div>
+                    </div>
+                \`).join('')}
+            </div>
+        \`;
+    }
+
+    /**
+     * Get round summary HTML
+     */
+    getRoundSummaryHtml() {
+        if (!this.roundResults || this.roundResults.length === 0) {
+            return '<p>No round data available</p>';
+        }
+        
+        return \`
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                \${this.roundResults.map((round, index) => \`
+                    <div style="
+                        padding: 1rem;
+                        background: rgba(255, 255, 255, 0.15);
+                        border-radius: 6px;
+                        border-left: 4px solid #FFD700;
+                    ">
+                        <div style="font-weight: bold; margin-bottom: 0.5rem;">
+                            Round \${index + 1}: \${round.question}
+                        </div>
+                        <div style="font-size: 0.9rem;">
+                            Winner: <strong>\${round.winner}</strong> 
+                            (\${round.winnerVotes}/\${round.totalVotes} votes)
+                        </div>
+                    </div>
+                \`).join('')}
+            </div>
+        \`;
+    }
+
+    /**
+     * Get player name from ID
+     */
+    getPlayerName(playerId) {
+        if (this.players && this.players[playerId]) {
+            return this.players[playerId].name || \`Player \${playerId.slice(-4)}\`;
+        }
+        return \`Player \${playerId.slice(-4)}\`;
     }
 
     /**
@@ -2742,6 +3227,46 @@ class EverybodyVotesGameModule extends GameModule {
             });
         });
         
+        // Prediction buttons
+        const predictionBtns = this.gameAreaElement.querySelectorAll('.prediction-btn');
+        predictionBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const prediction = e.target.dataset.prediction;
+                if (prediction && this.onPlayerAction) {
+                    console.log(\`🔮 Player predicting: \${prediction}\`);
+                    this.myPrediction = prediction; // Remember the prediction
+                    this.onPlayerAction({
+                        type: 'submit_prediction',
+                        data: { prediction: prediction }
+                    });
+                }
+            });
+        });
+        
+        // Next Question button (host only, in results phase)
+        const nextQuestionBtn = this.gameAreaElement.querySelector('#next-question-btn');
+        if (nextQuestionBtn && this.onPlayerAction) {
+            nextQuestionBtn.addEventListener('click', () => {
+                console.log('➡️ Next Question button clicked');
+                this.onPlayerAction({
+                    type: 'advance_round',
+                    data: {}
+                });
+            });
+        }
+        
+        // Continue to next round button (host only) - kept for backward compatibility
+        const continueRoundBtn = this.gameAreaElement.querySelector('#continue-round-btn');
+        if (continueRoundBtn && this.onPlayerAction) {
+            continueRoundBtn.addEventListener('click', () => {
+                console.log('🚀 Continue to next round button clicked');
+                this.onPlayerAction({
+                    type: 'advance_round',
+                    data: {}
+                });
+            });
+        }
+        
         // End Game button
         const endGameBtn = this.gameAreaElement.querySelector('#end-game-btn');
         if (endGameBtn && this.onPlayerAction) {
@@ -2749,6 +3274,18 @@ class EverybodyVotesGameModule extends GameModule {
                 console.log('🏁 End Game button clicked');
                 this.onPlayerAction({
                     type: 'end_game',
+                    data: {}
+                });
+            });
+        }
+        
+        // New Game button
+        const newGameBtn = this.gameAreaElement.querySelector('#new-game-btn');
+        if (newGameBtn && this.onPlayerAction) {
+            newGameBtn.addEventListener('click', () => {
+                console.log('🎮 New Game button clicked');
+                this.onPlayerAction({
+                    type: 'new_game',
                     data: {}
                 });
             });
@@ -2786,21 +3323,61 @@ class EverybodyVotesGameModule extends GameModule {
             this.results = gameSpecificState.results;
         }
         
+        // Update multi-round state
+        if (gameSpecificState.currentRound !== undefined) {
+            this.currentRound = gameSpecificState.currentRound;
+        }
+        if (gameSpecificState.totalRounds !== undefined) {
+            this.totalRounds = gameSpecificState.totalRounds;
+        }
+        if (gameSpecificState.roundResults) {
+            this.roundResults = gameSpecificState.roundResults;
+        }
+        if (gameSpecificState.playerScores) {
+            this.playerScores = gameSpecificState.playerScores;
+        }
+        if (gameSpecificState.finalScores) {
+            this.finalScores = gameSpecificState.finalScores;
+        }
+        // Update host status
+        if (gameSpecificState.hostId !== undefined) {
+            this.isHost = (this.currentPlayerId === gameSpecificState.hostId);
+        }
+        if (gameSpecificState.isHost !== undefined) {
+            this.isHost = gameSpecificState.isHost;
+        }
+        
         // Update vote counts for progress display
         if (gameSpecificState.votes) {
             this.votesCount = Object.keys(gameSpecificState.votes).length;
             // Check if we already voted
-            if (gameSpecificState.votes[this.localPlayerId]) {
-                this.myVote = gameSpecificState.votes[this.localPlayerId];
+            if (gameSpecificState.votes[this.currentPlayerId]) {
+                this.myVote = gameSpecificState.votes[this.currentPlayerId];
             }
         }
+        
+        // Update predictions
+        if (gameSpecificState.predictions) {
+            // Check if we already predicted
+            if (gameSpecificState.predictions[this.currentPlayerId]) {
+                this.myPrediction = gameSpecificState.predictions[this.currentPlayerId];
+            }
+        }
+        
         if (gameSpecificState.players) {
             this.totalPlayers = Object.keys(gameSpecificState.players).length;
+            this.players = gameSpecificState.players; // Store for name lookup
         }
         
         // Handle voting timer
         if (gameSpecificState.votingEndTime && this.currentPhase === 'VOTING') {
             this.timeRemaining = Math.max(0, Math.floor((gameSpecificState.votingEndTime - Date.now()) / 1000));
+            this.startTimer();
+        }
+        
+        // Handle prediction timer
+        if (gameSpecificState.predictionEndTime && this.currentPhase === 'PREDICTING') {
+            this.timeRemaining = Math.max(0, Math.floor((gameSpecificState.predictionEndTime - Date.now()) / 1000));
             this.startTimer();
         }
         
@@ -2811,10 +3388,33 @@ class EverybodyVotesGameModule extends GameModule {
      * Handle WebSocket messages
      */
     handleMessage(message) {
+        console.log('🎮 Handling message:', message.type, message);
+        
         switch (message.type) {
+            case 'game_started':
+                console.log('🎮 Game started message received:', message.data);
+                if (message.data && message.data.phase) {
+                    this.currentPhase = message.data.phase;
+                    this.question = message.data.question || this.question;
+                    this.options = message.data.options || this.options;
+                    this.currentRound = message.data.currentRound || 1;
+                    this.totalRounds = message.data.totalRounds || 3;
+                    if (message.data.hostId) {
+                        this.isHost = (this.currentPlayerId === message.data.hostId);
+                    }
+                }
+                this.render();
+                break;
+                
             case 'phase_changed':
                 this.currentPhase = message.phase;
-                if (this.currentPhase !== 'VOTING') {
+                if (message.phase === 'PREDICTING') {
+                    this.clearTimer();
+                    if (message.timeLimit) {
+                        this.timeRemaining = message.timeLimit;
+                        this.startTimer();
+                    }
+                } else if (this.currentPhase !== 'VOTING' && this.currentPhase !== 'PREDICTING') {
                     this.clearTimer();
                 }
                 this.render();
@@ -2826,12 +3426,40 @@ class EverybodyVotesGameModule extends GameModule {
                 this.options = message.options || ['Pizza', 'Burgers'];
                 this.timeRemaining = message.timeLimit || 10;
                 this.myVote = null; // Reset vote for new round
+                this.myPrediction = null; // Reset prediction for new round
+                if (message.currentRound) this.currentRound = message.currentRound;
+                if (message.totalRounds) this.totalRounds = message.totalRounds;
                 this.startTimer();
+                this.render();
+                break;
+                
+            case 'predicting_started':
+                console.log('🔮 Predicting phase started:', message.data);
+                this.currentPhase = 'PREDICTING';
+                this.timeRemaining = message.data.timeLimit || 15;
+                this.startTimer();
+                this.render();
+                break;
+                
+            case 'prediction_phase':
+                console.log('🔮 Prediction phase message:', message.data);
+                if (message.data) {
+                    this.currentPhase = message.data.phase || 'PREDICTING';
+                    this.question = message.data.question || this.question;
+                    this.options = message.data.options || this.options;
+                    this.currentRound = message.data.currentRound || this.currentRound;
+                    this.totalRounds = message.data.totalRounds || this.totalRounds;
+                }
                 this.render();
                 break;
                 
             case 'vote_confirmed':
                 // Vote was successfully recorded
+                this.render();
+                break;
+                
+            case 'prediction_confirmed':
+                // Prediction was successfully recorded
                 this.render();
                 break;
                 
@@ -2850,11 +3478,72 @@ class EverybodyVotesGameModule extends GameModule {
                 this.render();
                 break;
                 
+            case 'round_results':
+                console.log('📊 Round results received:', message.data);
+                this.currentPhase = 'RESULTS';
+                this.results = message.data.results;
+                this.question = message.data.question;
+                this.currentRound = message.data.currentRound;
+                if (message.data.playerScores) {
+                    this.playerScores = message.data.playerScores;
+                }
+                if (message.data.roundResults) {
+                    this.roundResults = message.data.roundResults;
+                }
+                this.render();
+                break;
+                
+            // Removed round_transition - we now auto-advance after results
+                
+            case 'host_assigned':
+                console.log('👑 Host assigned:', message.data);
+                this.isHost = (this.currentPlayerId === message.data.hostId);
+                console.log(\`👑 Is host: \${this.isHost}, currentPlayerId: \${this.currentPlayerId}, hostId: \${message.data.hostId}\`);
+                this.render();
+                break;
+                
             case 'voting_results':
                 console.log('📊 Voting results received:', message.data);
                 this.currentPhase = 'RESULTS';
                 this.results = message.data.results;
                 this.question = message.data.question;
+                this.render();
+                break;
+                
+            case 'final_summary':
+                console.log('🏆 Final summary received:', message.data);
+                this.currentPhase = 'ENDED';
+                if (message.data.finalScores) {
+                    this.finalScores = message.data.finalScores;
+                }
+                if (message.data.roundResults) {
+                    this.roundResults = message.data.roundResults;
+                }
+                if (message.data.playerScores) {
+                    this.playerScores = message.data.playerScores;
+                }
+                this.render();
+                break;
+                
+            case 'advance_round':
+                console.log('🚀 Advancing to next round:', message.data);
+                // Server will send new_round message for the next round
+                break;
+                
+            case 'new_round':
+                console.log('🆕 New round started:', message.data);
+                if (message.data) {
+                    this.currentPhase = message.data.phase || 'VOTING';
+                    this.question = message.data.question || this.question;
+                    this.options = message.data.options || this.options;
+                    this.currentRound = message.data.currentRound || this.currentRound;
+                    this.totalRounds = message.data.totalRounds || this.totalRounds;
+                    this.myVote = null; // Reset vote for new round
+                    this.myPrediction = null; // Reset prediction for new round
+                    if (message.data.hostId) {
+                        this.isHost = (this.currentPlayerId === message.data.hostId);
+                    }
+                }
                 this.render();
                 break;
                 
@@ -2866,8 +3555,35 @@ class EverybodyVotesGameModule extends GameModule {
                 this.render();
                 break;
                 
+            case 'game_ended':
+                console.log('🏁 Game ended:', message.data);
+                this.currentPhase = 'ENDED';
+                if (message.data.finalScores) {
+                    this.finalScores = message.data.finalScores;
+                }
+                if (message.data.roundResults) {
+                    this.roundResults = message.data.roundResults;
+                }
+                this.render();
+                break;
+                
+            case 'final_results':
+                console.log('🏆 Final results message:', message.data);
+                if (message.data) {
+                    this.currentPhase = message.data.phase || 'ENDED';
+                    this.finalScores = message.data.finalScores || this.finalScores;
+                    this.roundResults = message.data.roundResults || this.roundResults;
+                    this.totalRounds = message.data.totalRounds || this.totalRounds;
+                }
+                this.render();
+                break;
+                
             case 'error':
                 console.error('Game error:', message.message);
+                break;
+                
+            default:
+                console.log('🤷 Unhandled message type:', message.type);
                 break;
         }
     }
@@ -2880,12 +3596,22 @@ class EverybodyVotesGameModule extends GameModule {
         this.clearTimer();
         this.currentPhase = 'WAITING';
         this.myVote = null;
+        this.myPrediction = null;
         this.results = null;
         this.votesCount = 0;
         this.totalPlayers = 0;
         this.timeRemaining = 0;
         this.lastVoterName = null;
         this.allVoted = false;
+        
+        // Reset multi-round state
+        this.currentRound = 1;
+        this.totalRounds = 3;
+        this.roundResults = [];
+        this.playerScores = {};
+        this.finalScores = [];
+        this.isHost = false;
+        this.players = null;
     }
 }
 
@@ -5317,12 +6043,12 @@ main {
     text-shadow: none;
 }`,
   '/static/version.json': `{
-  "version": "1.1.0-alpha",
-  "baseVersion": "1.1.0",
+  "version": "1.1.2",
+  "baseVersion": "1.1.2",
   "branch": "everybody-votes",
-  "commit": "d23e1db",
-  "timestamp": "2025-08-12T13:59:41.705Z",
-  "deployedAt": "Aug 12, 2025, 07:59 AM MDT"
+  "commit": "1c7ba15",
+  "timestamp": "2025-08-13T05:58:36.670Z",
+  "deployedAt": "Aug 12, 2025, 11:58 PM MDT"
 }`
 };
 

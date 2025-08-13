@@ -34,11 +34,8 @@ function generateVersion() {
   // Get git info
   const { branch, commit } = getGitInfo();
   
-  // Determine version suffix based on branch
+  // Use the base version without any suffix
   let version = baseVersion;
-  if (branch !== 'main' && branch !== 'master') {
-    version += '-alpha';
-  }
   
   // Create version object
   const versionInfo = {

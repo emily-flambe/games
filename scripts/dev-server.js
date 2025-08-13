@@ -487,6 +487,8 @@ class GameSession {
     if (totalVotes === totalPlayers) {
       console.log('🎉 All players have voted! Moving to results phase...');
       this.showVotingResults();
+      
+      // Results phase - host can now click "Next Question" to advance
     }
   }
 
@@ -519,6 +521,94 @@ class GameSession {
       },
       timestamp: Date.now()
     });
+  }
+
+  handlePrediction(data, playerId) {
+    console.log('🔮 Prediction received from:', playerId);
+    
+    // Store prediction
+    if (!this.gameState.predictions) {
+      this.gameState.predictions = {};
+    }
+    
+    const prediction = data.data?.prediction;
+    if (!prediction) {
+      console.log('❌ No prediction provided');
+      return;
+    }
+    
+    this.gameState.predictions[playerId] = prediction;
+    
+    const player = this.players.get(playerId);
+    const playerName = player?.name || `Player ${playerId.substring(0, 4)}`;
+    
+    console.log(`✅ ${playerName} predicted ${prediction}`);
+    
+    // Check if all players have predicted
+    const totalPlayers = this.players.size;
+    const totalPredictions = Object.keys(this.gameState.predictions).length;
+    
+    // Send prediction phase message
+    this.broadcast({
+      type: 'prediction_phase',
+      data: {
+        phase: 'PREDICTING',
+        question: this.gameState.question || 'Pizza or Burgers?',
+        options: this.gameState.options || ['Pizza', 'Burgers'],
+        currentRound: this.gameState.currentRound || 1,
+        totalRounds: 3
+      },
+      timestamp: Date.now()
+    });
+    
+    if (totalPredictions >= totalPlayers) {
+      console.log('🎉 All players have predicted! Showing results...');
+      // Results already shown after voting, this is just for flow
+    }
+  }
+
+  handleAdvanceRound(data, playerId) {
+    console.log('➡️ Advancing to next round requested by:', playerId);
+    
+    // Only host can advance rounds
+    if (playerId !== this.gameState.hostId) {
+      console.log('❌ Non-host tried to advance round');
+      return;
+    }
+    
+    // Simple implementation for dev-server: reset voting state
+    this.gameState.votes = {};
+    this.gameState.currentRound = (this.gameState.currentRound || 1) + 1;
+    
+    // Cycle through different questions
+    const questions = [
+      { text: "Pizza or Burgers?", options: ["Pizza", "Burgers"] },
+      { text: "Coffee or Tea?", options: ["Coffee", "Tea"] },
+      { text: "Beach or Mountains?", options: ["Beach", "Mountains"] }
+    ];
+    
+    const questionIndex = (this.gameState.currentRound - 1) % questions.length;
+    const currentQuestion = questions[questionIndex];
+    
+    this.gameState.question = currentQuestion.text;
+    this.gameState.options = currentQuestion.options;
+    
+    // Send new round message
+    this.broadcast({
+      type: 'new_round',
+      data: {
+        phase: 'VOTING',
+        question: this.gameState.question,
+        options: this.gameState.options,
+        currentRound: this.gameState.currentRound,
+        totalRounds: 3,
+        gameState: this.gameState,
+        hostId: this.gameState.hostId
+      },
+      timestamp: Date.now()
+    });
+    
+    console.log(`✅ Advanced to round ${this.gameState.currentRound}: ${this.gameState.question}`);
   }
 
   handleEndGame(data, playerId) {
@@ -645,7 +735,11 @@ class GameSession {
               data: {
                 gameType: data.data?.gameType || this.gameState.type,
                 startedBy: playerId,
-                gameState: this.gameState
+                gameState: this.gameState,
+                hostId: this.gameState.hostId,
+                phase: 'VOTING',
+                question: 'Pizza or Burgers?',
+                options: ['Pizza', 'Burgers']
               },
               timestamp: Date.now()
             });
@@ -712,6 +806,20 @@ class GameSession {
             if (data.type === 'submit_vote') {
               console.log('📝 Processing vote:', data.data?.vote);
               this.handleVote(data, playerId);
+            } else if (data.type === 'submit_prediction') {
+              console.log('🔮 Processing prediction:', data.data?.prediction);
+              this.handlePrediction(data, playerId);
+            } else if (data.type === 'advance_round') {
+              console.log('➡️ Processing advance round request');
+              this.handleAdvanceRound(data, playerId);
+            } else if (data.type === 'round_results') {
+              console.log('📊 Processing round results request');
+              // In dev-server, results are sent automatically after voting
+              // This is just for compatibility with production
+            } else if (data.type === 'final_summary') {
+              console.log('🏆 Processing final summary request');
+              // In dev-server, we don't track multi-round scores
+              // This is just for compatibility with production
             } else if (data.type === 'end_game') {
               console.log('🏁 Processing end game request');
               this.handleEndGame(data, playerId);

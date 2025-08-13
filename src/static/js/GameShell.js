@@ -51,6 +51,17 @@ class GameShell {
      */
     checkURLForRoom() {
         const path = window.location.pathname;
+        
+        // Check for game-specific paths
+        if (path === '/everybody-votes') {
+            console.log('Everybody Votes URL detected - auto-creating room');
+            setTimeout(() => {
+                this.startGame('everybody-votes');
+            }, 100);
+            return;
+        }
+        
+        // Check for room codes
         const roomMatch = path.match(/^\/([A-Z0-9]{6})$/);
         
         if (roomMatch) {
@@ -439,6 +450,11 @@ class GameShell {
                 
                 // Show rules box if game provides rules
                 this.updateRulesDisplay();
+                
+                // Pass the game_started message to the module
+                if (this.gameModule.handleMessage) {
+                    this.gameModule.handleMessage(message);
+                }
             }
         });
 
@@ -450,6 +466,11 @@ class GameShell {
      */
     handleGameEnded(message) {
         this.gameState = 'finished';
+        
+        // Pass the game_ended message to the module before cleanup
+        if (this.gameModule && this.gameModule.handleMessage) {
+            this.gameModule.handleMessage(message);
+        }
         
         // Clean up game module but keep it for potential restart
         if (this.gameModule) {
