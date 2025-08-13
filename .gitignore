@@ -37,10 +37,50 @@ src/lib/
 .cache/
 test-results/
 
-# Troubleshooting artifacts
+# Troubleshooting artifacts - DO NOT COMMIT THESE
 *.png
 !src/static/favicon.png
+!docs/architecture-*.png
+!docs/diagrams/*.png
 debug-*.html
+debug-*.js
 test-*.js
 test-*.html
+test-*.json
+simple-*.js
+simple-*.html
 frame_*.png
+production-*.png
+exact-*.png
+voting-*.png
+*-test.png
+*-error.png
+*-debug.png
+*-screenshot.png
+screenshot*.png
+capture*.png
+screencast*.webp
+
+# Temporary debugging files
+*-fix.js
+*-fix.html
+*-actual-fix.*
+*-verification.*
+*-comprehensive-*.*
+*-websocket-*.*
+*-button-fix.*
+*-end-game-*.*
+*-flow.*
+*-manual-*.*
+*-multiplayer-*.*
+*-single-player.*
+*-local-*.*
+*-production-*.*
+*-final-*.*
+
+# Documentation that should be in .project/
+DEPLOYMENT_*.md
+TROUBLESHOOTING*.md
+github-issue-*.md
+*-lessons-learned.md
+*-best-practices.md

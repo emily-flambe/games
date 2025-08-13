@@ -1,60 +1,59 @@
-# 📁 Project Documentation
+# Games Platform - Project Documentation
 
-**This directory contains critical project-specific documentation that every developer MUST read.**
+## 🚨 CRITICAL - READ BEFORE DEVELOPMENT
 
----
+### Essential Rules
+1. **[DEVELOPMENT_GUIDELINES.md](DEVELOPMENT_GUIDELINES.md)** - 🚫 DO NOT commit troubleshooting artifacts
+2. **Port 8777 ONLY** - Never change development port
+3. **Test everything** - Use Puppeteer on localhost:8777 before claiming fixes
 
-## 🚨 **START HERE - CRITICAL FILES**
+## Architecture Overview
+**Multiplayer games platform on Cloudflare Workers + Durable Objects**
 
-### **[CRITICAL-DEPLOYMENT-RULES.md](CRITICAL-DEPLOYMENT-RULES.md)**
-**⚡ MUST READ BEFORE ANY COMMIT**
+### Core Components
+- **GameSession**: Base class with shared functionality (chat, spectators, players)
+- **Game-Specific Sessions**: CheckboxGameSession, EverybodyVotesGameSession
+- **GameSessionRegistry**: Tracks active sessions
+- **Frontend**: Vanilla JS with GameShell/GameModule architecture
 
-- Explains automated versioning system
-- Required commit message formats
-- What triggers deployments vs safe changes
-- Emergency procedures
+### Current Games
+1. **Checkbox Game** - Competitive clicking (CheckboxGameSession)
+2. **Everybody Votes** - Real-time voting (EverybodyVotesGameSession)
 
-### **[DEVELOPMENT-WORKFLOW.md](DEVELOPMENT-WORKFLOW.md)**  
-**📋 Development best practices**
+## Technical Stack
+- **Runtime**: Cloudflare Workers + Durable Objects
+- **Language**: TypeScript (strict mode)
+- **WebSocket**: Real-time communication
+- **Build**: Wrangler CLI
 
-- Step-by-step development flow
-- Commit message patterns for games
-- Pre-commit checklist
-- Version planning guidance
-
-### **[PROJECT-OVERVIEW.md](PROJECT-OVERVIEW.md)**
-**📖 Complete project reference**
-
-- Architecture overview
-- Key files and their purposes
-- Quick start guide
-- Environment details
-
----
-
-## 🎯 **File Purpose Summary**
-
-| File | Purpose | When to Read |
-|------|---------|--------------|
-| `CRITICAL-DEPLOYMENT-RULES.md` | **Deployment system** | **Before ANY commit** |
-| `DEVELOPMENT-WORKFLOW.md` | **Development practices** | **When starting development** |
-| `PROJECT-OVERVIEW.md` | **Project reference** | **For project understanding** |
-
----
-
-## 🚀 **Quick Actions**
-
+## Development
 ```bash
-# First time setup - CRITICAL
-npm run setup-hooks
-
-# Check what version bump your commits would trigger
-npx semantic-release --dry-run
-
-# Start development
-npm run dev
+npm install
+npm run dev  # Always localhost:8777
 ```
 
----
+## Documentation Structure
+```
+.project/
+├── README.md (this file)           # Quick start and overview  
+├── DEVELOPMENT_GUIDELINES.md       # 🚫 Critical artifact prevention rules
+├── contexts/                       # Detailed technical docs
+│   ├── architecture.md            # System design and data flow
+│   ├── coding-standards.md         # TypeScript/WebSocket patterns  
+│   └── deployment.md              # Build and deployment processes
+├── troubleshooting/                # Historical issues and solutions
+│   ├── DEPLOYMENT_LESSONS_LEARNED.md
+│   ├── TROUBLESHOOTING.md
+│   └── github-issue-wrangler-dev.md
+└── pre-commit-check.sh            # Artifact prevention script
+```
 
-**⚡ Remember: This project uses automated deployments - your commit messages control production!**
+## Key Performance Targets
+- WebSocket latency: <100ms
+- Connection limit: 100 per Durable Object  
+- Bundle size: 23KB frontend
+
+## Security
+- Input validation + rate limiting
+- CORS configuration  
+- Session isolation via Durable Objects
