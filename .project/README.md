@@ -30,6 +30,11 @@
 ```bash
 npm install
 npm run dev  # Always localhost:8777
+
+# Version bumping (simple patch-bump convention)
+npm run bump-patch  # 1.1.1 → 1.1.2
+npm run bump-minor  # 1.1.1 → 1.2.0  
+npm run bump-major  # 1.1.1 → 2.0.0
 ```
 
 ## Documentation Structure
@@ -37,6 +42,7 @@ npm run dev  # Always localhost:8777
 .project/
 ├── README.md (this file)           # Quick start and overview  
 ├── DEVELOPMENT_GUIDELINES.md       # 🚫 Critical artifact prevention rules
+├── VERSIONING.md                   # Simple patch-bump convention
 ├── contexts/                       # Detailed technical docs
 │   ├── architecture.md            # System design and data flow
 │   ├── coding-standards.md         # TypeScript/WebSocket patterns  
