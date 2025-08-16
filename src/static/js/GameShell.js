@@ -502,6 +502,13 @@ class GameShell {
                     console.error('EverybodyVotesGameModule class not found - check script loading');
                     this.gameModule = null;
                 }
+            } else if (gameType === 'county-game') {
+                if (typeof CountyGameModule !== 'undefined') {
+                    this.gameModule = new CountyGameModule();
+                } else {
+                    console.error('CountyGameModule class not found - check script loading');
+                    this.gameModule = null;
+                }
             } else {
                 console.warn(`Game module not implemented: ${gameType}`);
                 this.gameModule = null;
@@ -1394,6 +1401,7 @@ class GameShell {
         const gameNames = {
             'checkbox-game': 'Checkbox Game',
             'votes-game': 'Everybody Votes',
+            'county-game': 'County Game',
             'paddlin-game': "That's a Paddlin'",
             'price-game': 'The Price is Weird'
         };
