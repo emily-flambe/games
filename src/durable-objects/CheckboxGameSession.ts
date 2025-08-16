@@ -111,7 +111,7 @@ export class CheckboxGameSession extends GameSession {
   }
 
   private async handleGameEnd() {
-    console.log('🏆 Game ended - all checkboxes checked');
+    console.log('Game ended - all checkboxes checked');
     
     this.gameState.gameStarted = false;
     this.gameState.gameFinished = true;

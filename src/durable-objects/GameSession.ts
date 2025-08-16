@@ -362,7 +362,7 @@ export class GameSession implements DurableObject {
 
         case 'START_GAME':
           if (this.players.has(playerId) && !isSpectator && this.gameState.hostId === playerId) {
-            await this.handleStartGame();
+            await this.handleStartGame(ws, playerId);
           }
           break;
 
@@ -440,18 +440,18 @@ export class GameSession implements DurableObject {
           break;
 
         default:
-          await this.handleGameSpecificMessage(data, ws, playerId, isSpectator);
+          await this.handleGameSpecificMessage(ws, playerId, data);
       }
     } catch (error) {
       console.error('Error handling message:', error);
     }
   }
 
-  protected async handleGameSpecificMessage(data: any, ws: WebSocket, playerId: string, isSpectator: boolean) {
+  protected async handleGameSpecificMessage(ws: WebSocket, playerId: string, data: any) {
     // Override in subclasses
   }
 
-  protected async handleStartGame() {
+  protected async handleStartGame(ws: WebSocket, playerId: string) {
     console.log(`🏁 Host starting game`);
     this.gameState.status = 'started';
     this.gameState.gameStarted = true;

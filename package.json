@@ -10,7 +10,6 @@
     "bump-patch": "node scripts/bump-version.js patch",
     "bump-minor": "node scripts/bump-version.js minor",
     "bump-major": "node scripts/bump-version.js major",
-    "setup-hooks": "./setup-hooks.sh",
     "test": "jest",
     "test:unit": "jest tests/unit",
     "test:watch": "jest --watch",

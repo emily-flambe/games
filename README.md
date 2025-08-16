@@ -2,7 +2,7 @@
 
 A simple multiplayer games platform built on Cloudflare Workers with real-time WebSocket support.
 
-## 🚨 **IMPORTANT: Automated Versioning**
+## **IMPORTANT: Automated Versioning**
 
 **Your commit messages control deployments!**
 
@@ -12,7 +12,7 @@ Quick reference:
 - `docs: description` → No version bump
 - `feat!: description` → Major version bump + deploy
 
-📖 Full details in [.project/contexts/deployment.md](.project/contexts/deployment.md#automated-versioning)
+Full details in [.project/contexts/deployment.md](.project/contexts/deployment.md#automated-versioning)
 
 ## What is this?
 

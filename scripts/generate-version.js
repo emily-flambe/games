@@ -58,8 +58,8 @@ function generateVersion() {
   const versionPath = path.join(__dirname, '..', 'src', 'static', 'version.json');
   fs.writeFileSync(versionPath, JSON.stringify(versionInfo, null, 2));
   
-  console.log(`✅ Generated version: ${version} (${branch}@${commit})`);
-  console.log(`📦 Version file: ${versionPath}`);
+  console.log(`Generated version: ${version} (${branch}@${commit})`);
+  console.log(`Version file: ${versionPath}`);
   
   return versionInfo;
 }

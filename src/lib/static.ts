@@ -2686,7 +2686,7 @@ class EverybodyVotesGameModule extends GameModule {
     init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement) {
         super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement);
         
-        console.log('🎮 EverybodyVotesGameModule.init() called with initialState:', initialState);
+        console.log('EverybodyVotesGameModule.init() called with initialState:', initialState);
         
         // Set initial state if provided
         if (initialState) {
@@ -2703,7 +2703,7 @@ class EverybodyVotesGameModule extends GameModule {
             this.finalScores = initialState.finalScores || [];
             this.isHost = initialState.isHost || false;
             
-            console.log(\`📍 Initial phase: \${this.currentPhase}, question: \${this.question}, round: \${this.currentRound}/\${this.totalRounds}\`);
+            console.log(\`Initial phase: \${this.currentPhase}, question: \${this.question}, round: \${this.currentRound}/\${this.totalRounds}\`);
         } else {
             // Default to VOTING phase
             this.currentPhase = 'VOTING';
@@ -2863,7 +2863,7 @@ class EverybodyVotesGameModule extends GameModule {
                 text-align: center;
             ">
                 \${this.getRoundProgressIndicator()}
-                <h2 style="font-size: 2rem; margin-bottom: 1rem;">🗳️ Everybody Votes!</h2>
+                <h2 style="font-size: 2rem; margin-bottom: 1rem;">Everybody Votes!</h2>
                 <p style="font-size: 1.2rem;">Game is starting...</p>
             </div>
         \`;
@@ -2873,7 +2873,7 @@ class EverybodyVotesGameModule extends GameModule {
      * Render voting phase
      */
     renderVotingPhase() {
-        console.log('🎨 Rendering voting phase...');
+        console.log('Rendering voting phase...');
         
         return \`
             <div class="everybody-votes-container" style="
@@ -2886,7 +2886,7 @@ class EverybodyVotesGameModule extends GameModule {
                 color: white;
             ">
                 \${this.getRoundProgressIndicator()}
-                <h2 style="font-size: 2rem; margin-bottom: 1rem;">🗳️ Time to Vote!</h2>
+                <h2 style="font-size: 2rem; margin-bottom: 1rem;">Time to Vote!</h2>
                 
                 <div style="
                     background: rgba(255, 255, 255, 0.1);
@@ -2913,7 +2913,7 @@ class EverybodyVotesGameModule extends GameModule {
                             \` : ''}
                             \${this.allVoted ? \`
                                 <p style="margin: 0.5rem 0 0 0; font-size: 1rem; color: #4CAF50; font-weight: bold;">
-                                    ✅ All players voted! Calculating results...
+                                    All players voted! Calculating results...
                                 </p>
                             \` : ''}
                         </div>
@@ -2964,7 +2964,7 @@ class EverybodyVotesGameModule extends GameModule {
      * Render predicting phase
      */
     renderPredictingPhase() {
-        console.log('🎨 Rendering predicting phase...');
+        console.log('Rendering predicting phase...');
         
         return \`
             <div class="everybody-votes-container" style="
@@ -3048,7 +3048,7 @@ class EverybodyVotesGameModule extends GameModule {
      * Render results phase
      */
     renderResultsPhase() {
-        console.log('🎨 Rendering results phase...');
+        console.log('Rendering results phase...');
         
         if (!this.results) {
             return \`<div class="everybody-votes-container">Loading results...</div>\`;
@@ -3152,7 +3152,7 @@ class EverybodyVotesGameModule extends GameModule {
                     </div>
                     
                     <p style="font-size: 1.4rem; margin: 1rem 0; font-weight: bold;">
-                        Winner: \${winner === 'Tie' ? '🤝 It\\'s a tie!' : \`🏆 \${winner}\`}
+                        Winner: \${winner === 'Tie' ? 'It\\'s a tie!' : \`\${winner}\`}
                     </p>
                     
                     <p style="font-size: 1.2rem; margin: 1rem 0;">
@@ -3168,7 +3168,7 @@ class EverybodyVotesGameModule extends GameModule {
                         ">
                             <p style="margin: 0; font-size: 1rem;">
                                 Your prediction: <strong>\${this.myPrediction}</strong>
-                                \${this.myPrediction === winner && winner !== 'Tie' ? ' ✅ Correct!' : ' ❌ Wrong'}
+                                \${this.myPrediction === winner && winner !== 'Tie' ? ' Correct!' : ' Wrong'}
                             </p>
                         </div>
                     \` : ''}
@@ -3189,7 +3189,7 @@ class EverybodyVotesGameModule extends GameModule {
                         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                         margin-top: 1rem;
                     " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                        🏁 End Game
+                        End Game
                     </button>
                 \` : (this.isHost ? \`
                     <button id="next-question-btn" style="
@@ -3221,7 +3221,7 @@ class EverybodyVotesGameModule extends GameModule {
      * Render round transition phase
      */
     renderRoundTransitionPhase() {
-        console.log('🎨 Rendering round transition phase...');
+        console.log('Rendering round transition phase...');
         
         // Get current scores display
         const scoresHtml = this.getPlayerScoresHtml();
@@ -3238,7 +3238,7 @@ class EverybodyVotesGameModule extends GameModule {
                 text-align: center;
             ">
                 \${this.getRoundProgressIndicator()}
-                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">🎯 Round \${this.currentRound} Complete!</h2>
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">Round \${this.currentRound} Complete!</h2>
                 
                 <div style="
                     background: rgba(255, 255, 255, 0.1);
@@ -3282,7 +3282,7 @@ class EverybodyVotesGameModule extends GameModule {
      * Render final results phase
      */
     renderFinalResultsPhase() {
-        console.log('🎨 Rendering final results phase...');
+        console.log('Rendering final results phase...');
         
         const finalScoresHtml = this.getFinalScoresHtml();
         const roundSummaryHtml = this.getRoundSummaryHtml();
@@ -3298,7 +3298,7 @@ class EverybodyVotesGameModule extends GameModule {
                 color: white;
                 text-align: center;
             ">
-                <h2 style="font-size: 3rem; margin-bottom: 1rem;">🏆 Game Complete!</h2>
+                <h2 style="font-size: 3rem; margin-bottom: 1rem;">Game Complete!</h2>
                 
                 <div style="
                     background: rgba(255, 255, 255, 0.1);
@@ -3339,7 +3339,7 @@ class EverybodyVotesGameModule extends GameModule {
                     min-width: 250px;
                     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                 " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    🏁 The End
+                    The End
                 </button>
             </div>
         \`;
@@ -3370,7 +3370,7 @@ class EverybodyVotesGameModule extends GameModule {
                         \${index === 0 ? 'border: 2px solid #FFD700;' : ''}
                     ">
                         <span style="font-weight: bold;">
-                            \${index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : \`\${index + 1}.\`}
+                            \${index === 0 ? '1st' : index === 1 ? '2nd' : index === 2 ? '3rd' : \`\${index + 1}.\`}
                             \${this.getPlayerName(playerId)}
                         </span>
                         <span style="font-weight: bold; font-size: 1.2rem;">
@@ -3470,7 +3470,7 @@ class EverybodyVotesGameModule extends GameModule {
             btn.addEventListener('click', (e) => {
                 const vote = e.target.dataset.vote;
                 if (vote && this.onPlayerAction) {
-                    console.log(\`🗳️ Player voting for: \${vote}\`);
+                    console.log(\`Player voting for: \${vote}\`);
                     this.myVote = vote; // Remember the vote
                     this.onPlayerAction({
                         type: 'submit_vote',
@@ -3524,7 +3524,7 @@ class EverybodyVotesGameModule extends GameModule {
         const endGameBtn = this.gameAreaElement.querySelector('#end-game-btn');
         if (endGameBtn && this.onPlayerAction) {
             endGameBtn.addEventListener('click', () => {
-                console.log('🏁 End Game button clicked');
+                console.log('End Game button clicked');
                 this.onPlayerAction({
                     type: 'end_game',
                     data: {}
@@ -3536,7 +3536,7 @@ class EverybodyVotesGameModule extends GameModule {
         const newGameBtn = this.gameAreaElement.querySelector('#new-game-btn');
         if (newGameBtn && this.onPlayerAction) {
             newGameBtn.addEventListener('click', () => {
-                console.log('🏁 The End button clicked');
+                console.log('The End button clicked');
                 // Show everyone wins screen
                 this.showEveryoneWins();
             });
@@ -3934,7 +3934,7 @@ class PriceGameModule extends GameModule {
                 text-align: center;
                 padding: 2rem;
             ">
-                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">💰 The Price is Weird 💰</h2>
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">The Price is Weird</h2>
                 <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem;">Price is Right Clone with Etsy Products</p>
                 <div style="
                     background: rgba(255, 255, 255, 0.2);
@@ -6361,9 +6361,9 @@ main {
   "version": "1.1.2",
   "baseVersion": "1.1.2",
   "branch": "county-game",
-  "commit": "b097a11",
-  "timestamp": "2025-08-16T12:56:57.515Z",
-  "deployedAt": "Aug 16, 2025, 07:56 AM CDT"
+  "commit": "7e7b6e4",
+  "timestamp": "2025-08-16T13:38:16.563Z",
+  "deployedAt": "Aug 16, 2025, 08:38 AM CDT"
 }`
 };
 
