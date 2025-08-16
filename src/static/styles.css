@@ -2251,3 +2251,84 @@ main {
     opacity: 0.7;
     text-shadow: none;
 }
+
+/* County Game Styles */
+.county-game-waiting,
+.county-game-submission {
+    text-align: center;
+    padding: 2rem;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.county-game-submission h2 {
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.county-game-submission .timer-display {
+    font-size: 1.2rem;
+    color: #666;
+    margin-bottom: 2rem;
+    font-weight: 600;
+}
+
+.county-game-submission .submission-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.county-game-submission #county-input {
+    width: 100%;
+    max-width: 400px;
+    padding: 0.75rem;
+    font-size: 1.1rem;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    margin: 1rem 0;
+    text-align: center;
+}
+
+.county-game-submission #county-input:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.county-game-submission .submit-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.county-game-submission .submit-btn:hover {
+    background: #218838;
+}
+
+.county-game-submission .submission-complete {
+    background: #f8f9fa;
+    padding: 2rem;
+    border-radius: 12px;
+    border: 2px solid #28a745;
+}
+
+.county-game-submission .submitted-county {
+    font-size: 1.2rem;
+    color: #333;
+    margin: 1rem 0;
+}
+
+.county-game-submission .submission-status {
+    margin-top: 1.5rem;
+    font-size: 1rem;
+    color: #666;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 6px;
+}
