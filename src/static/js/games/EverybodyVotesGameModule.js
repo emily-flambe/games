@@ -1155,25 +1155,14 @@ class EverybodyVotesGameModule extends GameModule {
                 
             case 'game_ended':
                 console.log('🏁 Game ended:', message.data);
-                this.currentPhase = 'ENDED';
-                if (message.data.finalScores) {
-                    this.finalScores = message.data.finalScores;
-                }
-                if (message.data.roundResults) {
-                    this.roundResults = message.data.roundResults;
-                }
-                this.render();
+                // Don't handle game_ended here - let GameShell show the unified end screen
+                // GameShell will call showGameEndScreen() which has the OK button to return to lobby
                 break;
                 
             case 'final_results':
                 console.log('🏆 Final results message:', message.data);
-                if (message.data) {
-                    this.currentPhase = message.data.phase || 'ENDED';
-                    this.finalScores = message.data.finalScores || this.finalScores;
-                    this.roundResults = message.data.roundResults || this.roundResults;
-                    this.totalRounds = message.data.totalRounds || this.totalRounds;
-                }
-                this.render();
+                // Don't handle final_results here - let GameShell handle the game_ended message
+                // to show the unified end screen with proper OK button functionality
                 break;
                 
             case 'error':
@@ -1183,6 +1172,42 @@ class EverybodyVotesGameModule extends GameModule {
             default:
                 console.log('🤷 Unhandled message type:', message.type);
                 break;
+        }
+    }
+
+    /**
+     * Show everyone wins screen
+     */
+    showEveryoneWins() {
+        // Hide the game area
+        this.gameAreaElement.style.display = 'none';
+        
+        // Show the universal end game screen
+        const endGameScreen = document.getElementById('end-game-screen');
+        const resultMessage = document.getElementById('game-result-message');
+        const finalScores = document.getElementById('final-scores');
+        const okBtn = document.getElementById('ok-btn');
+        
+        if (endGameScreen && resultMessage && finalScores) {
+            resultMessage.textContent = '🎉 Everyone Wins! 🎉';
+            
+            // Show player scores
+            finalScores.innerHTML = this.getPlayerScoresHtml();
+            
+            // Show the screen
+            endGameScreen.style.display = 'flex';
+            
+            // Handle OK button
+            if (okBtn) {
+                okBtn.onclick = () => {
+                    if (this.onPlayerAction) {
+                        this.onPlayerAction({
+                            type: 'end_game',
+                            data: {}
+                        });
+                    }
+                };
+            }
         }
     }
 
