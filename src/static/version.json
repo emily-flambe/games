@@ -1,8 +1,8 @@
 {
   "version": "1.1.2",
   "baseVersion": "1.1.2",
-  "branch": "everybody-votes",
-  "commit": "3ff3ba6",
-  "timestamp": "2025-08-13T13:38:55.990Z",
-  "deployedAt": "Aug 13, 2025, 07:38 AM MDT"
+  "branch": "county-game",
+  "commit": "b097a11",
+  "timestamp": "2025-08-16T12:56:57.515Z",
+  "deployedAt": "Aug 16, 2025, 07:56 AM CDT"
 }
