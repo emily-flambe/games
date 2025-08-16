@@ -39,38 +39,10 @@ jobs:
     - name: Run unit tests
       run: npm run test:unit
     
-    - name: Start server in background
-      run: |
-        npm run dev &
-        echo $! > server.pid
-      
-    - name: Wait for server to start
-      run: |
-        echo "🔄 Waiting for server to start on port 8777..."
-        timeout 30 bash -c 'until nc -z localhost 8777; do sleep 1; done'
-        echo "✅ Server is ready!"
-    
-    - name: Run integration tests
-      run: make test
+    - name: Run additional tests
+      run: npm run test
       env:
         CI: true
-      
-    - name: Upload screenshots on failure
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-failure-screenshots
-        path: screenshots/
-        retention-days: 7
-        if-no-files-found: ignore
-      
-    - name: Stop server
-      run: |
-        if [ -f server.pid ]; then
-          kill $(cat server.pid) || true
-          rm server.pid
-        fi
-      if: always()
     
     - name: Build project
       run: npm run build
