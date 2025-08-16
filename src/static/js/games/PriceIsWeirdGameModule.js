@@ -35,7 +35,7 @@ class PriceGameModule extends GameModule {
                 text-align: center;
                 padding: 2rem;
             ">
-                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">💰 The Price is Weird 💰</h2>
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">The Price is Weird</h2>
                 <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem;">Price is Right Clone with Etsy Products</p>
                 <div style="
                     background: rgba(255, 255, 255, 0.2);

@@ -1,9 +1,9 @@
 # Games Platform - Project Documentation
 
-## 🚨 CRITICAL - READ BEFORE DEVELOPMENT
+## CRITICAL - READ BEFORE DEVELOPMENT
 
 ### Essential Rules
-1. **[Development Guidelines](development/guidelines.md)** - 🛑 DELETE TEST ARTIFACTS IMMEDIATELY
+1. **[Development Guidelines](development/guidelines.md)** - DELETE TEST ARTIFACTS IMMEDIATELY
 2. **[Testing Requirements](development/testing-requirements.md)** - Test EVERYTHING on localhost:8777
 3. **Port 8777 ONLY** - Never change development port
 
@@ -31,12 +31,12 @@ npm run dev  # Always localhost:8777
 
 ## Documentation Structure
 
-### 📁 development/
+### development/
 **Day-to-day development practices and requirements**
 - [guidelines.md](development/guidelines.md) - Comprehensive development standards
 - [testing-requirements.md](development/testing-requirements.md) - Mandatory testing protocols
 
-### 📁 docs/
+### docs/
 **Technical documentation and specifications**
 - [README.md](docs/README.md) - Technical docs overview
 - [architecture.md](docs/architecture.md) - System design and data flow
@@ -44,18 +44,18 @@ npm run dev  # Always localhost:8777
 - [dependencies.md](docs/dependencies.md) - Package requirements
 - [debugging.md](docs/debugging.md) - Debugging strategies
 
-### 📁 deployment/
+### deployment/
 **Everything related to deploying the application**
 - [guide.md](deployment/guide.md) - Step-by-step deployment process
 - [best-practices.md](deployment/best-practices.md) - Production deployment guidelines
 - [lessons-learned.md](deployment/lessons-learned.md) - Historical deployment issues
 
-### 📁 troubleshooting/
+### troubleshooting/
 **Game-specific debugging and migration logs**
 - [everybody-votes-debug.md](troubleshooting/everybody-votes-debug.md) - EV game issues
 - [wrangler-dev-migration-completed.md](troubleshooting/wrangler-dev-migration-completed.md) - Dev server migration
 
-### 📄 Root Files
+### Root Files
 - [VERSIONING.md](VERSIONING.md) - Simple patch-bump versioning convention
 - [settings.json](settings.json) - Project configuration
 
@@ -70,9 +70,9 @@ npm run deploy          # Deploy to Cloudflare
 
 ### Version Management
 ```bash
-npm run bump-patch      # 1.1.1 → 1.1.2
-npm run bump-minor      # 1.1.1 → 1.2.0
-npm run bump-major      # 1.1.1 → 2.0.0
+npm run bump-patch      # 1.1.1 -> 1.1.2
+npm run bump-minor      # 1.1.1 -> 1.2.0
+npm run bump-major      # 1.1.1 -> 2.0.0
 ```
 
 ### Cleanup (MANDATORY after testing)

@@ -44,7 +44,7 @@ function readStaticAssets() {
     
     try {
         readDirectory(STATIC_DIR);
-        console.log(`✅ Embedded ${Object.keys(assets).length} static assets`);
+        console.log(`Embedded ${Object.keys(assets).length} static assets`);
         return assets;
     } catch (error) {
         console.error('❌ Error reading static assets:', error.message);
@@ -94,7 +94,7 @@ function writeStaticModule(content) {
         }
         
         fs.writeFileSync(OUTPUT_FILE, content, 'utf8');
-        console.log(`✅ Generated ${OUTPUT_FILE}`);
+        console.log(`Generated ${OUTPUT_FILE}`);
     } catch (error) {
         console.error('❌ Error writing static module:', error.message);
         process.exit(1);
@@ -111,7 +111,7 @@ function main() {
     const moduleContent = generateStaticModule(assets);
     writeStaticModule(moduleContent);
     
-    console.log('✅ Build complete!');
+    console.log('Build complete!');
 }
 
 if (require.main === module) {

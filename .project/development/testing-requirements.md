@@ -1,6 +1,6 @@
 # Testing Requirements
 
-## ⚠️ MANDATORY: TEST EVERYTHING ⚠️
+## MANDATORY: TEST EVERYTHING
 
 Every change to this codebase MUST be tested using Puppeteer on localhost:8777.
 
@@ -18,9 +18,9 @@ Every change to this codebase MUST be tested using Puppeteer on localhost:8777.
 - Verify behavior matches expectations
 
 ### 2. NO Theoretical Fixes
-- ❌ "It should work now"
-- ❌ "The changes should fix it"
-- ✅ "I tested it and confirmed it works"
+- "It should work now" (NO)
+- "The changes should fix it" (NO)
+- "I tested it and confirmed it works" (YES)
 
 ### 3. Puppeteer Test Template
 
@@ -42,9 +42,9 @@ async function testFeature() {
     // Verify elements: await page.waitForSelector('.element');
     // Check results: const result = await page.evaluate(() => {...});
     
-    console.log('✅ Test passed');
+    console.log('Test passed');
   } catch (error) {
-    console.error('❌ Test failed:', error);
+    console.error('Test failed:', error);
     throw error;
   } finally {
     await browser.close();

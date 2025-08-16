@@ -452,7 +452,7 @@ export class GameSession implements DurableObject {
   }
 
   protected async handleStartGame() {
-    console.log(`🏁 Host starting game`);
+    console.log(`Host starting game`);
     this.gameState.status = 'started';
     this.gameState.gameStarted = true;
     

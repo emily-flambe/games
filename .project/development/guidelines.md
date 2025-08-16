@@ -32,18 +32,18 @@ This document consolidates all development practices, standards, and rules for t
 
 ## Artifact Management
 
-### 🛑 UNSKIPPABLE RULE: DELETE TESTING ARTIFACTS IMMEDIATELY 🛑
+### UNSKIPPABLE RULE: DELETE TESTING ARTIFACTS IMMEDIATELY
 
 **THIS RULE IS NON-NEGOTIABLE AND MUST BE FOLLOWED WITHOUT EXCEPTION**
 
 You MUST delete all testing and debugging artifacts THE MOMENT they are no longer needed:
 
-1. ✅ Run your test
-2. ✅ Get your results
-3. 🗑️ **DELETE THE TEST FILE IMMEDIATELY** (within 30 seconds)
-4. ❌ Do NOT move on to next task until deleted
-5. ❌ Do NOT "save them for later"
-6. ❌ Do NOT commit them "temporarily"
+1. Run your test
+2. Get your results
+3. **DELETE THE TEST FILE IMMEDIATELY** (within 30 seconds)
+4. Do NOT move on to next task until deleted
+5. Do NOT "save them for later"
+6. Do NOT commit them "temporarily"
 
 **Quick Cleanup**: Run `./scripts/clean-test-artifacts.sh` after every test session
 

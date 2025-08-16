@@ -3,7 +3,7 @@
 # UNSKIPPABLE CLEANUP SCRIPT - Run after EVERY test session
 # This script ensures all testing artifacts are removed immediately
 
-echo "🧹 Cleaning up testing artifacts..."
+echo "Cleaning up testing artifacts..."
 
 # Remove all test files
 rm -f test-*.js
@@ -37,16 +37,16 @@ rm -rf production-test/
 REMAINING=$(git status --porcelain | grep -E "(test-|debug-|simple-|\.png$|\.webp$)" | wc -l)
 
 if [ $REMAINING -eq 0 ]; then
-    echo "✅ All testing artifacts removed successfully!"
-    echo "📋 Current status:"
+    echo "All testing artifacts removed successfully!"
+    echo "Current status:"
     git status --short
 else
-    echo "⚠️  Warning: Some artifacts may remain:"
+    echo "Warning: Some artifacts may remain:"
     git status --porcelain | grep -E "(test-|debug-|simple-|\.png$|\.webp$)"
     echo ""
-    echo "🔥 Run 'git status' to review and remove manually"
+    echo "Run 'git status' to review and remove manually"
 fi
 
 echo ""
-echo "🛑 Remember: ALWAYS run this script IMMEDIATELY after testing!"
-echo "⏰ Within 30 seconds of test completion!"
+echo "Remember: ALWAYS run this script IMMEDIATELY after testing!"
+echo "Within 30 seconds of test completion!"
