@@ -77,3 +77,36 @@ testChanges().catch(console.error);
 Every single change to game behavior MUST be tested with Puppeteer before claiming completion.
 
 **NO EXCEPTIONS.**
+
+## 🛑 UNSKIPPABLE CLEANUP RULE 🛑
+
+**AFTER EVERY TEST, YOU MUST:**
+1. Get your test results
+2. **IMMEDIATELY DELETE THE TEST FILE**
+3. Delete any screenshots created
+4. Delete any JSON outputs
+5. Run `git status` to confirm deletion
+6. Only THEN report results
+
+**This is NOT optional. Test artifacts must be deleted IMMEDIATELY after use.**
+
+### Example Workflow
+```bash
+# 1. Create and run test
+node test-feature.js
+
+# 2. Get results
+# ✅ Test passed / ❌ Test failed
+
+# 3. IMMEDIATELY DELETE (within 30 seconds)
+rm test-feature.js
+rm -f *.png
+rm -f *.json
+
+# 4. Verify clean
+git status
+
+# 5. NOW you can proceed
+```
+
+**Failure to delete test artifacts immediately = Unprofessional codebase**

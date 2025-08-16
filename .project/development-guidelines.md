@@ -1,5 +1,35 @@
 # Development Guidelines
 
+## 🛑 UNSKIPPABLE RULE: DELETE TESTING ARTIFACTS IMMEDIATELY 🛑
+
+### THIS RULE IS NON-NEGOTIABLE AND MUST BE FOLLOWED WITHOUT EXCEPTION
+
+**YOU MUST DELETE ALL TESTING AND DEBUGGING ARTIFACTS THE MOMENT THEY ARE NO LONGER NEEDED.**
+
+This means:
+1. ✅ Run your test
+2. ✅ Get your results
+3. 🗑️ **DELETE THE TEST FILE IMMEDIATELY**
+4. ❌ Do NOT move on to the next task until artifacts are deleted
+5. ❌ Do NOT "save them for later"
+6. ❌ Do NOT commit them "temporarily"
+
+**ENFORCEMENT**: Any PR with testing artifacts will be REJECTED. No exceptions.
+
+### Immediate Deletion Checklist
+After EVERY debugging session:
+- [ ] Delete all test-*.js files
+- [ ] Delete all *.png screenshots
+- [ ] Delete all debug-*.js files
+- [ ] Delete all temporary HTML files
+- [ ] Delete all .json test outputs
+- [ ] Run `git status` to verify deletion
+- [ ] Only THEN proceed to next task
+
+**Remember**: A clean repository is a professional repository. Delete artifacts IMMEDIATELY.
+
+---
+
 ## 🚫 CRITICAL: DO NOT COMMIT TROUBLESHOOTING ARTIFACTS
 
 ### What NOT to Commit
