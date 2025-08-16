@@ -1,18 +1,4 @@
-# Games Platform
-
-A simple multiplayer games platform built on Cloudflare Workers with real-time WebSocket support.
-
-## **IMPORTANT: Automated Versioning**
-
-**Your commit messages control deployments!**
-
-Quick reference:
-- `feat: description` → Minor version bump + deploy
-- `fix: description` → Patch version bump + deploy  
-- `docs: description` → No version bump
-- `feat!: description` → Major version bump + deploy
-
-Full details in [.project/contexts/deployment.md](.project/contexts/deployment.md#automated-versioning)
+# Games (for fun?)
 
 ## What is this?
 
