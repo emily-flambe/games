@@ -13,8 +13,8 @@ build:
 dev:
 	@echo "🔍 Checking for processes on port 8777..."
 	@lsof -ti:8777 | xargs kill -9 2>/dev/null || echo "Port 8777 is free"
-	@echo "🚀 Starting Node.js development server..."
-	node scripts/dev-server.js
+	@echo "🚀 Starting Wrangler development server..."
+	npm run dev
 
 # Run the development server
 run: dev

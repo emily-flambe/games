@@ -3,13 +3,13 @@
   "version": "1.1.2",
   "description": "Minimal games platform on Cloudflare Workers",
   "scripts": {
-    "dev": "node scripts/dev-server.js",
+    "dev": "wrangler dev --local --persist-to .wrangler/state",
+    "dev:remote": "wrangler dev",
     "build": "node scripts/build-static.js",
     "deploy": "npm run build && wrangler deploy",
     "bump-patch": "node scripts/bump-version.js patch",
     "bump-minor": "node scripts/bump-version.js minor",
     "bump-major": "node scripts/bump-version.js major",
-    "setup-hooks": "./setup-hooks.sh",
     "test": "jest",
     "test:unit": "jest tests/unit",
     "test:watch": "jest --watch",
@@ -25,7 +25,6 @@
   },
   "dependencies": {
     "puppeteer": "^24.16.0",
-    "sillyname": "^0.1.0",
-    "ws": "^8.18.3"
+    "sillyname": "^0.1.0"
   }
 }

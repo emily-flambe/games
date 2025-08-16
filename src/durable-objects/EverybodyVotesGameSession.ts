@@ -99,7 +99,7 @@ export class EverybodyVotesGameSession extends GameSession {
   }
 
   protected async handleStartGame() {
-    console.log(`🗳️🗳️🗳️ EVERYBODY VOTES MULTI-ROUND GAME STARTING!!! 🗳️🗳️🗳️`);
+    console.log(`EVERYBODY VOTES MULTI-ROUND GAME STARTING!!!`);
     
     // Start the game immediately with first round
     this.gameState.status = 'started';
@@ -205,7 +205,7 @@ export class EverybodyVotesGameSession extends GameSession {
     
     // Transition to prediction phase when all players have voted
     if (totalVotes >= totalPlayers) {
-      console.log('🎉 All players have voted - transitioning to prediction phase');
+      console.log('All players have voted - transitioning to prediction phase');
       await this.startPredictionPhase();
     }
   }
@@ -270,7 +270,7 @@ export class EverybodyVotesGameSession extends GameSession {
     
     // Show round results when all players have predicted
     if (totalPredictions >= totalPlayers) {
-      console.log('🎉 All players have predicted - showing round results');
+      console.log('All players have predicted - showing round results');
       await this.showRoundResults();
     }
   }
@@ -361,7 +361,7 @@ export class EverybodyVotesGameSession extends GameSession {
     
     // Check if this was the final round
     if (this.gameState.currentRound >= this.gameState.totalRounds) {
-      console.log('🏆 Final round completed - calculating final scores');
+      console.log('Final round completed - calculating final scores');
       await this.calculateFinalScores();
     } else {
       console.log('⏭️ Round completed - waiting for host to advance to next question');
@@ -395,7 +395,7 @@ export class EverybodyVotesGameSession extends GameSession {
     
     // Check if we've exceeded total rounds
     if (this.gameState.currentRound > this.gameState.totalRounds) {
-      console.log('🏁 All rounds completed');
+      console.log('All rounds completed');
       await this.calculateFinalScores();
       return;
     }
@@ -430,7 +430,7 @@ export class EverybodyVotesGameSession extends GameSession {
   }
 
   private async calculateFinalScores() {
-    console.log('🏆 Calculating final scores');
+    console.log('Calculating final scores');
     
     // Calculate scores for each player
     const playerScores: PlayerScore[] = [];
@@ -464,11 +464,29 @@ export class EverybodyVotesGameSession extends GameSession {
     await this.saveGameState();
     this.updateRegistryStatus('finished');
     
-    // Send final results
+    // Determine the result message
+    let resultMessage = 'Game Complete!';
+    const topScore = playerScores[0]?.correctPredictions || 0;
+    const winners = playerScores.filter(p => p.correctPredictions === topScore);
+    
+    if (winners.length === 1) {
+      resultMessage = `${winners[0].playerName} Wins!`;
+    } else if (winners.length > 1) {
+      resultMessage = 'It\'s a Tie!';
+    }
+    
+    // Convert playerScores to the format GameShell expects
+    const scoresObject: Record<string, number> = {};
+    playerScores.forEach(score => {
+      scoresObject[score.playerId] = score.correctPredictions;
+    });
+    
+    // Send game_ended message for GameShell to handle
     this.broadcast({
-      type: 'final_results',
+      type: 'game_ended',
       data: {
-        phase: 'ENDED',
+        message: resultMessage,
+        scores: scoresObject,
         finalScores: playerScores,
         roundResults: this.gameState.roundResults,
         totalRounds: this.gameState.totalRounds,
@@ -477,7 +495,7 @@ export class EverybodyVotesGameSession extends GameSession {
       timestamp: Date.now()
     });
     
-    console.log('🏆 Final scores calculated and sent');
+    console.log('Game ended - final scores sent');
   }
 
   private async handleRoundResults(playerId: string) {
@@ -489,11 +507,11 @@ export class EverybodyVotesGameSession extends GameSession {
   private async handleFinalSummary(playerId: string) {
     // This method can be used for requesting final summary
     // Implementation depends on specific frontend needs
-    console.log(`🏆 Final summary requested by ${playerId}`);
+    console.log(`Final summary requested by ${playerId}`);
   }
 
   private async handleEndGame(playerId: string) {
-    console.log(`🏁 End game requested by ${playerId}`);
+    console.log(`End game requested by ${playerId}`);
     
     // Only host can end the game early
     if (playerId !== this.gameState.hostId) {

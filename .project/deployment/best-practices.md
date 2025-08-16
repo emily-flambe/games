@@ -105,22 +105,22 @@ syncLocalState(serverState) {
 ## Testing Checklist
 
 ### Before Every Deployment
-1. ✅ Run full test suite locally
-2. ✅ Test critical user flows on staging
-3. ✅ Verify WebSocket connections work
-4. ✅ Check state transitions are smooth
-5. ✅ Validate error handling works
-6. ✅ Test with multiple concurrent users
-7. ✅ Test reconnection scenarios
-8. ✅ Verify cleanup on disconnect
+1. Run full test suite locally
+2. Test critical user flows on staging
+3. Verify WebSocket connections work
+4. Check state transitions are smooth
+5. Validate error handling works
+6. Test with multiple concurrent users
+7. Test reconnection scenarios
+8. Verify cleanup on disconnect
 
 ### After Deployment
-1. ✅ Monitor logs for errors
-2. ✅ Test critical paths immediately
-3. ✅ Check WebSocket stability
-4. ✅ Verify state synchronization
-5. ✅ Test edge cases
-6. ✅ Monitor performance metrics
+1. Monitor logs for errors
+2. Test critical paths immediately
+3. Check WebSocket stability
+4. Verify state synchronization
+5. Test edge cases
+6. Monitor performance metrics
 
 ## Common Pitfalls to Avoid
 

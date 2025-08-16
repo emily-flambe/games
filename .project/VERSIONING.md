@@ -31,8 +31,8 @@ Branch work: 2.0.1, 2.0.2, 2.0.3...
 - **Git-friendly** - Each commit can have unique version
 
 ### When to Bump Minor/Major
-- **Minor (1.1.0 → 1.2.0)**: New game added, significant feature
-- **Major (1.0.0 → 2.0.0)**: Breaking changes, architecture overhaul
-- **Patch (1.1.1 → 1.1.2)**: Everything else (fixes, tweaks, cleanup)
+- **Minor (1.1.0 -> 1.2.0)**: New game added, significant feature
+- **Major (1.0.0 -> 2.0.0)**: Breaking changes, architecture overhaul
+- **Patch (1.1.1 -> 1.1.2)**: Everything else (fixes, tweaks, cleanup)
 
 This convention prioritizes simplicity over semantic precision.
