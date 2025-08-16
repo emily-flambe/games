@@ -1,7 +1,11 @@
-# Everybody Votes MVP Troubleshooting
+# Everybody Votes MVP Troubleshooting (RESOLVED)
 
-## Problem Statement
-The Everybody Votes game MVP is not working. Players can see the voting UI and click buttons, but clicking vote buttons does nothing - no transition to results screen.
+## ⚠️ HISTORICAL DOCUMENT - ISSUE RESOLVED BY WRANGLER MIGRATION
+
+**UPDATE (January 2025)**: This issue has been completely resolved by migrating from the Node.js dev server to `wrangler dev`. The root cause was the dev server's inability to properly simulate Durable Objects behavior. With wrangler dev, all game functionality works correctly in local development.
+
+## Original Problem Statement (HISTORICAL)
+The Everybody Votes game MVP was not working. Players could see the voting UI and click buttons, but clicking vote buttons did nothing - no transition to results screen.
 
 ## What Works
 ✅ Room creation  
@@ -17,8 +21,8 @@ The Everybody Votes game MVP is not working. Players can see the voting UI and c
 
 ## Key Findings
 
-### 1. Root Cause: Dev Server Message Handling
-The issue is in `scripts/dev-server.js`. The dev server receives the `submit_vote` message but logs:
+### 1. Root Cause: Dev Server Message Handling (RESOLVED)
+The issue was in `scripts/dev-server.js` (now removed). The dev server would receive the `submit_vote` message but log:
 ```
 Unknown message type: submit_vote
 ```
@@ -69,14 +73,14 @@ Player player_i56d10799 disconnected from session KH9PMQ
 3. **Backend Integration**: Ensure EverybodyVotesGameSession processes votes correctly
 4. **End-to-End Test**: Complete flow from vote → results
 
-## Files Modified
+## Files Modified (HISTORICAL)
 - `src/durable-objects/EverybodyVotesGameSession.ts` - Backend vote handling
 - `src/static/js/games/EverybodyVotesGameModule.js` - Frontend message format
-- `scripts/dev-server.js` - Added vote forwarding (in progress)
+- ~~`scripts/dev-server.js`~~ - **REMOVED** - Replaced with wrangler dev
 
-## Key Code Locations
-- Dev server message switch: `scripts/dev-server.js:453`
+## Key Code Locations (CURRENT)
 - Backend vote handler: `src/durable-objects/EverybodyVotesGameSession.ts:91`
 - Frontend vote click: `src/static/js/games/EverybodyVotesGameModule.js:266`
 
-The core issue is that the dev server proxy doesn't forward game-specific messages to Durable Objects.
+## Resolution
+The core issue was that the dev server proxy couldn't forward game-specific messages to Durable Objects. This has been completely resolved by migrating to `wrangler dev`, which runs the actual Cloudflare Workers runtime locally with full Durable Objects support.

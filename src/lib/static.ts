@@ -3086,7 +3086,7 @@ class EverybodyVotesGameModule extends GameModule {
                     min-width: 250px;
                     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                 " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    🎮 Play Again
+                    🏁 The End
                 </button>
             </div>
         \`;
@@ -3283,11 +3283,9 @@ class EverybodyVotesGameModule extends GameModule {
         const newGameBtn = this.gameAreaElement.querySelector('#new-game-btn');
         if (newGameBtn && this.onPlayerAction) {
             newGameBtn.addEventListener('click', () => {
-                console.log('🎮 New Game button clicked');
-                this.onPlayerAction({
-                    type: 'new_game',
-                    data: {}
-                });
+                console.log('🏁 The End button clicked');
+                // Show everyone wins screen
+                this.showEveryoneWins();
             });
         }
     }
@@ -3585,6 +3583,42 @@ class EverybodyVotesGameModule extends GameModule {
             default:
                 console.log('🤷 Unhandled message type:', message.type);
                 break;
+        }
+    }
+
+    /**
+     * Show everyone wins screen
+     */
+    showEveryoneWins() {
+        // Hide the game area
+        this.gameAreaElement.style.display = 'none';
+        
+        // Show the universal end game screen
+        const endGameScreen = document.getElementById('end-game-screen');
+        const resultMessage = document.getElementById('game-result-message');
+        const finalScores = document.getElementById('final-scores');
+        const okBtn = document.getElementById('ok-btn');
+        
+        if (endGameScreen && resultMessage && finalScores) {
+            resultMessage.textContent = '🎉 Everyone Wins! 🎉';
+            
+            // Show player scores
+            finalScores.innerHTML = this.getPlayerScoresHtml();
+            
+            // Show the screen
+            endGameScreen.style.display = 'flex';
+            
+            // Handle OK button
+            if (okBtn) {
+                okBtn.onclick = () => {
+                    if (this.onPlayerAction) {
+                        this.onPlayerAction({
+                            type: 'end_game',
+                            data: {}
+                        });
+                    }
+                };
+            }
         }
     }
 
@@ -6046,9 +6080,9 @@ main {
   "version": "1.1.2",
   "baseVersion": "1.1.2",
   "branch": "everybody-votes",
-  "commit": "1c7ba15",
-  "timestamp": "2025-08-13T05:58:36.670Z",
-  "deployedAt": "Aug 12, 2025, 11:58 PM MDT"
+  "commit": "3ff3ba6",
+  "timestamp": "2025-08-13T13:38:55.990Z",
+  "deployedAt": "Aug 13, 2025, 07:38 AM MDT"
 }`
 };
 

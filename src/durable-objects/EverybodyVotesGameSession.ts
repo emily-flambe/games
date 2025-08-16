@@ -464,11 +464,29 @@ export class EverybodyVotesGameSession extends GameSession {
     await this.saveGameState();
     this.updateRegistryStatus('finished');
     
-    // Send final results
+    // Determine the result message
+    let resultMessage = '🎉 Game Complete! 🎉';
+    const topScore = playerScores[0]?.correctPredictions || 0;
+    const winners = playerScores.filter(p => p.correctPredictions === topScore);
+    
+    if (winners.length === 1) {
+      resultMessage = `🏆 ${winners[0].playerName} Wins! 🏆`;
+    } else if (winners.length > 1) {
+      resultMessage = '🤝 It\'s a Tie! 🤝';
+    }
+    
+    // Convert playerScores to the format GameShell expects
+    const scoresObject: Record<string, number> = {};
+    playerScores.forEach(score => {
+      scoresObject[score.playerId] = score.correctPredictions;
+    });
+    
+    // Send game_ended message for GameShell to handle
     this.broadcast({
-      type: 'final_results',
+      type: 'game_ended',
       data: {
-        phase: 'ENDED',
+        message: resultMessage,
+        scores: scoresObject,
         finalScores: playerScores,
         roundResults: this.gameState.roundResults,
         totalRounds: this.gameState.totalRounds,
@@ -477,7 +495,7 @@ export class EverybodyVotesGameSession extends GameSession {
       timestamp: Date.now()
     });
     
-    console.log('🏆 Final scores calculated and sent');
+    console.log('🏆 Game ended - final scores sent');
   }
 
   private async handleRoundResults(playerId: string) {

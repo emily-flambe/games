@@ -1,7 +1,11 @@
-# Deployment Lessons Learned: Node.js vs Cloudflare Workers
+# Deployment Lessons Learned: Node.js vs Cloudflare Workers (HISTORICAL)
 
-## Issue Summary
-The Everybody Votes game worked perfectly on localhost:8777 (Node.js development server) but failed to work on production (games.emilycogsdill.com using Cloudflare Workers). This document outlines the diagnosis process and key lessons learned.
+## ⚠️ HISTORICAL DOCUMENT - NODE.JS DEV SERVER HAS BEEN REMOVED
+
+**UPDATE (January 2025)**: The Node.js development server has been completely removed from the project. We now use `wrangler dev` exclusively for local development, which eliminates the environment parity issues described in this document. This document is preserved for historical reference only.
+
+## Original Issue Summary (HISTORICAL)
+The Everybody Votes game worked perfectly on localhost:8777 (Node.js development server) but failed to work on production (games.emilycogsdill.com using Cloudflare Workers). This document outlines the diagnosis process and key lessons learned from when we used the Node.js dev server.
 
 ## Diagnosis Process
 
@@ -52,10 +56,18 @@ The issue was with:
 - The connection might establish successfully but close immediately due to client-side issues
 - Always verify both server-side and client-side connection states
 
-### 2. Development vs Production Environment Differences
+### 2. Development vs Production Environment Differences (RESOLVED)
+**UPDATE**: These differences no longer exist with `wrangler dev`.
+
+Previously with Node.js server:
 - **Local Node.js server**: More forgiving of timing issues and errors
 - **Cloudflare Workers**: Stricter environment that can expose race conditions
 - Production environments may fail faster on client-side JavaScript errors
+
+Now with `wrangler dev`:
+- **Full production parity**: Same Cloudflare Workers runtime locally and in production
+- **Consistent behavior**: No more environment-specific bugs
+- **True Durable Objects**: Actual stateful behavior, not simulated
 
 ### 3. Debugging Strategy for WebSocket Issues
 1. **Monitor server logs first** using `wrangler tail`

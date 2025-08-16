@@ -34,8 +34,11 @@ npm install
 # Build frontend assets
 npm run build
 
-# Start dev server (runs on http://localhost:8777)
+# Start wrangler dev server (runs on http://localhost:8777)
 npm run dev
+
+# For remote development (connects to Cloudflare)
+npm run dev:remote
 ```
 
 ## Deployment
