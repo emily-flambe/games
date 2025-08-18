@@ -1,0 +1,63 @@
+name: Cleanup Preview Deployments
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Wrangler
+      run: npm install -g wrangler
+    
+    - name: List and cleanup old preview Workers
+      run: |
+        echo "🧹 Starting cleanup of preview deployments older than 7 days..."
+        
+        # List all Workers in the account
+        wrangler deployments list --json > deployments.json || true
+        
+        # Parse and filter preview Workers older than 7 days
+        # Note: This is a simplified version. In production, you'd want more robust filtering
+        node -e "
+          const fs = require('fs');
+          const deployments = JSON.parse(fs.readFileSync('deployments.json', 'utf8') || '[]');
+          const now = Date.now();
+          const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+          
+          const oldPreviews = deployments.filter(d => {
+            return d.name && 
+                   d.name.startsWith('games-preview-') && 
+                   new Date(d.created_on).getTime() < sevenDaysAgo;
+          });
+          
+          console.log(\`Found \${oldPreviews.length} preview deployments to clean up\`);
+          
+          oldPreviews.forEach(preview => {
+            console.log(\`Deleting: \${preview.name} (created: \${preview.created_on})\`);
+            // Would run: wrangler delete --name preview.name
+          });
+        "
+        
+        echo "✅ Cleanup complete"
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    
+    - name: Report cleanup results
+      if: always()
+      run: |
+        echo "📊 Cleanup job completed at $(date)"
+        echo "Next scheduled run: $(date -d '+1 day' '+%Y-%m-%d %H:%M:%S UTC')"

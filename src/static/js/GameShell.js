@@ -278,6 +278,10 @@ class GameShell {
     handleWebSocketMessage(event) {
         try {
             const message = JSON.parse(event.data);
+            
+            if (message.type === 'game_ended') {
+                console.log('[GameShell] Received game_ended message:', message);
+            }
 
             switch (message.type) {
                 case 'gameState':
@@ -470,6 +474,7 @@ class GameShell {
      * Handle game ended message
      */
     handleGameEnded(message) {
+        console.log('[GameShell] handleGameEnded called, data:', message.data);
         this.gameState = 'finished';
         
         // Pass the game_ended message to the module before cleanup
@@ -1240,9 +1245,12 @@ class GameShell {
      * Show game end screen
      */
     showGameEndScreen(gameEndData) {
+        console.log('[GameShell] showGameEndScreen called');
         const endScreen = document.getElementById('end-game-screen');
         const resultMessage = document.getElementById('game-result-message');
         const finalScores = document.getElementById('final-scores');
+        
+        console.log('[GameShell] Elements:', { endScreen: !!endScreen, resultMessage: !!resultMessage, finalScores: !!finalScores });
         
         if (endScreen && resultMessage) {
             // Update message with server's result message
@@ -1271,11 +1279,12 @@ class GameShell {
                         }
                     });
                 } else {
-                    // Completely remove the scores element when there are no scores
-                    finalScores.remove();
+                    // Hide the scores element when there are no scores
+                    finalScores.style.display = 'none';
                 }
             }
             
+            console.log('[GameShell] Setting endScreen.style.display = block');
             endScreen.style.display = 'block';
             
             // Handle OK button - return to lobby
@@ -1287,6 +1296,11 @@ class GameShell {
                     this.leaveGame();
                 };
             }
+        } else {
+            console.error('[GameShell] Cannot show end screen - missing elements:', {
+                endScreen: !!endScreen,
+                resultMessage: !!resultMessage
+            });
         }
     }
 

@@ -13,23 +13,33 @@ describe('County Game E2E Tests', () => {
     let browser;
     let page;
     let devServer;
+    
+    // Use environment variable for test URL, fallback to localhost for local development
+    const baseUrl = process.env.TEST_URL || 'http://localhost:8777';
+    const isCI = process.env.CI === 'true';
 
     beforeAll(async () => {
-        // Start development server for testing
-        devServer = exec('npm run dev', { cwd: __dirname + '/../..' });
-        
-        // Wait for server to be ready
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Only start dev server if not in CI (CI uses deployed preview)
+        if (!isCI) {
+            // Start development server for local testing
+            devServer = exec('npm run dev', { cwd: __dirname + '/../..' });
+            
+            // Wait for server to be ready
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
         
         browser = await puppeteer.launch({
-            headless: true,
+            headless: process.env.HEADLESS === 'true' || true,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
         });
+        
+        console.log(`🎯 Testing against: ${baseUrl}`);
     });
 
     afterAll(async () => {
         if (browser) await browser.close();
-        if (devServer) devServer.kill();
+        // Only kill dev server if it was started (not in CI)
+        if (devServer && !isCI) devServer.kill();
     });
 
     beforeEach(async () => {
@@ -38,10 +48,10 @@ describe('County Game E2E Tests', () => {
         // Set viewport for consistent testing
         await page.setViewport({ width: 1280, height: 720 });
         
-        // Navigate to game
-        await page.goto('http://localhost:8777', {
+        // Navigate to game (using baseUrl which works for both local and CI)
+        await page.goto(baseUrl, {
             waitUntil: 'networkidle2',
-            timeout: 10000
+            timeout: isCI ? 30000 : 10000  // Longer timeout for deployed URLs
         });
         
         // Wait for scripts to load
@@ -234,7 +244,7 @@ describe('County Game E2E Tests', () => {
         // Player 2 joins
         const player2Page = await browser.newPage();
         await player2Page.setViewport({ width: 1280, height: 720 });
-        await player2Page.goto(`http://localhost:8777/${roomCode}`, {
+        await player2Page.goto(`${baseUrl}/${roomCode}`, {
             waitUntil: 'networkidle2',
             timeout: 10000
         });

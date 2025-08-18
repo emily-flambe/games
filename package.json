@@ -13,6 +13,7 @@
     "test": "jest",
     "test:unit": "jest tests/unit",
     "test:e2e": "jest tests/e2e",
+    "test:e2e:ci": "jest tests/e2e --forceExit --detectOpenHandles --maxWorkers=1",
     "test:vitest": "vitest run",
     "test:vitest:watch": "vitest",
     "test:visual": "jest tests/visual",
@@ -35,7 +36,6 @@
     "wrangler": "^4.28.1"
   },
   "dependencies": {
-    "puppeteer": "^24.16.0",
-    "sillyname": "^0.1.0"
+    "puppeteer": "^24.16.0"
   }
 }

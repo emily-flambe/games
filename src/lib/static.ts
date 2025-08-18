@@ -868,6 +868,10 @@ class GameShell {
     handleWebSocketMessage(event) {
         try {
             const message = JSON.parse(event.data);
+            
+            if (message.type === 'game_ended') {
+                console.log('[GameShell] Received game_ended message:', message);
+            }
 
             switch (message.type) {
                 case 'gameState':
@@ -1060,6 +1064,7 @@ class GameShell {
      * Handle game ended message
      */
     handleGameEnded(message) {
+        console.log('[GameShell] handleGameEnded called, data:', message.data);
         this.gameState = 'finished';
         
         // Pass the game_ended message to the module before cleanup
@@ -1830,9 +1835,12 @@ class GameShell {
      * Show game end screen
      */
     showGameEndScreen(gameEndData) {
+        console.log('[GameShell] showGameEndScreen called');
         const endScreen = document.getElementById('end-game-screen');
         const resultMessage = document.getElementById('game-result-message');
         const finalScores = document.getElementById('final-scores');
+        
+        console.log('[GameShell] Elements:', { endScreen: !!endScreen, resultMessage: !!resultMessage, finalScores: !!finalScores });
         
         if (endScreen && resultMessage) {
             // Update message with server's result message
@@ -1861,11 +1869,12 @@ class GameShell {
                         }
                     });
                 } else {
-                    // Completely remove the scores element when there are no scores
-                    finalScores.remove();
+                    // Hide the scores element when there are no scores
+                    finalScores.style.display = 'none';
                 }
             }
             
+            console.log('[GameShell] Setting endScreen.style.display = block');
             endScreen.style.display = 'block';
             
             // Handle OK button - return to lobby
@@ -1877,6 +1886,11 @@ class GameShell {
                     this.leaveGame();
                 };
             }
+        } else {
+            console.error('[GameShell] Cannot show end screen - missing elements:', {
+                endScreen: !!endScreen,
+                resultMessage: !!resultMessage
+            });
         }
     }
 
@@ -2469,10 +2483,27 @@ class CountyGameModule extends GameModule {
     }
 
     /**
+     * Update submission status without re-rendering the entire UI
+     */
+    updateSubmissionStatus() {
+        // Update all submission status elements (both in form and in submitted view)
+        const statusElements = this.gameAreaElement?.querySelectorAll('.submission-status');
+        if (statusElements) {
+            statusElements.forEach(element => {
+                element.textContent = \`\${this.submittedCount} of \${this.totalPlayers} players submitted\`;
+            });
+        }
+    }
+
+    /**
      * Render the game UI based on current phase
      */
     render() {
         if (!this.gameAreaElement) return;
+        
+        // Preserve current input value if it exists
+        const existingInput = this.gameAreaElement.querySelector('#county-input');
+        const preservedValue = existingInput ? existingInput.value : '';
         
         let content = '';
         
@@ -2495,6 +2526,15 @@ class CountyGameModule extends GameModule {
         }
         
         this.gameAreaElement.innerHTML = content;
+        
+        // Restore input value if we're still in submission phase and haven't submitted yet
+        if (this.currentPhase === 'COUNTY_SUBMISSION' && !this.myCounty && preservedValue) {
+            const newInput = this.gameAreaElement.querySelector('#county-input');
+            if (newInput) {
+                newInput.value = preservedValue;
+            }
+        }
+        
         this.attachEventListeners();
     }
 
@@ -2542,6 +2582,9 @@ class CountyGameModule extends GameModule {
                             autocomplete="off"
                         />
                         <button id="submit-county-btn" class="submit-btn">Submit County</button>
+                        <div class="submission-status">
+                            \${this.submittedCount} of \${this.totalPlayers} players submitted
+                        </div>
                     </div>
                 \`}
             </div>
@@ -2569,11 +2612,20 @@ class CountyGameModule extends GameModule {
                 </div>
             \`;
         } else {
-            content += \`
-                <div class="announcement-waiting">
-                    <p>Waiting for host to begin announcements...</p>
-                </div>
-            \`;
+            // Show different message for host vs other players
+            if (this.isHost) {
+                content += \`
+                    <div class="announcement-waiting">
+                        <p>Click BEGIN to start the excitement!</p>
+                    </div>
+                \`;
+            } else {
+                content += \`
+                    <div class="announcement-waiting">
+                        <p>Waiting for host to begin announcements...</p>
+                    </div>
+                \`;
+            }
         }
 
         // Show controls for host
@@ -2686,6 +2738,9 @@ class CountyGameModule extends GameModule {
     handleStateUpdate(gameSpecificState) {
         super.handleStateUpdate(gameSpecificState);
         
+        // Track if phase changed to determine if we need to re-render
+        const previousPhase = this.currentPhase;
+        
         // Check if we have the full gameState to determine host
         if (gameSpecificState.hostId) {
             this.isHost = (this.currentPlayerId === gameSpecificState.hostId);
@@ -2708,7 +2763,11 @@ class CountyGameModule extends GameModule {
             }
         }
         
-        this.render();
+        // Only render if phase changed or we're not in submission phase
+        // This prevents re-rendering (and clearing inputs) during submission updates
+        if (previousPhase !== this.currentPhase || this.currentPhase !== 'COUNTY_SUBMISSION') {
+            this.render();
+        }
     }
 
     /**
@@ -2745,7 +2804,8 @@ class CountyGameModule extends GameModule {
             case 'submission_update':
                 this.submittedCount = message.submittedCount;
                 this.totalPlayers = message.totalPlayers;
-                this.render();
+                // Only update the submission status display, don't re-render the whole UI
+                this.updateSubmissionStatus();
                 break;
                 
             case 'player_announcement':
@@ -6498,58 +6558,66 @@ main {
 }
 
 .announcement-display {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 3rem 2rem;
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    margin: 2rem 0;
+    background: #ffffff;
+    padding: 2.5rem 2rem;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    margin: 2rem auto;
     animation: slideIn 0.5s ease-out;
+    max-width: 500px;
+    border: 1px solid #e8f0fe;
+    text-align: center;
+    position: relative;
 }
 
 @keyframes slideIn {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(20px) scale(0.95);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 }
 
 .announcement-display .player-number {
-    font-size: 1.5rem;
-    color: rgba(255,255,255,0.9);
-    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #8b92a8;
+    margin-bottom: 1.5rem;
     font-weight: 600;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
 }
 
 .announcement-display .player-info {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
+    gap: 0.75rem;
     margin-bottom: 1.5rem;
 }
 
 .announcement-display .player-emoji {
-    font-size: 3rem;
+    font-size: 2.5rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 
 .announcement-display .player-name {
-    font-size: 1.8rem;
-    color: white;
-    font-weight: bold;
+    font-size: 1.5rem;
+    color: #2c3e50;
+    font-weight: 600;
 }
 
 .announcement-display .county-name {
-    font-size: 2.5rem;
-    color: #fff;
-    font-weight: bold;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    font-size: 2.2rem;
+    color: #5e72e4;
+    font-weight: 700;
     margin-top: 1rem;
-    font-style: italic;
+    font-style: normal;
+    line-height: 1.3;
+    word-wrap: break-word;
+    padding: 0 1rem;
 }
 
 .announcement-waiting {
@@ -6564,22 +6632,24 @@ main {
 }
 
 .host-controls .control-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #5e72e4;
     color: white;
     border: none;
-    padding: 1rem 3rem;
-    font-size: 1.3rem;
-    font-weight: bold;
-    border-radius: 10px;
+    padding: 0.9rem 2.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    letter-spacing: 1px;
+    box-shadow: 0 4px 12px rgba(94, 114, 228, 0.25);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 .host-controls .control-btn:hover {
+    background: #4c63d2;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    box-shadow: 0 6px 20px rgba(94, 114, 228, 0.35);
 }
 
 .host-controls .control-btn:active {
@@ -6595,9 +6665,9 @@ main {
   "version": "1.1.2",
   "baseVersion": "1.1.2",
   "branch": "county-game",
-  "commit": "8780efb",
-  "timestamp": "2025-08-18T02:49:24.692Z",
-  "deployedAt": "Aug 17, 2025, 08:49 PM MDT"
+  "commit": "a177739",
+  "timestamp": "2025-08-18T03:11:57.758Z",
+  "deployedAt": "Aug 17, 2025, 09:11 PM MDT"
 }`
 };
 

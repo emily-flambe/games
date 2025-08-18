@@ -47,3 +47,10 @@ new_classes = [ "CheckboxGameSession", "EverybodyVotesGameSession" ]
 [[migrations]]
 tag = "v4"
 new_classes = [ "CountyGameSession" ]
+
+# Preview Environment Configuration
+# Each preview deployment gets its own subdomain on workers.dev
+[env.preview]
+name = "games-preview"
+# Preview deployments use workers.dev subdomain
+# The actual subdomain will be set dynamically in CI/CD
