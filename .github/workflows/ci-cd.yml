@@ -118,16 +118,16 @@ jobs:
         script: |
           const preview_url = '${{ steps.preview.outputs.preview_url }}';
           const comment = `🚀 **Preview Deployment Ready!**
-          
+
           Your changes have been deployed to: ${preview_url}
-          
+
           ✅ All tests passed successfully!
           - Unit tests: ✅
           - Integration tests: ✅
           - E2E tests: ✅
-          
+
           Preview deployments are automatically updated for each commit.`;
-          
+
           github.rest.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,
