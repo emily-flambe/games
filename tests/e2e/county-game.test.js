@@ -164,7 +164,7 @@ describe('County Game E2E Tests', () => {
         );
         
         console.log('✅ County Game E2E test passed successfully');
-    }, 60000); // 60 second timeout
+    }, 15000); // 15 second timeout
 
     test('County Game win screen has no extra boxes', async () => {
         // Quick focused test for the specific fix
@@ -219,7 +219,7 @@ describe('County Game E2E Tests', () => {
         }
         
         console.log('✅ County Game extra box test passed');
-    }, 45000);
+    }, 15000);
 
     test('County Game announcement phase with multiple players', async () => {
         // Test the announcement phase with multiple players
@@ -312,7 +312,7 @@ describe('County Game E2E Tests', () => {
         await player2Page.close();
         
         console.log('✅ County Game announcement phase test passed');
-    }, 120000); // Increased timeout to 2 minutes for complex multiplayer test
+    }, 30000); // 30 second timeout for multiplayer test
 
     test('County Game handles player disconnection gracefully', async () => {
         // Test edge case: player disconnects during game
@@ -333,7 +333,7 @@ describe('County Game E2E Tests', () => {
         // This test ensures no server crashes or memory leaks
         
         console.log('✅ County Game disconnection test passed');
-    }, 30000);
+    }, 10000);
 });
 
 module.exports = {

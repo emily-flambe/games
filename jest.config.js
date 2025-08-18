@@ -38,8 +38,8 @@ module.exports = {
   // Module paths
   moduleDirectories: ['node_modules', 'src'],
   
-  // Timeout for tests (increased for E2E tests)
-  testTimeout: 60000,
+  // Timeout for tests
+  testTimeout: 30000,
   
   // Verbose output
   verbose: true,
