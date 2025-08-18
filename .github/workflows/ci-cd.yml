@@ -44,21 +44,23 @@ jobs:
     - name: Set preview alias and URL
       id: preview
       run: |
-        # Use short commit hash as alias for preview deployment
+        # Use short commit hash with 'preview-' prefix for valid alias format
         COMMIT_HASH=$(git rev-parse --short HEAD)
+        PREVIEW_ALIAS="preview-$COMMIT_HASH"
         echo "commit_hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
-        echo "preview_url=https://$COMMIT_HASH-games.emily-cogsdill.workers.dev" >> $GITHUB_OUTPUT
-        echo "Preview deployment alias: $COMMIT_HASH"
+        echo "preview_alias=$PREVIEW_ALIAS" >> $GITHUB_OUTPUT
+        echo "preview_url=https://$PREVIEW_ALIAS-games.emily-cogsdill.workers.dev" >> $GITHUB_OUTPUT
+        echo "Preview deployment alias: $PREVIEW_ALIAS"
     
     - name: Deploy to preview environment with commit hash alias
       id: deploy-preview
       run: |
         npm install -g wrangler
-        # Upload version with commit hash as preview alias
-        COMMIT_HASH=${{ steps.preview.outputs.commit_hash }}
-        wrangler versions upload --preview-alias $COMMIT_HASH
+        # Upload version with prefixed commit hash as preview alias (target top-level env)
+        PREVIEW_ALIAS=${{ steps.preview.outputs.preview_alias }}
+        wrangler versions upload --preview-alias $PREVIEW_ALIAS --env=""
         echo "Preview deployed to: ${{ steps.preview.outputs.preview_url }}"
-        echo "Preview alias: $COMMIT_HASH"
+        echo "Preview alias: $PREVIEW_ALIAS"
       env:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -123,13 +125,14 @@ jobs:
         script: |
           const preview_url = '${{ steps.preview.outputs.preview_url }}';
           const commit_hash = '${{ steps.preview.outputs.commit_hash }}';
+          const preview_alias = '${{ steps.preview.outputs.preview_alias }}';
           const comment = `🚀 **Preview Deployment Ready!**
           
           Your changes have been deployed to: ${preview_url}
           
           **Preview Details:**
           - Commit: \`${commit_hash}\`
-          - URL Alias: \`${commit_hash}-games\`
+          - URL Alias: \`${preview_alias}\`
           
           ✅ All tests passed successfully!
           - Unit tests: ✅

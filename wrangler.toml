@@ -51,4 +51,4 @@ new_classes = [ "CountyGameSession" ]
 
 # Preview deployments now use aliased preview URLs with commit hashes
 # No separate preview environment needed - aliases are created automatically
-# Format: https://{commit-hash}-games.emily-cogsdill.workers.dev
+# Format: https://preview-{commit-hash}-games.emily-cogsdill.workers.dev

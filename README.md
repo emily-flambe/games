@@ -49,8 +49,8 @@ This project is configured for Cloudflare Workers deployment with automated prev
 
 Every commit automatically gets its own preview URL using aliased preview deployments:
 
-- **Format**: `https://{commit-hash}-games.emily-cogsdill.workers.dev`
-- **Example**: `https://a1b2c3d-games.emily-cogsdill.workers.dev`
+- **Format**: `https://preview-{commit-hash}-games.emily-cogsdill.workers.dev`
+- **Example**: `https://preview-a1b2c3d-games.emily-cogsdill.workers.dev`
 - **Lifecycle**: Created automatically in CI/CD, managed by Cloudflare
 
 ### Production Deployment
