@@ -1,8 +1,6 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -139,52 +137,6 @@ jobs:
             body: comment
           });
     
-    # Only run version bump and deploy on main branch pushes (not PRs) AND if all tests pass
-    - name: Bump version based on conventional commits
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      id: version
-      run: |
-        # Install semantic-release dependencies
-        npm install --save-dev semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github
-        
-        # Run semantic-release to bump version
-        npx semantic-release --dry-run > release-output.txt 2>&1 || true
-        
-        # Check if version was bumped
-        if grep -q "Published release" release-output.txt; then
-          echo "version_bumped=true" >> $GITHUB_OUTPUT
-          NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-        else
-          echo "version_bumped=false" >> $GITHUB_OUTPUT
-        fi
-    
-    - name: Deploy to Production
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      run: |
-        echo "All tests passed! Deploying to production..."
-        wrangler deploy --env production
-      env:
-        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-    
-    - name: Create Release Notes
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.version.outputs.version_bumped == 'true'
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ steps.version.outputs.new_version }}
-        release_name: Release v${{ steps.version.outputs.new_version }}
-        body: |
-          Automated release v${{ steps.version.outputs.new_version }}
-          
-          Changes in this release have been automatically determined from conventional commit messages.
-          
-          🚀 Deployed to: https://games.emilycogsdill.com
-          📝 Preview: ${{ steps.preview.outputs.preview_url }}
-        draft: false
-        prerelease: false
 
   # Cleanup old preview deployments (runs daily)
   cleanup-previews:

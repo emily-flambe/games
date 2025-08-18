@@ -21,10 +21,13 @@ jobs:
       - name: Check if tag exists
         id: tag_exists
         run: |
+          git fetch --tags
           if git rev-parse ${{ steps.version.outputs.version }} >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag ${{ steps.version.outputs.version }} already exists, skipping creation"
           else
             echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag ${{ steps.version.outputs.version }} does not exist, will create"
           fi
       
       - name: Create and push tag
@@ -34,4 +37,10 @@ jobs:
           git config user.email "actions@github.com"
           git tag ${{ steps.version.outputs.version }}
           git push origin ${{ steps.version.outputs.version }}
+      
+      - name: Tag already exists
+        if: steps.tag_exists.outputs.exists == 'true'
+        run: |
+          echo "✅ Tag ${{ steps.version.outputs.version }} already exists - no action needed"
+          echo "This is expected behavior when the version hasn't changed"
       
