@@ -1,0 +1,186 @@
+{
+  "summary": {
+    "total": 11,
+    "passed": 1,
+    "failed": 10,
+    "passRate": "9.1",
+    "duration": "15.41s"
+  },
+  "environment": {
+    "browser": "chrome",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "environment": "test",
+    "threshold": 0.1
+  },
+  "results": [
+    {
+      "name": "county-game-portal-card",
+      "description": "County Game card display in game portal",
+      "timestamp": "2025-08-18T05:16:08.653Z",
+      "passed": true,
+      "testName": "county-game-portal-card",
+      "differencePercentage": 0,
+      "message": "Images are identical"
+    },
+    {
+      "name": "county-game-player-setup",
+      "description": "County Game player setup screen",
+      "timestamp": "2025-08-18T05:16:09.473Z",
+      "passed": false,
+      "testName": "county-game-player-setup",
+      "differencePercentage": 100,
+      "message": "Images differ (detailed comparison unavailable)"
+    },
+    {
+      "name": "county-game-player-setup-with-name",
+      "description": "County Game player setup with name entered",
+      "timestamp": "2025-08-18T05:16:10.814Z",
+      "passed": false,
+      "testName": "county-game-player-setup-with-name",
+      "differencePercentage": 100,
+      "message": "Images differ (detailed comparison unavailable)"
+    },
+    {
+      "name": "county-game-waiting-room",
+      "description": "County Game waiting room after joining",
+      "timestamp": "2025-08-18T05:16:11.896Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-active-gameplay",
+      "description": "County Game during active gameplay (county input)",
+      "timestamp": "2025-08-18T05:16:12.751Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-input-with-text",
+      "description": "County Game input field with user text",
+      "timestamp": "2025-08-18T05:16:13.529Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-win-screen",
+      "description": "County Game win screen - critical end state",
+      "timestamp": "2025-08-18T05:16:14.351Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-win-screen-no-scores-box",
+      "description": "Verify final-scores element is completely hidden in win screen",
+      "timestamp": "2025-08-18T05:16:15.262Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-ok-button-state",
+      "description": "OK button in win screen - ready to click",
+      "timestamp": "2025-08-18T05:16:16.362Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-responsive-mobile",
+      "description": "County Game win screen on mobile viewport",
+      "timestamp": "2025-08-18T05:16:17.460Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-portal-full",
+      "description": "Full game portal showing all games including County Game",
+      "timestamp": "2025-08-18T05:16:23.130Z",
+      "passed": false,
+      "error": "Waiting for selector `.game-grid` failed: Waiting failed: 5000ms exceeded"
+    }
+  ],
+  "failed_tests": [
+    {
+      "name": "county-game-player-setup",
+      "description": "County Game player setup screen",
+      "timestamp": "2025-08-18T05:16:09.473Z",
+      "passed": false,
+      "testName": "county-game-player-setup",
+      "differencePercentage": 100,
+      "message": "Images differ (detailed comparison unavailable)"
+    },
+    {
+      "name": "county-game-player-setup-with-name",
+      "description": "County Game player setup with name entered",
+      "timestamp": "2025-08-18T05:16:10.814Z",
+      "passed": false,
+      "testName": "county-game-player-setup-with-name",
+      "differencePercentage": 100,
+      "message": "Images differ (detailed comparison unavailable)"
+    },
+    {
+      "name": "county-game-waiting-room",
+      "description": "County Game waiting room after joining",
+      "timestamp": "2025-08-18T05:16:11.896Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-active-gameplay",
+      "description": "County Game during active gameplay (county input)",
+      "timestamp": "2025-08-18T05:16:12.751Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-input-with-text",
+      "description": "County Game input field with user text",
+      "timestamp": "2025-08-18T05:16:13.529Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-win-screen",
+      "description": "County Game win screen - critical end state",
+      "timestamp": "2025-08-18T05:16:14.351Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-win-screen-no-scores-box",
+      "description": "Verify final-scores element is completely hidden in win screen",
+      "timestamp": "2025-08-18T05:16:15.262Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-ok-button-state",
+      "description": "OK button in win screen - ready to click",
+      "timestamp": "2025-08-18T05:16:16.362Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-responsive-mobile",
+      "description": "County Game win screen on mobile viewport",
+      "timestamp": "2025-08-18T05:16:17.460Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-portal-full",
+      "description": "Full game portal showing all games including County Game",
+      "timestamp": "2025-08-18T05:16:23.130Z",
+      "passed": false,
+      "error": "Waiting for selector `.game-grid` failed: Waiting failed: 5000ms exceeded"
+    }
+  ],
+  "baseline_info": {
+    "environment": "test",
+    "browser": "chrome",
+    "viewport": "1280x720",
+    "totalBaselines": 0,
+    "baselines": []
+  }
+}

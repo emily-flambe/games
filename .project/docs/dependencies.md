@@ -4,12 +4,16 @@
 ```json
 {
   "dependencies": {
-    "@cloudflare/workers-types": "^4.20240117.0",
-    "typescript": "^5.3.3"
+    "puppeteer": "^24.16.0",
+    "sillyname": "^0.1.0"
   },
   "devDependencies": {
-    "wrangler": "^3.22.1",
-    "@types/node": "^20.10.6"
+    "@cloudflare/workers-types": "^4.20241230.0",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.0.5",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.7.3",
+    "wrangler": "^4.28.1"
   }
 }
 ```
@@ -25,15 +29,9 @@
 ❌ Database drivers (use D1/KV)
 
 ## Testing Stack
-```json
-{
-  "devDependencies": {
-    "vitest": "^1.1.3",
-    "miniflare": "^3.20231218.0",
-    "jsdom": "^23.2.0"
-  }
-}
-```
+- **jest**: Primary test framework for unit tests
+- **puppeteer**: Browser automation for E2E testing
+- **jsdom**: DOM simulation for unit tests
 
 ## Build Configuration
 - Node.js: >=18.0.0
@@ -45,9 +43,9 @@
 ```json
 {
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "build": "tsc",
-    "test": "vitest"
+    "dev": "wrangler dev --local --persist-to .wrangler/state",
+    "deploy": "npm run build && wrangler deploy",
+    "build": "node scripts/build-static.js",
+    "test": "jest"
   }
 }

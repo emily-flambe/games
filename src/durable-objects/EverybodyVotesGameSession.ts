@@ -99,7 +99,6 @@ export class EverybodyVotesGameSession extends GameSession {
   }
 
   protected async handleStartGame() {
-    console.log(`EVERYBODY VOTES MULTI-ROUND GAME STARTING!!!`);
     
     // Start the game immediately with first round
     this.gameState.status = 'started';
@@ -134,17 +133,16 @@ export class EverybodyVotesGameSession extends GameSession {
     });
     
     // Game starts in voting phase - wait for player votes
-    console.log(`✅ Everybody Votes game started - Round ${this.gameState.currentRound}/${this.gameState.totalRounds} - waiting for player votes`);
   }
 
-  protected async handleGameSpecificMessage(data: any, ws: WebSocket, playerId: string, isSpectator: boolean) {
+  protected async handleGameSpecificMessage(ws: WebSocket, playerId: string, data: any, isSpectator: boolean) {
     switch (data.type) {
       case 'submit_vote':
-        await this.handleVote(data, ws, playerId, isSpectator);
+        await this.handleVote(ws, playerId, data, isSpectator);
         break;
         
       case 'submit_prediction':
-        await this.handlePrediction(data, ws, playerId, isSpectator);
+        await this.handlePrediction(ws, playerId, data, isSpectator);
         break;
         
       case 'advance_round':
@@ -169,8 +167,7 @@ export class EverybodyVotesGameSession extends GameSession {
     }
   }
 
-  private async handleVote(data: any, ws: WebSocket, playerId: string, isSpectator: boolean) {
-    console.log(`📝 Vote received from ${playerId}:`, data);
+  private async handleVote(ws: WebSocket, playerId: string, data: any, isSpectator: boolean) {
 
     // Must be in voting phase
     if (this.gameState.phase !== 'VOTING') {
@@ -195,23 +192,19 @@ export class EverybodyVotesGameSession extends GameSession {
 
     // Record the vote
     this.gameState.votes[playerId] = vote;
-    console.log(`✅ Player ${playerId} voted for ${vote}`);
     
     // Check if all players have voted
     const totalPlayers = Object.keys(this.gameState.players).length;
     const totalVotes = Object.keys(this.gameState.votes).length;
     
-    console.log(`📊 Vote progress: ${totalVotes}/${totalPlayers} players voted`);
     
     // Transition to prediction phase when all players have voted
     if (totalVotes >= totalPlayers) {
-      console.log('All players have voted - transitioning to prediction phase');
       await this.startPredictionPhase();
     }
   }
 
   private async startPredictionPhase() {
-    console.log('🔮 Starting prediction phase');
     
     this.gameState.phase = 'PREDICTING';
     this.gameState.predictions = {};
@@ -231,11 +224,9 @@ export class EverybodyVotesGameSession extends GameSession {
       timestamp: Date.now()
     });
     
-    console.log('✅ Prediction phase started - waiting for player predictions');
   }
 
-  private async handlePrediction(data: any, ws: WebSocket, playerId: string, isSpectator: boolean) {
-    console.log(`🔮 Prediction received from ${playerId}:`, data);
+  private async handlePrediction(ws: WebSocket, playerId: string, data: any, isSpectator: boolean) {
 
     // Must be in predicting phase
     if (this.gameState.phase !== 'PREDICTING') {
@@ -260,23 +251,19 @@ export class EverybodyVotesGameSession extends GameSession {
 
     // Record the prediction
     this.gameState.predictions[playerId] = prediction;
-    console.log(`✅ Player ${playerId} predicted ${prediction}`);
     
     // Check if all players have made predictions
     const totalPlayers = Object.keys(this.gameState.players).length;
     const totalPredictions = Object.keys(this.gameState.predictions).length;
     
-    console.log(`📊 Prediction progress: ${totalPredictions}/${totalPlayers} players predicted`);
     
     // Show round results when all players have predicted
     if (totalPredictions >= totalPlayers) {
-      console.log('All players have predicted - showing round results');
       await this.showRoundResults();
     }
   }
 
   private async showRoundResults() {
-    console.log('📊 Calculating round results...');
     
     // Calculate voting results
     const votes = Object.values(this.gameState.votes);
@@ -338,7 +325,6 @@ export class EverybodyVotesGameSession extends GameSession {
     this.gameState.results = roundResult.results;
     this.gameState.phase = 'RESULTS';
     
-    console.log(`✅ Round ${this.gameState.currentRound} Results: Winner=${winner}, Correct predictions: ${correctPredictions.length}`);
     
     // Send round results
     this.broadcast({
@@ -361,26 +347,21 @@ export class EverybodyVotesGameSession extends GameSession {
     
     // Check if this was the final round
     if (this.gameState.currentRound >= this.gameState.totalRounds) {
-      console.log('Final round completed - calculating final scores');
       await this.calculateFinalScores();
     } else {
-      console.log('⏭️ Round completed - waiting for host to advance to next question');
       // Stay in RESULTS phase, host will click "Next Question" to advance
     }
   }
 
   private async handleAdvanceRound(playerId: string) {
-    console.log(`⏭️ Advance round requested by ${playerId}`);
     
     // Only host can advance rounds
     if (playerId !== this.gameState.hostId) {
-      console.log(`❌ Non-host ${playerId} tried to advance round`);
       return;
     }
     
     // Can advance from RESULTS phase
     if (this.gameState.phase !== 'RESULTS') {
-      console.log(`❌ Cannot advance round - not in results phase (current: ${this.gameState.phase})`);
       return;
     }
     
@@ -388,14 +369,12 @@ export class EverybodyVotesGameSession extends GameSession {
   }
 
   private async advanceToNextRound() {
-    console.log(`🚀 Advancing to next round`);
     
     // Increment round
     this.gameState.currentRound++;
     
     // Check if we've exceeded total rounds
     if (this.gameState.currentRound > this.gameState.totalRounds) {
-      console.log('All rounds completed');
       await this.calculateFinalScores();
       return;
     }
@@ -426,11 +405,9 @@ export class EverybodyVotesGameSession extends GameSession {
       timestamp: Date.now()
     });
     
-    console.log(`✅ Round ${this.gameState.currentRound}/${this.gameState.totalRounds} started`);
   }
 
   private async calculateFinalScores() {
-    console.log('Calculating final scores');
     
     // Calculate scores for each player
     const playerScores: PlayerScore[] = [];
@@ -495,34 +472,28 @@ export class EverybodyVotesGameSession extends GameSession {
       timestamp: Date.now()
     });
     
-    console.log('Game ended - final scores sent');
   }
 
   private async handleRoundResults(playerId: string) {
     // This method can be used for requesting current round results
     // Implementation depends on specific frontend needs
-    console.log(`📊 Round results requested by ${playerId}`);
   }
 
   private async handleFinalSummary(playerId: string) {
     // This method can be used for requesting final summary
     // Implementation depends on specific frontend needs
-    console.log(`Final summary requested by ${playerId}`);
   }
 
   private async handleEndGame(playerId: string) {
-    console.log(`End game requested by ${playerId}`);
     
     // Only host can end the game early
     if (playerId !== this.gameState.hostId) {
-      console.log(`❌ Non-host ${playerId} tried to end game`);
       return;
     }
     
     // Calculate final scores based on current progress
     await this.calculateFinalScores();
     
-    console.log('✅ Game ended successfully by host');
   }
 
   

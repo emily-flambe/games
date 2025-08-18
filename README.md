@@ -29,7 +29,19 @@ npm run dev:remote
 
 ## Deployment
 
-This project is configured for Cloudflare Workers deployment. You'll need:
+This project is configured for Cloudflare Workers deployment with automated preview environments.
+
+### Preview Environment
+
+Changes are automatically deployed to a single preview environment for testing:
+
+- **URL**: `https://games-preview.emily-cogsdill.workers.dev`
+- **Purpose**: Test changes before production deployment
+- **Lifecycle**: Updated automatically with each commit
+
+### Production Deployment
+
+For production deployment, you'll need:
 
 1. A Cloudflare account with Workers enabled
 2. Your own domain configured in `wrangler.toml`

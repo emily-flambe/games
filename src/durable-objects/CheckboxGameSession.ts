@@ -42,7 +42,7 @@ export class CheckboxGameSession extends GameSession {
     };
   }
 
-  protected async handleGameSpecificMessage(data: any, ws: WebSocket, playerId: string, isSpectator: boolean) {
+  protected async handleGameSpecificMessage(ws: WebSocket, playerId: string, data: any, isSpectator: boolean) {
     switch (data.type) {
       case 'toggle_checkbox':
       case 'TOGGLE_CHECKBOX':
@@ -88,7 +88,6 @@ export class CheckboxGameSession extends GameSession {
     }
     
     const player = this.players.get(playerId);
-    console.log(`Player ${player ? player.name : playerId} toggled checkbox ${checkboxIndex} to ${newState}`);
     
     // Check for win condition
     const allBoxesChecked = this.gameState.checkboxStates.every(state => state === true);
@@ -111,7 +110,6 @@ export class CheckboxGameSession extends GameSession {
   }
 
   private async handleGameEnd() {
-    console.log('Game ended - all checkboxes checked');
     
     this.gameState.gameStarted = false;
     this.gameState.gameFinished = true;
@@ -133,8 +131,6 @@ export class CheckboxGameSession extends GameSession {
       resultMessage = `${winnerName.toUpperCase()} WINS!`;
     }
     
-    console.log('Game result:', resultMessage);
-    console.log('Final scores:', scores);
     
     this.updateRegistryStatus('finished');
     

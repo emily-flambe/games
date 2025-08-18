@@ -7,14 +7,10 @@ import { staticAssets } from './lib/static';
 import { GameSession } from './durable-objects/GameSession';
 import { CheckboxGameSession } from './durable-objects/CheckboxGameSession';
 import { EverybodyVotesGameSession } from './durable-objects/EverybodyVotesGameSession';
+import { CountyGameSession } from './durable-objects/CountyGameSession';
 import { GameSessionRegistry } from './durable-objects/GameSessionRegistry';
+import { Env } from './types';
 
-export interface Env {
-  GAME_SESSIONS: DurableObjectNamespace;
-  CHECKBOX_SESSIONS: DurableObjectNamespace;
-  EVERYBODY_VOTES_SESSIONS: DurableObjectNamespace;
-  GAME_REGISTRY: DurableObjectNamespace;
-}
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -120,6 +116,9 @@ async function handleWebSocket(request: Request, env: Env): Promise<Response> {
   } else if (gameType === 'checkbox-game') {
     const id = env.CHECKBOX_SESSIONS.idFromName(sessionId);
     gameSession = env.CHECKBOX_SESSIONS.get(id);
+  } else if (gameType === 'county-game') {
+    const id = env.COUNTY_GAME_SESSIONS.idFromName(sessionId);
+    gameSession = env.COUNTY_GAME_SESSIONS.get(id);
   } else {
     // Default to base GameSession for other games
     const id = env.GAME_SESSIONS.idFromName(sessionId);
@@ -218,4 +217,4 @@ function getStaticAsset(path: string): { content: string | ArrayBuffer; contentT
 }
 
 // Export Durable Objects for wrangler
-export { GameSession, CheckboxGameSession, EverybodyVotesGameSession, GameSessionRegistry };
+export { GameSession, CheckboxGameSession, EverybodyVotesGameSession, CountyGameSession, GameSessionRegistry };

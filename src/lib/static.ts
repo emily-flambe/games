@@ -259,10 +259,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p>N-way pong with paddles around a shared arena</p>
                         <div class="coming-soon-badge">Coming soon maybe lol</div>
                     </button>
-                    <button class="game-card coming-soon" data-game="bracketeering-game">
-                        <h3>Bracketeering</h3>
-                        <p>Tournament-style voting on head-to-head matchups</p>
-                        <div class="coming-soon-badge">Coming soon maybe lol</div>
+                    <button class="game-card" data-game="county-game">
+                        <h3>County Game</h3>
+                        <p>Say your county and celebrate together!</p>
                     </button>
                     <button class="game-card coming-soon" data-game="price-game">
                         <h3>The Price is Weird</h3>
@@ -432,7 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="/static/js/games/CheckboxGameModule.js"></script>
     <script src="/static/js/games/ThatsAPaddlinGameModule.js"></script>
     <script src="/static/js/games/EverybodyVotesGameModule.js"></script>
-    <script src="/static/js/games/BracketeeringGameModule.js"></script>
+    <script src="/static/js/games/CountyGameModule.js"></script>
     <script src="/static/js/games/PriceIsWeirdGameModule.js"></script>
     <script src="/static/js/GameShell.js"></script>
     <script src="/static/app.js"></script>
@@ -645,7 +644,6 @@ class GameShell {
         
         // Check for game-specific paths
         if (path === '/everybody-votes') {
-            console.log('Everybody Votes URL detected - auto-creating room');
             setTimeout(() => {
                 this.startGame('everybody-votes');
             }, 100);
@@ -869,6 +867,9 @@ class GameShell {
     handleWebSocketMessage(event) {
         try {
             const message = JSON.parse(event.data);
+            
+            if (message.type === 'game_ended') {
+            }
 
             switch (message.type) {
                 case 'gameState':
@@ -990,7 +991,7 @@ class GameShell {
                     this.gameModule.init(
                         this.gameAreaElement,
                         this.players,
-                        message.gameState,
+                        {...message.gameState, hostId: message.gameState.hostId},
                         (action) => this.sendPlayerAction(action),
                         (state) => this.onGameStateChange(state),
                         rulesElement
@@ -1020,6 +1021,11 @@ class GameShell {
     handleGameStarted(message) {
         this.gameState = 'playing';
         
+        // Update room state if gameState is provided
+        if (message.data?.gameState) {
+            this.roomState = message.data.gameState;
+        }
+        
         // Load and initialize the appropriate game module
         this.loadGameModule(this.gameType).then(() => {
             if (this.gameModule) {
@@ -1033,7 +1039,7 @@ class GameShell {
                 this.gameModule.init(
                     this.gameAreaElement,
                     this.players,
-                    message.data?.gameSpecificState,
+                    {...(message.data?.gameSpecificState || {}), hostId: message.data?.gameState?.hostId || this.roomState.hostId},
                     (action) => this.sendPlayerAction(action),
                     (state) => this.onGameStateChange(state),
                     rulesElement
@@ -1091,6 +1097,13 @@ class GameShell {
                     this.gameModule = new EverybodyVotesGameModule();
                 } else {
                     console.error('EverybodyVotesGameModule class not found - check script loading');
+                    this.gameModule = null;
+                }
+            } else if (gameType === 'county-game') {
+                if (typeof CountyGameModule !== 'undefined') {
+                    this.gameModule = new CountyGameModule();
+                } else {
+                    console.error('CountyGameModule class not found - check script loading');
                     this.gameModule = null;
                 }
             } else {
@@ -1823,23 +1836,37 @@ class GameShell {
         const resultMessage = document.getElementById('game-result-message');
         const finalScores = document.getElementById('final-scores');
         
-        if (endScreen && resultMessage && finalScores) {
+        
+        if (endScreen && resultMessage) {
             // Update message with server's result message
             resultMessage.textContent = gameEndData.message || 'Game Complete!';
             
             // Show final scores - server sends 'scores', not 'finalScores'
-            const scores = gameEndData.scores || gameEndData.finalScores;
-            if (scores) {
-                finalScores.innerHTML = '';
-                Object.entries(scores).forEach(([playerId, score]) => {
-                    const player = this.players[playerId];
-                    if (player) {
-                        const scoreItem = document.createElement('div');
-                        scoreItem.className = 'final-score-item';
-                        scoreItem.innerHTML = \`\${player.emoji} \${player.name}: \${score}\`;
-                        finalScores.appendChild(scoreItem);
-                    }
-                });
+            if (finalScores) {
+                const scores = gameEndData.scores || gameEndData.finalScores;
+                if (scores && Object.keys(scores).length > 0) {
+                    // Show scores when they exist - restore normal styling
+                    finalScores.innerHTML = '';
+                    finalScores.style.display = 'block';
+                    finalScores.style.visibility = 'visible';
+                    finalScores.style.height = '';
+                    finalScores.style.padding = '';
+                    finalScores.style.margin = '';
+                    finalScores.style.border = '';
+                    
+                    Object.entries(scores).forEach(([playerId, score]) => {
+                        const player = this.players[playerId];
+                        if (player) {
+                            const scoreItem = document.createElement('div');
+                            scoreItem.className = 'final-score-item';
+                            scoreItem.innerHTML = \`\${player.emoji} \${player.name}: \${score}\`;
+                            finalScores.appendChild(scoreItem);
+                        }
+                    });
+                } else {
+                    // Hide the scores element when there are no scores
+                    finalScores.style.display = 'none';
+                }
             }
             
             endScreen.style.display = 'block';
@@ -1853,6 +1880,11 @@ class GameShell {
                     this.leaveGame();
                 };
             }
+        } else {
+            console.error('[GameShell] Cannot show end screen - missing elements:', {
+                endScreen: !!endScreen,
+                resultMessage: !!resultMessage
+            });
         }
     }
 
@@ -1985,6 +2017,7 @@ class GameShell {
         const gameNames = {
             'checkbox-game': 'Checkbox Game',
             'votes-game': 'Everybody Votes',
+            'county-game': 'County Game',
             'paddlin-game': "That's a Paddlin'",
             'price-game': 'The Price is Weird'
         };
@@ -2029,55 +2062,6 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = GameShell;
 } else {
     window.GameShell = GameShell;
-}`,
-  '/static/js/games/BracketeeringGameModule.js': `/**
- * BracketeeringGameModule - Coming Soon
- * Placeholder for future bracket-style voting game
- */
-class BracketeeringGameModule extends GameModule {
-    constructor() {
-        super();
-    }
-
-    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement) {
-        super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement);
-        this.render();
-    }
-
-    getRules() {
-        return \`
-            <h3>Bracketeering</h3>
-            <p>Coming soon! Tournament-style voting on head-to-head matchups.</p>
-        \`;
-    }
-
-    render() {
-        if (!this.gameAreaElement) return;
-        this.gameAreaElement.innerHTML = '<div>Bracketeering game coming soon!</div>';
-    }
-
-    handlePlayerAction(playerId, action) {
-        // Placeholder
-    }
-
-    handleStateUpdate(gameSpecificState) {
-        super.handleStateUpdate(gameSpecificState);
-    }
-
-    handleMessage(message) {
-        // Placeholder
-    }
-
-    cleanup() {
-        super.cleanup();
-    }
-}
-
-// Export for use
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = BracketeeringGameModule;
-} else {
-    window.BracketeeringGameModule = BracketeeringGameModule;
 }`,
   '/static/js/games/CheckboxGameModule.js': `/**
  * CheckboxGameModule - Implements the checkbox game as a GameModule
@@ -2398,6 +2382,462 @@ if (typeof module !== 'undefined' && module.exports) {
 } else {
     window.CheckboxGameModule = CheckboxGameModule;
 }`,
+  '/static/js/games/CountyGameModule.js': `/**
+ * CountyGameModule
+ * A silly game where players submit county names and celebrate together
+ */
+class CountyGameModule extends GameModule {
+    constructor() {
+        super();
+        this.currentPhase = 'WAITING'; // WAITING, COUNTY_SUBMISSION, COUNTY_ANNOUNCEMENT, GAME_OVER
+        this.myCounty = null;
+        this.submittedCount = 0;
+        this.totalPlayers = 0;
+        this.timeRemaining = 0;
+        this.timerInterval = null;
+        this.counties = {};
+        this.currentAnnouncement = null;
+        this.canConclude = false;
+        this.isHost = false;
+    }
+
+    /**
+     * Initialize the game
+     */
+    init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement) {
+        super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement);
+        
+        // Check if current player is host
+        if (initialState && initialState.hostId) {
+            this.isHost = (this.currentPlayerId === initialState.hostId);
+        }
+        
+        // Set initial state if provided
+        if (initialState) {
+            this.currentPhase = initialState.phase || 'WAITING';
+            this.counties = initialState.counties || {};
+            this.timeRemaining = initialState.timeLimit || 30;
+            
+            // Calculate time remaining from server end time
+            if (initialState.submissionEndTime) {
+                const now = Date.now();
+                this.timeRemaining = Math.max(0, Math.floor((initialState.submissionEndTime - now) / 1000));
+            }
+        }
+        
+        this.totalPlayers = Object.keys(this.players).length;
+        this.render();
+    }
+
+    /**
+     * Get game rules HTML
+     */
+    getRules() {
+        return \`
+            <h3>County Game</h3>
+            <ul>
+                <li>enter the name of a county</li>
+                <li>everybody wins!</li>
+            </ul>
+        \`;
+    }
+
+    /**
+     * Start countdown timer
+     */
+    startTimer() {
+        this.clearTimer();
+        this.timerInterval = setInterval(() => {
+            this.timeRemaining = Math.max(0, this.timeRemaining - 1);
+            this.updateTimerDisplay();
+            if (this.timeRemaining <= 0) {
+                this.clearTimer();
+            }
+        }, 1000);
+    }
+
+    /**
+     * Clear countdown timer
+     */
+    clearTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+    }
+
+    /**
+     * Update timer display
+     */
+    updateTimerDisplay() {
+        const timerElement = this.gameAreaElement?.querySelector('.timer-display');
+        if (timerElement) {
+            timerElement.textContent = \`Time remaining: \${this.timeRemaining}s\`;
+        }
+    }
+
+    /**
+     * Update submission status without re-rendering the entire UI
+     */
+    updateSubmissionStatus() {
+        // Update all submission status elements (both in form and in submitted view)
+        const statusElements = this.gameAreaElement?.querySelectorAll('.submission-status');
+        if (statusElements) {
+            statusElements.forEach(element => {
+                element.textContent = \`\${this.submittedCount} of \${this.totalPlayers} players submitted\`;
+            });
+        }
+    }
+
+    /**
+     * Render the game UI based on current phase
+     */
+    render() {
+        if (!this.gameAreaElement) return;
+        
+        // Preserve current input value if it exists
+        const existingInput = this.gameAreaElement.querySelector('#county-input');
+        const preservedValue = existingInput ? existingInput.value : '';
+        
+        let content = '';
+        
+        switch (this.currentPhase) {
+            case 'WAITING':
+                content = this.renderWaitingPhase();
+                break;
+            case 'COUNTY_SUBMISSION':
+                content = this.renderSubmissionPhase();
+                break;
+            case 'COUNTY_ANNOUNCEMENT':
+                content = this.renderAnnouncementPhase();
+                break;
+            case 'GAME_OVER':
+                // Game over is handled by the shell's win screen
+                content = '';
+                break;
+            default:
+                content = this.renderWaitingPhase();
+        }
+        
+        this.gameAreaElement.innerHTML = content;
+        
+        // Restore input value if we're still in submission phase and haven't submitted yet
+        if (this.currentPhase === 'COUNTY_SUBMISSION' && !this.myCounty && preservedValue) {
+            const newInput = this.gameAreaElement.querySelector('#county-input');
+            if (newInput) {
+                newInput.value = preservedValue;
+            }
+        }
+        
+        this.attachEventListeners();
+    }
+
+    /**
+     * Render waiting phase
+     */
+    renderWaitingPhase() {
+        return \`
+            <div class="county-game-waiting">
+                <h2>County Game</h2>
+                <p>Waiting for the host to start the game...</p>
+                <p>Get ready to share your county!</p>
+            </div>
+        \`;
+    }
+
+    /**
+     * Render submission phase
+     */
+    renderSubmissionPhase() {
+        const hasSubmitted = this.myCounty !== null;
+        
+        return \`
+            <div class="county-game-submission">
+                <h2>Submit Your County!</h2>
+                <div class="timer-display">Time remaining: \${this.timeRemaining}s</div>
+                
+                \${hasSubmitted ? \`
+                    <div class="submission-complete">
+                        <p>✅ County submitted!</p>
+                        <p class="submitted-county">You submitted: <strong>\${this.myCounty}</strong></p>
+                        <p>Waiting for others...</p>
+                        <div class="submission-status">
+                            \${this.submittedCount} of \${this.totalPlayers} players submitted
+                        </div>
+                    </div>
+                \` : \`
+                    <div class="submission-form">
+                        <p>Enter a county name (where you're from, where you live, or any county!):</p>
+                        <input 
+                            type="text" 
+                            id="county-input" 
+                            placeholder="Enter a county name..." 
+                            maxlength="100"
+                            autocomplete="off"
+                        />
+                        <button id="submit-county-btn" class="submit-btn">Submit County</button>
+                        <div class="submission-status">
+                            \${this.submittedCount} of \${this.totalPlayers} players submitted
+                        </div>
+                    </div>
+                \`}
+            </div>
+        \`;
+    }
+
+    /**
+     * Render announcement phase
+     */
+    renderAnnouncementPhase() {
+        let content = \`
+            <div class="county-game-announcement">
+                <h2>County Announcements</h2>
+        \`;
+
+        if (this.currentAnnouncement) {
+            content += \`
+                <div class="announcement-display">
+                    <div class="player-number">PLAYER \${this.currentAnnouncement.playerNumber}</div>
+                    <div class="player-info">
+                        <span class="player-emoji">\${this.currentAnnouncement.playerEmoji}</span>
+                        <span class="player-name">\${this.currentAnnouncement.playerName}</span>
+                    </div>
+                    <div class="county-name">"\${this.currentAnnouncement.county}"</div>
+                </div>
+            \`;
+        } else {
+            // Show different message for host vs other players
+            if (this.isHost) {
+                content += \`
+                    <div class="announcement-waiting">
+                        <p>Click BEGIN to start the excitement!</p>
+                    </div>
+                \`;
+            } else {
+                content += \`
+                    <div class="announcement-waiting">
+                        <p>Waiting for host to begin announcements...</p>
+                    </div>
+                \`;
+            }
+        }
+
+        // Show controls for host
+        if (this.isHost) {
+            content += '<div class="host-controls">';
+            
+            if (!this.currentAnnouncement) {
+                content += '<button id="begin-btn" class="control-btn">BEGIN</button>';
+            } else if (this.canConclude) {
+                content += '<button id="conclude-btn" class="control-btn">CONCLUDE</button>';
+            } else if (!this.currentAnnouncement.isLast) {
+                content += '<button id="next-btn" class="control-btn">NEXT</button>';
+            } else {
+                content += '<p>All players announced!</p>';
+                content += '<button id="conclude-btn" class="control-btn">CONCLUDE</button>';
+            }
+            
+            content += '</div>';
+        }
+
+        content += '</div>';
+        return content;
+    }
+
+    /**
+     * Attach event listeners
+     */
+    attachEventListeners() {
+        // Submit county button
+        const submitBtn = this.gameAreaElement?.querySelector('#submit-county-btn');
+        const countyInput = this.gameAreaElement?.querySelector('#county-input');
+        
+        if (submitBtn && countyInput) {
+            submitBtn.addEventListener('click', () => this.submitCounty());
+            countyInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.submitCounty();
+                }
+            });
+            
+            // Focus the input
+            countyInput.focus();
+        }
+
+        // Announcement phase buttons (host only)
+        const beginBtn = this.gameAreaElement?.querySelector('#begin-btn');
+        const nextBtn = this.gameAreaElement?.querySelector('#next-btn');
+        const concludeBtn = this.gameAreaElement?.querySelector('#conclude-btn');
+
+        if (beginBtn) {
+            beginBtn.addEventListener('click', () => {
+                if (this.onPlayerAction) {
+                    this.onPlayerAction({
+                        type: 'begin_announcements'
+                    });
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (this.onPlayerAction) {
+                    this.onPlayerAction({
+                        type: 'next_announcement'
+                    });
+                }
+            });
+        }
+
+        if (concludeBtn) {
+            concludeBtn.addEventListener('click', () => {
+                if (this.onPlayerAction) {
+                    this.onPlayerAction({
+                        type: 'conclude_announcements'
+                    });
+                }
+            });
+        }
+    }
+
+    /**
+     * Submit county to server
+     */
+    submitCounty() {
+        const countyInput = this.gameAreaElement?.querySelector('#county-input');
+        if (!countyInput) return;
+        
+        const county = countyInput.value.trim();
+        if (!county) {
+            alert('Please enter a county name!');
+            return;
+        }
+        
+        // Send to server
+        if (this.onPlayerAction) {
+            this.onPlayerAction({
+                type: 'submit_county',
+                county: county
+            });
+        }
+        
+        // Store locally
+        this.myCounty = county;
+        this.render();
+    }
+
+    /**
+     * Handle state updates from server
+     */
+    handleStateUpdate(gameSpecificState) {
+        // Update game state without calling super to control rendering
+        this.gameState = { ...this.gameState, ...gameSpecificState };
+        
+        // Track if phase changed to determine if we need to re-render
+        const previousPhase = this.currentPhase;
+        
+        // Check if we have the full gameState to determine host
+        if (gameSpecificState.hostId) {
+            this.isHost = (this.currentPlayerId === gameSpecificState.hostId);
+        }
+        
+        if (gameSpecificState.phase) {
+            this.currentPhase = gameSpecificState.phase;
+        }
+        
+        if (gameSpecificState.counties) {
+            this.counties = gameSpecificState.counties;
+        }
+        
+        if (gameSpecificState.submissionEndTime) {
+            const now = Date.now();
+            this.timeRemaining = Math.max(0, Math.floor((gameSpecificState.submissionEndTime - now) / 1000));
+            
+            if (this.currentPhase === 'COUNTY_SUBMISSION' && this.timeRemaining > 0) {
+                this.startTimer();
+            }
+        }
+        
+        // Only render if phase changed or we're not in submission phase
+        // This prevents re-rendering (and clearing inputs) during submission updates
+        if (previousPhase !== this.currentPhase || this.currentPhase !== 'COUNTY_SUBMISSION') {
+            this.render();
+        }
+    }
+
+    /**
+     * Handle messages from server
+     */
+    handleMessage(message) {
+        switch (message.type) {
+            case 'phase_changed':
+                this.currentPhase = message.phase;
+                if (message.phase === 'COUNTY_SUBMISSION') {
+                    // Clear previous submission
+                    this.myCounty = null;
+                    this.submittedCount = 0;
+                } else if (message.phase === 'COUNTY_ANNOUNCEMENT') {
+                    // Reset announcement state
+                    this.currentAnnouncement = null;
+                    this.canConclude = false;
+                }
+                this.render();
+                break;
+                
+            case 'county_submission_started':
+                this.timeRemaining = message.timeLimit || 30;
+                this.startTimer();
+                this.render();
+                break;
+                
+            case 'county_submitted':
+                // Confirmation of our submission
+                this.myCounty = message.county;
+                this.render();
+                break;
+                
+            case 'submission_update':
+                this.submittedCount = message.submittedCount;
+                this.totalPlayers = message.totalPlayers;
+                // Only update the submission status display, don't re-render the whole UI
+                this.updateSubmissionStatus();
+                break;
+                
+            case 'player_announcement':
+                // Display the current player's county
+                this.currentAnnouncement = message.data;
+                this.canConclude = false;
+                this.render();
+                break;
+                
+            case 'all_announced':
+                // All players have been announced, can now conclude
+                this.canConclude = true;
+                this.render();
+                break;
+                
+            case 'game_ended':
+                // Game ended is handled by the shell - just cleanup
+                this.clearTimer();
+                break;
+        }
+    }
+
+    /**
+     * Cleanup when leaving game
+     */
+    cleanup() {
+        this.clearTimer();
+        super.cleanup();
+    }
+}
+
+// Export for use
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = CountyGameModule;
+} else {
+    window.CountyGameModule = CountyGameModule;
+}`,
   '/static/js/games/EverybodyVotesGameModule.js': `/**
  * EverybodyVotesGameModule - Multi-round implementation
  * Simple voting game: Pizza or Burgers? (and more!)
@@ -2433,7 +2873,6 @@ class EverybodyVotesGameModule extends GameModule {
     init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement) {
         super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement);
         
-        console.log('🎮 EverybodyVotesGameModule.init() called with initialState:', initialState);
         
         // Set initial state if provided
         if (initialState) {
@@ -2450,7 +2889,6 @@ class EverybodyVotesGameModule extends GameModule {
             this.finalScores = initialState.finalScores || [];
             this.isHost = initialState.isHost || false;
             
-            console.log(\`📍 Initial phase: \${this.currentPhase}, question: \${this.question}, round: \${this.currentRound}/\${this.totalRounds}\`);
         } else {
             // Default to VOTING phase
             this.currentPhase = 'VOTING';
@@ -2610,7 +3048,7 @@ class EverybodyVotesGameModule extends GameModule {
                 text-align: center;
             ">
                 \${this.getRoundProgressIndicator()}
-                <h2 style="font-size: 2rem; margin-bottom: 1rem;">🗳️ Everybody Votes!</h2>
+                <h2 style="font-size: 2rem; margin-bottom: 1rem;">Everybody Votes!</h2>
                 <p style="font-size: 1.2rem;">Game is starting...</p>
             </div>
         \`;
@@ -2620,7 +3058,6 @@ class EverybodyVotesGameModule extends GameModule {
      * Render voting phase
      */
     renderVotingPhase() {
-        console.log('🎨 Rendering voting phase...');
         
         return \`
             <div class="everybody-votes-container" style="
@@ -2633,7 +3070,7 @@ class EverybodyVotesGameModule extends GameModule {
                 color: white;
             ">
                 \${this.getRoundProgressIndicator()}
-                <h2 style="font-size: 2rem; margin-bottom: 1rem;">🗳️ Time to Vote!</h2>
+                <h2 style="font-size: 2rem; margin-bottom: 1rem;">Time to Vote!</h2>
                 
                 <div style="
                     background: rgba(255, 255, 255, 0.1);
@@ -2660,7 +3097,7 @@ class EverybodyVotesGameModule extends GameModule {
                             \` : ''}
                             \${this.allVoted ? \`
                                 <p style="margin: 0.5rem 0 0 0; font-size: 1rem; color: #4CAF50; font-weight: bold;">
-                                    ✅ All players voted! Calculating results...
+                                    All players voted! Calculating results...
                                 </p>
                             \` : ''}
                         </div>
@@ -2711,7 +3148,6 @@ class EverybodyVotesGameModule extends GameModule {
      * Render predicting phase
      */
     renderPredictingPhase() {
-        console.log('🎨 Rendering predicting phase...');
         
         return \`
             <div class="everybody-votes-container" style="
@@ -2795,7 +3231,6 @@ class EverybodyVotesGameModule extends GameModule {
      * Render results phase
      */
     renderResultsPhase() {
-        console.log('🎨 Rendering results phase...');
         
         if (!this.results) {
             return \`<div class="everybody-votes-container">Loading results...</div>\`;
@@ -2899,7 +3334,7 @@ class EverybodyVotesGameModule extends GameModule {
                     </div>
                     
                     <p style="font-size: 1.4rem; margin: 1rem 0; font-weight: bold;">
-                        Winner: \${winner === 'Tie' ? '🤝 It\\'s a tie!' : \`🏆 \${winner}\`}
+                        Winner: \${winner === 'Tie' ? 'It\\'s a tie!' : \`\${winner}\`}
                     </p>
                     
                     <p style="font-size: 1.2rem; margin: 1rem 0;">
@@ -2915,7 +3350,7 @@ class EverybodyVotesGameModule extends GameModule {
                         ">
                             <p style="margin: 0; font-size: 1rem;">
                                 Your prediction: <strong>\${this.myPrediction}</strong>
-                                \${this.myPrediction === winner && winner !== 'Tie' ? ' ✅ Correct!' : ' ❌ Wrong'}
+                                \${this.myPrediction === winner && winner !== 'Tie' ? ' Correct!' : ' Wrong'}
                             </p>
                         </div>
                     \` : ''}
@@ -2936,7 +3371,7 @@ class EverybodyVotesGameModule extends GameModule {
                         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                         margin-top: 1rem;
                     " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                        🏁 End Game
+                        End Game
                     </button>
                 \` : (this.isHost ? \`
                     <button id="next-question-btn" style="
@@ -2968,7 +3403,6 @@ class EverybodyVotesGameModule extends GameModule {
      * Render round transition phase
      */
     renderRoundTransitionPhase() {
-        console.log('🎨 Rendering round transition phase...');
         
         // Get current scores display
         const scoresHtml = this.getPlayerScoresHtml();
@@ -2985,7 +3419,7 @@ class EverybodyVotesGameModule extends GameModule {
                 text-align: center;
             ">
                 \${this.getRoundProgressIndicator()}
-                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">🎯 Round \${this.currentRound} Complete!</h2>
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">Round \${this.currentRound} Complete!</h2>
                 
                 <div style="
                     background: rgba(255, 255, 255, 0.1);
@@ -3029,7 +3463,6 @@ class EverybodyVotesGameModule extends GameModule {
      * Render final results phase
      */
     renderFinalResultsPhase() {
-        console.log('🎨 Rendering final results phase...');
         
         const finalScoresHtml = this.getFinalScoresHtml();
         const roundSummaryHtml = this.getRoundSummaryHtml();
@@ -3045,7 +3478,7 @@ class EverybodyVotesGameModule extends GameModule {
                 color: white;
                 text-align: center;
             ">
-                <h2 style="font-size: 3rem; margin-bottom: 1rem;">🏆 Game Complete!</h2>
+                <h2 style="font-size: 3rem; margin-bottom: 1rem;">Game Complete!</h2>
                 
                 <div style="
                     background: rgba(255, 255, 255, 0.1);
@@ -3086,7 +3519,7 @@ class EverybodyVotesGameModule extends GameModule {
                     min-width: 250px;
                     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                 " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    🏁 The End
+                    The End
                 </button>
             </div>
         \`;
@@ -3117,7 +3550,7 @@ class EverybodyVotesGameModule extends GameModule {
                         \${index === 0 ? 'border: 2px solid #FFD700;' : ''}
                     ">
                         <span style="font-weight: bold;">
-                            \${index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : \`\${index + 1}.\`}
+                            \${index === 0 ? '1st' : index === 1 ? '2nd' : index === 2 ? '3rd' : \`\${index + 1}.\`}
                             \${this.getPlayerName(playerId)}
                         </span>
                         <span style="font-weight: bold; font-size: 1.2rem;">
@@ -3217,7 +3650,6 @@ class EverybodyVotesGameModule extends GameModule {
             btn.addEventListener('click', (e) => {
                 const vote = e.target.dataset.vote;
                 if (vote && this.onPlayerAction) {
-                    console.log(\`🗳️ Player voting for: \${vote}\`);
                     this.myVote = vote; // Remember the vote
                     this.onPlayerAction({
                         type: 'submit_vote',
@@ -3233,7 +3665,6 @@ class EverybodyVotesGameModule extends GameModule {
             btn.addEventListener('click', (e) => {
                 const prediction = e.target.dataset.prediction;
                 if (prediction && this.onPlayerAction) {
-                    console.log(\`🔮 Player predicting: \${prediction}\`);
                     this.myPrediction = prediction; // Remember the prediction
                     this.onPlayerAction({
                         type: 'submit_prediction',
@@ -3247,7 +3678,6 @@ class EverybodyVotesGameModule extends GameModule {
         const nextQuestionBtn = this.gameAreaElement.querySelector('#next-question-btn');
         if (nextQuestionBtn && this.onPlayerAction) {
             nextQuestionBtn.addEventListener('click', () => {
-                console.log('➡️ Next Question button clicked');
                 this.onPlayerAction({
                     type: 'advance_round',
                     data: {}
@@ -3259,7 +3689,6 @@ class EverybodyVotesGameModule extends GameModule {
         const continueRoundBtn = this.gameAreaElement.querySelector('#continue-round-btn');
         if (continueRoundBtn && this.onPlayerAction) {
             continueRoundBtn.addEventListener('click', () => {
-                console.log('🚀 Continue to next round button clicked');
                 this.onPlayerAction({
                     type: 'advance_round',
                     data: {}
@@ -3271,7 +3700,6 @@ class EverybodyVotesGameModule extends GameModule {
         const endGameBtn = this.gameAreaElement.querySelector('#end-game-btn');
         if (endGameBtn && this.onPlayerAction) {
             endGameBtn.addEventListener('click', () => {
-                console.log('🏁 End Game button clicked');
                 this.onPlayerAction({
                     type: 'end_game',
                     data: {}
@@ -3283,7 +3711,6 @@ class EverybodyVotesGameModule extends GameModule {
         const newGameBtn = this.gameAreaElement.querySelector('#new-game-btn');
         if (newGameBtn && this.onPlayerAction) {
             newGameBtn.addEventListener('click', () => {
-                console.log('🏁 The End button clicked');
                 // Show everyone wins screen
                 this.showEveryoneWins();
             });
@@ -3386,11 +3813,9 @@ class EverybodyVotesGameModule extends GameModule {
      * Handle WebSocket messages
      */
     handleMessage(message) {
-        console.log('🎮 Handling message:', message.type, message);
         
         switch (message.type) {
             case 'game_started':
-                console.log('🎮 Game started message received:', message.data);
                 if (message.data && message.data.phase) {
                     this.currentPhase = message.data.phase;
                     this.question = message.data.question || this.question;
@@ -3432,7 +3857,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'predicting_started':
-                console.log('🔮 Predicting phase started:', message.data);
                 this.currentPhase = 'PREDICTING';
                 this.timeRemaining = message.data.timeLimit || 15;
                 this.startTimer();
@@ -3440,7 +3864,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'prediction_phase':
-                console.log('🔮 Prediction phase message:', message.data);
                 if (message.data) {
                     this.currentPhase = message.data.phase || 'PREDICTING';
                     this.question = message.data.question || this.question;
@@ -3468,7 +3891,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'vote_progress':
-                console.log('📊 Vote progress update:', message.data);
                 this.votesCount = message.data.votesCount || 0;
                 this.totalPlayers = message.data.totalPlayers || 0;
                 this.lastVoterName = message.data.voterName;
@@ -3477,7 +3899,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'round_results':
-                console.log('📊 Round results received:', message.data);
                 this.currentPhase = 'RESULTS';
                 this.results = message.data.results;
                 this.question = message.data.question;
@@ -3494,14 +3915,11 @@ class EverybodyVotesGameModule extends GameModule {
             // Removed round_transition - we now auto-advance after results
                 
             case 'host_assigned':
-                console.log('👑 Host assigned:', message.data);
                 this.isHost = (this.currentPlayerId === message.data.hostId);
-                console.log(\`👑 Is host: \${this.isHost}, currentPlayerId: \${this.currentPlayerId}, hostId: \${message.data.hostId}\`);
                 this.render();
                 break;
                 
             case 'voting_results':
-                console.log('📊 Voting results received:', message.data);
                 this.currentPhase = 'RESULTS';
                 this.results = message.data.results;
                 this.question = message.data.question;
@@ -3509,7 +3927,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'final_summary':
-                console.log('🏆 Final summary received:', message.data);
                 this.currentPhase = 'ENDED';
                 if (message.data.finalScores) {
                     this.finalScores = message.data.finalScores;
@@ -3524,12 +3941,10 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'advance_round':
-                console.log('🚀 Advancing to next round:', message.data);
                 // Server will send new_round message for the next round
                 break;
                 
             case 'new_round':
-                console.log('🆕 New round started:', message.data);
                 if (message.data) {
                     this.currentPhase = message.data.phase || 'VOTING';
                     this.question = message.data.question || this.question;
@@ -3546,7 +3961,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'game_results':
-                console.log('📊 Game results received:', message);
                 this.currentPhase = 'RESULTS';
                 this.results = message.results;
                 this.question = message.question;
@@ -3554,26 +3968,13 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'game_ended':
-                console.log('🏁 Game ended:', message.data);
-                this.currentPhase = 'ENDED';
-                if (message.data.finalScores) {
-                    this.finalScores = message.data.finalScores;
-                }
-                if (message.data.roundResults) {
-                    this.roundResults = message.data.roundResults;
-                }
-                this.render();
+                // Don't handle game_ended here - let GameShell show the unified end screen
+                // GameShell will call showGameEndScreen() which has the OK button to return to lobby
                 break;
                 
             case 'final_results':
-                console.log('🏆 Final results message:', message.data);
-                if (message.data) {
-                    this.currentPhase = message.data.phase || 'ENDED';
-                    this.finalScores = message.data.finalScores || this.finalScores;
-                    this.roundResults = message.data.roundResults || this.roundResults;
-                    this.totalRounds = message.data.totalRounds || this.totalRounds;
-                }
-                this.render();
+                // Don't handle final_results here - let GameShell handle the game_ended message
+                // to show the unified end screen with proper OK button functionality
                 break;
                 
             case 'error':
@@ -3581,7 +3982,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             default:
-                console.log('🤷 Unhandled message type:', message.type);
                 break;
         }
     }
@@ -3692,7 +4092,7 @@ class PriceGameModule extends GameModule {
                 text-align: center;
                 padding: 2rem;
             ">
-                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">💰 The Price is Weird 💰</h2>
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">The Price is Weird</h2>
                 <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem;">Price is Right Clone with Etsy Products</p>
                 <div style="
                     background: rgba(255, 255, 255, 0.2);
@@ -5660,49 +6060,7 @@ input:focus {
     transform: translateY(-1px);
 }
 
-.checkbox-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(3, 1fr);
-    gap: 10px;
-    max-width: 300px;
-    margin: 0 auto;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 10px;
-}
-
-.checkbox-item {
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-}
-
-.checkbox-item:hover {
-    border-color: #3498db;
-    background: #f0f7ff;
-    transform: scale(1.05);
-}
-
-.checkbox-item.checked {
-    background: #27ae60;
-    border-color: #219a52;
-}
-
-.checkbox-item.checked::after {
-    content: '✓';
-    color: white;
-    font-size: 24px;
-    font-weight: bold;
-}
+/* Duplicate checkbox styles removed - see lines 1428-1510 for checkbox styling */
 
 /* Name control responsive styles */
 .responsive-name-control {
@@ -6075,14 +6433,207 @@ main {
     cursor: not-allowed;
     opacity: 0.7;
     text-shadow: none;
+}
+
+/* County Game Styles */
+.county-game-waiting,
+.county-game-submission,
+.county-game-announcement {
+    text-align: center;
+    padding: 2rem;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.county-game-submission h2 {
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.county-game-submission .timer-display {
+    font-size: 1.2rem;
+    color: #666;
+    margin-bottom: 2rem;
+    font-weight: 600;
+}
+
+.county-game-submission .submission-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.county-game-submission #county-input {
+    width: 100%;
+    max-width: 400px;
+    padding: 0.75rem;
+    font-size: 1.1rem;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    margin: 1rem 0;
+    text-align: center;
+}
+
+.county-game-submission #county-input:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.county-game-submission .submit-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.county-game-submission .submit-btn:hover {
+    background: #218838;
+}
+
+.county-game-submission .submission-complete {
+    background: #f8f9fa;
+    padding: 2rem;
+    border-radius: 12px;
+    border: 2px solid #28a745;
+}
+
+.county-game-submission .submitted-county {
+    font-size: 1.2rem;
+    color: #333;
+    margin: 1rem 0;
+}
+
+.county-game-submission .submission-status {
+    margin-top: 1.5rem;
+    font-size: 1rem;
+    color: #666;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 6px;
+}
+
+/* County Game Announcement Phase */
+.county-game-announcement h2 {
+    color: #333;
+    margin-bottom: 2rem;
+}
+
+.announcement-display {
+    background: #ffffff;
+    padding: 2.5rem 2rem;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    margin: 2rem auto;
+    animation: slideIn 0.5s ease-out;
+    max-width: 500px;
+    border: 1px solid #e8f0fe;
+    text-align: center;
+    position: relative;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.announcement-display .player-number {
+    font-size: 0.9rem;
+    color: #8b92a8;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
+.announcement-display .player-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.announcement-display .player-emoji {
+    font-size: 2.5rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.announcement-display .player-name {
+    font-size: 1.5rem;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.announcement-display .county-name {
+    font-size: 2.2rem;
+    color: #5e72e4;
+    font-weight: 700;
+    margin-top: 1rem;
+    font-style: normal;
+    line-height: 1.3;
+    word-wrap: break-word;
+    padding: 0 1rem;
+}
+
+.announcement-waiting {
+    padding: 3rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    color: #666;
+}
+
+.host-controls {
+    margin-top: 2rem;
+}
+
+.host-controls .control-btn {
+    background: #5e72e4;
+    color: white;
+    border: none;
+    padding: 0.9rem 2.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(94, 114, 228, 0.25);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.host-controls .control-btn:hover {
+    background: #4c63d2;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(94, 114, 228, 0.35);
+}
+
+.host-controls .control-btn:active {
+    transform: translateY(0);
+}
+
+.host-controls p {
+    color: #666;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
 }`,
   '/static/version.json': `{
   "version": "1.1.2",
   "baseVersion": "1.1.2",
-  "branch": "everybody-votes",
-  "commit": "3ff3ba6",
-  "timestamp": "2025-08-13T13:38:55.990Z",
-  "deployedAt": "Aug 13, 2025, 07:38 AM MDT"
+  "branch": "county-game",
+  "commit": "4c1fb45",
+  "timestamp": "2025-08-18T05:17:36.055Z",
+  "deployedAt": "Aug 17, 2025, 11:17 PM MDT"
 }`
 };
 

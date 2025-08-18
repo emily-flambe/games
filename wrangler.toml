@@ -1,11 +1,12 @@
 name = "games"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
 
+# Production routes (not inherited by preview)
+[env.production]
 routes = [
   { pattern = "games.emilycogsdill.com/*", zone_name = "emilycogsdill.com" }
 ]
-main = "src/index.ts"
-compatibility_date = "2024-12-30"
-compatibility_flags = ["nodejs_compat"]
 
 [dev]
 port = 8777
@@ -24,6 +25,10 @@ name = "EVERYBODY_VOTES_SESSIONS"
 class_name = "EverybodyVotesGameSession"
 
 [[durable_objects.bindings]]
+name = "COUNTY_GAME_SESSIONS"
+class_name = "CountyGameSession"
+
+[[durable_objects.bindings]]
 name = "GAME_REGISTRY"
 class_name = "GameSessionRegistry"
 
@@ -39,3 +44,34 @@ new_classes = [ "GameSessionRegistry" ]
 [[migrations]]
 tag = "v3"
 new_classes = [ "CheckboxGameSession", "EverybodyVotesGameSession" ]
+
+[[migrations]]
+tag = "v4"
+new_classes = [ "CountyGameSession" ]
+
+# Preview Environment Configuration
+# Single preview deployment for testing changes before production
+[env.preview]
+name = "games-preview"
+# Preview deployments use workers.dev subdomain
+
+# Durable Objects (inherited from top level)
+[[env.preview.durable_objects.bindings]]
+name = "GAME_SESSIONS"
+class_name = "GameSession"
+
+[[env.preview.durable_objects.bindings]]
+name = "CHECKBOX_SESSIONS"
+class_name = "CheckboxGameSession"
+
+[[env.preview.durable_objects.bindings]]
+name = "EVERYBODY_VOTES_SESSIONS"
+class_name = "EverybodyVotesGameSession"
+
+[[env.preview.durable_objects.bindings]]
+name = "COUNTY_GAME_SESSIONS"
+class_name = "CountyGameSession"
+
+[[env.preview.durable_objects.bindings]]
+name = "GAME_REGISTRY"
+class_name = "GameSessionRegistry"

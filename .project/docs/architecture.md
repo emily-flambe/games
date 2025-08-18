@@ -13,8 +13,11 @@ Modular Cloudflare Workers platform with separate Durable Objects for each game 
 ### Durable Objects
 - **GameSession**: Abstract base class with shared functionality (chat, spectators, player management)
 - **CheckboxGameSession**: Checkbox game implementation
-- **EverybodyVotesGameSession**: Everybody Votes game implementation  
+- **CountyGameSession**: County Game implementation
+- **EverybodyVotesGameSession**: Everybody Votes game implementation
 - **GameSessionRegistry**: Tracks and manages active game sessions
+
+**Additional Games**: PriceIsWeirdGame, ThatsAPaddlinGame (frontend modules exist)
 - Per-session isolation with 100 WebSocket connections max
 - In-memory state management with storage persistence
 
@@ -52,6 +55,7 @@ Client → Worker → Game-Specific Durable Object → Broadcast → All Clients
          ↓
     Route by gameType:
     - 'checkbox-game' → CheckboxGameSession
+    - 'county-game' → CountyGameSession
     - 'everybody-votes' → EverybodyVotesGameSession
     - others → Base GameSession
 ```
@@ -73,6 +77,7 @@ src/
 ├── durable-objects/
 │   ├── GameSession.ts    # Base class with shared functionality
 │   ├── CheckboxGameSession.ts      # Checkbox game logic
+│   ├── CountyGameSession.ts        # County game logic
 │   ├── EverybodyVotesGameSession.ts # Everybody Votes logic
 │   └── GameSessionRegistry.ts      # Active session tracking
 ├── static/

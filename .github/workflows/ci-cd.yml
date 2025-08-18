@@ -9,6 +9,10 @@ on:
 jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     
     steps:
     - name: Checkout code
@@ -20,22 +24,120 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
     
     - name: Install dependencies
       run: npm ci
     
+    - name: Build project
+      run: npm run build
+    
     - name: Run unit tests
       run: npm run test:unit
-    
-    - name: Run additional tests
-      run: npm run test
       env:
         CI: true
     
-    - name: Build project
-      run: npm run build
+    - name: Run Vitest integration tests
+      run: npm run test:vitest
+      env:
+        CI: true
+        NODE_ENV: test
+    
+    # Deploy to preview environment for E2E testing
+    - name: Set preview URL
+      id: preview
+      run: |
+        echo "preview_url=https://games-preview.emily-cogsdill.workers.dev" >> $GITHUB_OUTPUT
+        echo "Preview deployment: games-preview"
+    
+    - name: Deploy to preview environment
+      id: deploy-preview
+      run: |
+        npm install -g wrangler
+        # Deploy to single preview worker (games-preview)
+        wrangler deploy --env preview
+        echo "Preview deployed to: ${{ steps.preview.outputs.preview_url }}"
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    
+    # Run E2E tests against preview deployment
+    - name: Install Puppeteer dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          ca-certificates \
+          fonts-liberation \
+          libasound2t64 \
+          libatk-bridge2.0-0 \
+          libatk1.0-0 \
+          libc6 \
+          libcairo2 \
+          libcups2 \
+          libdbus-1-3 \
+          libexpat1 \
+          libfontconfig1 \
+          libgbm1 \
+          libgcc1 \
+          libglib2.0-0 \
+          libgtk-3-0 \
+          libnspr4 \
+          libnss3 \
+          libpango-1.0-0 \
+          libpangocairo-1.0-0 \
+          libstdc++6 \
+          libx11-6 \
+          libx11-xcb1 \
+          libxcb1 \
+          libxcomposite1 \
+          libxcursor1 \
+          libxdamage1 \
+          libxext6 \
+          libxfixes3 \
+          libxi6 \
+          libxrandr2 \
+          libxrender1 \
+          libxss1 \
+          libxtst6 \
+          lsb-release \
+          wget \
+          xdg-utils
+    
+    - name: Run E2E tests against preview
+      run: |
+        echo "Running E2E tests against ${{ steps.preview.outputs.preview_url }}"
+        npm run test:e2e:ci
+      env:
+        CI: true
+        TEST_URL: ${{ steps.preview.outputs.preview_url }}
+        HEADLESS: true
+    
+    # Add preview URL comment to PR
+    - name: Comment PR with preview URL
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const preview_url = '${{ steps.preview.outputs.preview_url }}';
+          const comment = `🚀 **Preview Deployment Ready!**
+
+          Your changes have been deployed to: ${preview_url}
+
+          ✅ All tests passed successfully!
+          - Unit tests: ✅
+          - Integration tests: ✅
+          - E2E tests: ✅
+
+          Preview deployments are automatically updated for each commit.`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
     
     # Only run version bump and deploy on main branch pushes (not PRs) AND if all tests pass
     - name: Bump version based on conventional commits
@@ -57,18 +159,17 @@ jobs:
           echo "version_bumped=false" >> $GITHUB_OUTPUT
         fi
     
-    - name: Deploy to Cloudflare Workers
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.version.outputs.version_bumped == 'true'
+    - name: Deploy to Production
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       run: |
-        npm install -g wrangler
-        echo "${{ secrets.CLOUDFLARE_API_TOKEN }}" | wrangler auth login
-        wrangler deploy
+        echo "All tests passed! Deploying to production..."
+        wrangler deploy --env production
       env:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     
     - name: Create Release Notes
-      if: steps.version.outputs.version_bumped == 'true'
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.version.outputs.version_bumped == 'true'
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -81,5 +182,21 @@ jobs:
           Changes in this release have been automatically determined from conventional commit messages.
           
           🚀 Deployed to: https://games.emilycogsdill.com
+          📝 Preview: ${{ steps.preview.outputs.preview_url }}
         draft: false
         prerelease: false
+
+  # Cleanup old preview deployments (runs daily)
+  cleanup-previews:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Cleanup old preview deployments
+      run: |
+        echo "Cleaning up preview deployments older than 7 days..."
+        # This would require Cloudflare API calls to list and delete old Workers
+        # For now, this is a placeholder
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

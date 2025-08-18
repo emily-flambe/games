@@ -4,22 +4,7 @@
  */
 
 import { DurableObject, DurableObjectState } from '@cloudflare/workers-types';
-
-export interface Env {
-  GAME_SESSIONS: DurableObjectNamespace;
-  GAME_REGISTRY: DurableObjectNamespace;
-}
-
-interface SessionMetadata {
-  sessionId: string;
-  gameType: string;
-  playerCount: number;
-  players: Array<{name: string; emoji: string}>;
-  createdAt: number;
-  lastHeartbeat: number;
-  roomStatus: 'active' | 'inactive';
-  gameStatus: 'waiting' | 'in-progress' | 'finished';
-}
+import { Env, SessionMetadata } from '../types';
 
 export class GameSession implements DurableObject {
   protected websockets: Map<WebSocket, string> = new Map();
@@ -44,10 +29,8 @@ export class GameSession implements DurableObject {
     
     if (storedState) {
       this.gameState = storedState;
-      console.log(`🔄 Loaded existing game state - type: ${this.gameState.type}, gameStarted: ${this.gameState.gameStarted}`);
     } else {
       this.gameState = this.createInitialGameState(gameType);
-      console.log(`🆕 Initialized fresh game state with type: ${gameType}`);
     }
     
     if (storedPlayers) {
@@ -124,7 +107,6 @@ export class GameSession implements DurableObject {
 
   async addPlayer(playerId: string, ws: WebSocket, sessionId?: string) {
     if (this.gameState.gameStarted) {
-      console.log(`👀 Game already started - adding ${playerId} as spectator`);
       await this.addSpectator(playerId, ws);
       return;
     }
@@ -195,11 +177,9 @@ export class GameSession implements DurableObject {
       await this.updateRegistry();
     }
 
-    console.log(`Player ${playerId} joined session ${this.sessionId}`);
   }
 
   async addSpectator(spectatorId: string, ws: WebSocket) {
-    console.log(`👀 Adding spectator ${spectatorId} to game in progress`);
     
     const spectator = {
       id: spectatorId,
@@ -305,6 +285,11 @@ export class GameSession implements DurableObject {
         gameState: this.gameState
       });
 
+      // Call game-specific disconnect handler if available
+      if (typeof this.handlePlayerDisconnect === 'function') {
+        await this.handlePlayerDisconnect(playerId);
+      }
+
       if (this.players.size === 0 && this.sessionId) {
         await this.unregisterFromRegistry();
       } else if (this.sessionId) {
@@ -312,11 +297,9 @@ export class GameSession implements DurableObject {
       }
     }
 
-    console.log(`Player ${playerId} disconnected from session ${this.sessionId}`);
   }
 
   removeSpectator(spectatorId: string) {
-    console.log(`Removing spectator ${spectatorId}`);
     const spectator = this.spectators.get(spectatorId);
     this.spectators.delete(spectatorId);
     delete this.gameState.spectators[spectatorId];
@@ -347,12 +330,22 @@ export class GameSession implements DurableObject {
     }
   }
 
+  sendTo(ws: WebSocket, message: any) {
+    if (ws.readyState === WebSocket.READY_STATE_OPEN) {
+      try {
+        ws.send(JSON.stringify(message));
+      } catch (error) {
+        console.error('Error sending message to specific client:', error);
+        this.websockets.delete(ws);
+      }
+    }
+  }
+
   async handleMessage(message: string, ws: WebSocket, playerId: string) {
     try {
       const data = JSON.parse(message);
       const isSpectator = this.spectators.has(playerId);
       
-      console.log(`🔍 GameSession received message from ${playerId}:`, data.type, data);
       
       switch (data.type) {
         case 'ping':
@@ -362,7 +355,7 @@ export class GameSession implements DurableObject {
 
         case 'START_GAME':
           if (this.players.has(playerId) && !isSpectator && this.gameState.hostId === playerId) {
-            await this.handleStartGame();
+            await this.handleStartGame(ws, playerId);
           }
           break;
 
@@ -435,24 +428,26 @@ export class GameSession implements DurableObject {
           break;
 
         case 'RETURN_TO_HOME':
-          console.log(`Player ${playerId} returning to home screen`);
           ws.close();
           break;
 
         default:
-          await this.handleGameSpecificMessage(data, ws, playerId, isSpectator);
+          await this.handleGameSpecificMessage(ws, playerId, data, isSpectator);
       }
     } catch (error) {
       console.error('Error handling message:', error);
     }
   }
 
-  protected async handleGameSpecificMessage(data: any, ws: WebSocket, playerId: string, isSpectator: boolean) {
+  protected async handleGameSpecificMessage(ws: WebSocket, playerId: string, data: any, isSpectator: boolean) {
     // Override in subclasses
   }
 
-  protected async handleStartGame() {
-    console.log(`Host starting game`);
+  protected async handlePlayerDisconnect(playerId: string) {
+    // Override in subclasses for game-specific disconnect logic
+  }
+
+  protected async handleStartGame(ws: WebSocket, playerId: string) {
     this.gameState.status = 'started';
     this.gameState.gameStarted = true;
     
@@ -525,7 +520,6 @@ export class GameSession implements DurableObject {
           createdAt: Date.now()
         } as SessionMetadata)
       }));
-      console.log(`Registered session ${this.sessionId} with registry`);
     } catch (error) {
       console.error('Failed to register with registry:', error);
     }
@@ -563,7 +557,6 @@ export class GameSession implements DurableObject {
       await registry.fetch(new Request(`http://internal/unregister/${this.sessionId}`, {
         method: 'DELETE'
       }));
-      console.log(`Unregistered session ${this.sessionId} from registry`);
     } catch (error) {
       console.error('Failed to unregister from registry:', error);
     }

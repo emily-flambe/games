@@ -54,7 +54,6 @@ class GameShell {
         
         // Check for game-specific paths
         if (path === '/everybody-votes') {
-            console.log('Everybody Votes URL detected - auto-creating room');
             setTimeout(() => {
                 this.startGame('everybody-votes');
             }, 100);
@@ -278,6 +277,9 @@ class GameShell {
     handleWebSocketMessage(event) {
         try {
             const message = JSON.parse(event.data);
+            
+            if (message.type === 'game_ended') {
+            }
 
             switch (message.type) {
                 case 'gameState':
@@ -399,7 +401,7 @@ class GameShell {
                     this.gameModule.init(
                         this.gameAreaElement,
                         this.players,
-                        message.gameState,
+                        {...message.gameState, hostId: message.gameState.hostId},
                         (action) => this.sendPlayerAction(action),
                         (state) => this.onGameStateChange(state),
                         rulesElement
@@ -429,6 +431,11 @@ class GameShell {
     handleGameStarted(message) {
         this.gameState = 'playing';
         
+        // Update room state if gameState is provided
+        if (message.data?.gameState) {
+            this.roomState = message.data.gameState;
+        }
+        
         // Load and initialize the appropriate game module
         this.loadGameModule(this.gameType).then(() => {
             if (this.gameModule) {
@@ -442,7 +449,7 @@ class GameShell {
                 this.gameModule.init(
                     this.gameAreaElement,
                     this.players,
-                    message.data?.gameSpecificState,
+                    {...(message.data?.gameSpecificState || {}), hostId: message.data?.gameState?.hostId || this.roomState.hostId},
                     (action) => this.sendPlayerAction(action),
                     (state) => this.onGameStateChange(state),
                     rulesElement
@@ -500,6 +507,13 @@ class GameShell {
                     this.gameModule = new EverybodyVotesGameModule();
                 } else {
                     console.error('EverybodyVotesGameModule class not found - check script loading');
+                    this.gameModule = null;
+                }
+            } else if (gameType === 'county-game') {
+                if (typeof CountyGameModule !== 'undefined') {
+                    this.gameModule = new CountyGameModule();
+                } else {
+                    console.error('CountyGameModule class not found - check script loading');
                     this.gameModule = null;
                 }
             } else {
@@ -1232,23 +1246,37 @@ class GameShell {
         const resultMessage = document.getElementById('game-result-message');
         const finalScores = document.getElementById('final-scores');
         
-        if (endScreen && resultMessage && finalScores) {
+        
+        if (endScreen && resultMessage) {
             // Update message with server's result message
             resultMessage.textContent = gameEndData.message || 'Game Complete!';
             
             // Show final scores - server sends 'scores', not 'finalScores'
-            const scores = gameEndData.scores || gameEndData.finalScores;
-            if (scores) {
-                finalScores.innerHTML = '';
-                Object.entries(scores).forEach(([playerId, score]) => {
-                    const player = this.players[playerId];
-                    if (player) {
-                        const scoreItem = document.createElement('div');
-                        scoreItem.className = 'final-score-item';
-                        scoreItem.innerHTML = `${player.emoji} ${player.name}: ${score}`;
-                        finalScores.appendChild(scoreItem);
-                    }
-                });
+            if (finalScores) {
+                const scores = gameEndData.scores || gameEndData.finalScores;
+                if (scores && Object.keys(scores).length > 0) {
+                    // Show scores when they exist - restore normal styling
+                    finalScores.innerHTML = '';
+                    finalScores.style.display = 'block';
+                    finalScores.style.visibility = 'visible';
+                    finalScores.style.height = '';
+                    finalScores.style.padding = '';
+                    finalScores.style.margin = '';
+                    finalScores.style.border = '';
+                    
+                    Object.entries(scores).forEach(([playerId, score]) => {
+                        const player = this.players[playerId];
+                        if (player) {
+                            const scoreItem = document.createElement('div');
+                            scoreItem.className = 'final-score-item';
+                            scoreItem.innerHTML = `${player.emoji} ${player.name}: ${score}`;
+                            finalScores.appendChild(scoreItem);
+                        }
+                    });
+                } else {
+                    // Hide the scores element when there are no scores
+                    finalScores.style.display = 'none';
+                }
             }
             
             endScreen.style.display = 'block';
@@ -1262,6 +1290,11 @@ class GameShell {
                     this.leaveGame();
                 };
             }
+        } else {
+            console.error('[GameShell] Cannot show end screen - missing elements:', {
+                endScreen: !!endScreen,
+                resultMessage: !!resultMessage
+            });
         }
     }
 
@@ -1394,6 +1427,7 @@ class GameShell {
         const gameNames = {
             'checkbox-game': 'Checkbox Game',
             'votes-game': 'Everybody Votes',
+            'county-game': 'County Game',
             'paddlin-game': "That's a Paddlin'",
             'price-game': 'The Price is Weird'
         };

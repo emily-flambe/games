@@ -21,13 +21,16 @@ npm run dev  # Always localhost:8777
 
 ### Core Components
 - **GameSession**: Base class with shared functionality (chat, spectators, players)
-- **Game-Specific Sessions**: CheckboxGameSession, EverybodyVotesGameSession
+- **Game-Specific Sessions**: CheckboxGameSession, CountyGameSession, EverybodyVotesGameSession
 - **GameSessionRegistry**: Tracks active sessions
 - **Frontend**: Vanilla JS with GameShell/GameModule architecture
 
 ### Current Games
 1. **Checkbox Game** - Competitive clicking (CheckboxGameSession)
-2. **Everybody Votes** - Real-time voting (EverybodyVotesGameSession)
+2. **County Game** - Celebration game (CountyGameSession)
+3. **Everybody Votes** - Real-time voting (EverybodyVotesGameSession)
+4. **Price Is Weird** - Frontend module available
+5. **That's A Paddlin** - Frontend module available
 
 ## Documentation Structure
 
