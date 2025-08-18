@@ -20,35 +20,20 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
     
     - name: Install dependencies
       run: npm ci
     
-    - name: Install Puppeteer dependencies for E2E tests
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y chromium-browser
-        export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-    
-    - name: Run all tests (unit + E2E)
-      run: |
-        # Start dev server in background for E2E tests
-        npm run dev &
-        DEV_PID=$!
-        
-        # Wait for server to be ready
-        timeout 30 bash -c 'until curl -f http://localhost:8777; do sleep 1; done' || echo "Server check timed out"
-        
-        # Run all tests including E2E
-        npm test
-        
-        # Kill dev server
-        kill $DEV_PID || true
+    - name: Run unit tests
+      run: npm run test:unit
       env:
         CI: true
-        PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+    
+    # E2E tests are disabled in CI/CD due to Cloudflare Workers runtime requirements
+    # E2E tests should be run locally before deployment
+    # TODO: Consider using Cloudflare's Vitest integration for better CI/CD testing
     
     - name: Build project
       run: npm run build
