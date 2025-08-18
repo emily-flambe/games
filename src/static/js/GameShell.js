@@ -1265,14 +1265,8 @@ class GameShell {
                     }
                 });
             } else {
-                // Completely hide and remove content when there are no scores
-                finalScores.innerHTML = '';
-                finalScores.style.display = 'none';
-                finalScores.style.visibility = 'hidden';
-                finalScores.style.height = '0px';
-                finalScores.style.padding = '0px';
-                finalScores.style.margin = '0px';
-                finalScores.style.border = '0px';
+                // Completely remove the scores element when there are no scores
+                finalScores.remove();
             }
             
             endScreen.style.display = 'block';

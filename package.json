@@ -12,6 +12,7 @@
     "bump-major": "node scripts/bump-version.js major",
     "test": "jest",
     "test:unit": "jest tests/unit",
+    "test:e2e": "jest tests/e2e",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },

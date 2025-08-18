@@ -26,13 +26,29 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Run unit tests
-      run: npm run test:unit
+    - name: Install Puppeteer dependencies for E2E tests
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y chromium-browser
+        export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
     
-    - name: Run additional tests
-      run: npm run test
+    - name: Run all tests (unit + E2E)
+      run: |
+        # Start dev server in background for E2E tests
+        npm run dev &
+        DEV_PID=$!
+        
+        # Wait for server to be ready
+        timeout 30 bash -c 'until curl -f http://localhost:8777; do sleep 1; done' || echo "Server check timed out"
+        
+        # Run all tests including E2E
+        npm test
+        
+        # Kill dev server
+        kill $DEV_PID || true
       env:
         CI: true
+        PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
     
     - name: Build project
       run: npm run build

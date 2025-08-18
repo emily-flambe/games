@@ -5,7 +5,8 @@ module.exports = {
   // Test file patterns
   testMatch: [
     '**/tests/unit/**/*.test.js',
-    '**/tests/integration/**/*.test.js'
+    '**/tests/integration/**/*.test.js',
+    '**/tests/e2e/**/*.test.js'
   ],
   
   // Setup files
@@ -36,8 +37,8 @@ module.exports = {
   // Module paths
   moduleDirectories: ['node_modules', 'src'],
   
-  // Timeout for tests
-  testTimeout: 10000,
+  // Timeout for tests (increased for E2E tests)
+  testTimeout: 60000,
   
   // Verbose output
   verbose: true,
