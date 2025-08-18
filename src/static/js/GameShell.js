@@ -1244,34 +1244,36 @@ class GameShell {
         const resultMessage = document.getElementById('game-result-message');
         const finalScores = document.getElementById('final-scores');
         
-        if (endScreen && resultMessage && finalScores) {
+        if (endScreen && resultMessage) {
             // Update message with server's result message
             resultMessage.textContent = gameEndData.message || 'Game Complete!';
             
             // Show final scores - server sends 'scores', not 'finalScores'
-            const scores = gameEndData.scores || gameEndData.finalScores;
-            if (scores && Object.keys(scores).length > 0) {
-                // Show scores when they exist - restore normal styling
-                finalScores.innerHTML = '';
-                finalScores.style.display = 'block';
-                finalScores.style.visibility = 'visible';
-                finalScores.style.height = '';
-                finalScores.style.padding = '';
-                finalScores.style.margin = '';
-                finalScores.style.border = '';
-                
-                Object.entries(scores).forEach(([playerId, score]) => {
-                    const player = this.players[playerId];
-                    if (player) {
-                        const scoreItem = document.createElement('div');
-                        scoreItem.className = 'final-score-item';
-                        scoreItem.innerHTML = `${player.emoji} ${player.name}: ${score}`;
-                        finalScores.appendChild(scoreItem);
-                    }
-                });
-            } else {
-                // Completely remove the scores element when there are no scores
-                finalScores.remove();
+            if (finalScores) {
+                const scores = gameEndData.scores || gameEndData.finalScores;
+                if (scores && Object.keys(scores).length > 0) {
+                    // Show scores when they exist - restore normal styling
+                    finalScores.innerHTML = '';
+                    finalScores.style.display = 'block';
+                    finalScores.style.visibility = 'visible';
+                    finalScores.style.height = '';
+                    finalScores.style.padding = '';
+                    finalScores.style.margin = '';
+                    finalScores.style.border = '';
+                    
+                    Object.entries(scores).forEach(([playerId, score]) => {
+                        const player = this.players[playerId];
+                        if (player) {
+                            const scoreItem = document.createElement('div');
+                            scoreItem.className = 'final-score-item';
+                            scoreItem.innerHTML = `${player.emoji} ${player.name}: ${score}`;
+                            finalScores.appendChild(scoreItem);
+                        }
+                    });
+                } else {
+                    // Completely remove the scores element when there are no scores
+                    finalScores.remove();
+                }
             }
             
             endScreen.style.display = 'block';
