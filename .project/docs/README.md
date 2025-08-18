@@ -6,7 +6,7 @@ Quick reference for project documentation:
 - **[architecture.md](./architecture.md)** - System design, components, data flow
 - **[coding-standards.md](./coding-standards.md)** - TypeScript patterns, WebSocket handling
 - **[dependencies.md](./dependencies.md)** - Package requirements, Workers limitations
-- **[deployment.md](./deployment.md)** - Setup, testing, **automated versioning**
+- **[deployment.md](../deployment/guide.md)** - Setup, testing, **automated versioning**
 - **[debugging.md](./debugging.md)** - Puppeteer testing, common issues
 
 ## Key Points
