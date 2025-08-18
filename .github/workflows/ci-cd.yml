@@ -41,22 +41,18 @@ jobs:
         NODE_ENV: test
     
     # Deploy to preview environment for E2E testing
-    - name: Generate preview deployment name
+    - name: Set preview URL
       id: preview
       run: |
-        # Use short SHA for preview deployment name
-        SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-        PREVIEW_NAME="games-preview-${SHORT_SHA}"
-        echo "preview_name=${PREVIEW_NAME}" >> $GITHUB_OUTPUT
-        echo "preview_url=https://${PREVIEW_NAME}.workers.dev" >> $GITHUB_OUTPUT
-        echo "Preview deployment: ${PREVIEW_NAME}"
+        echo "preview_url=https://games-preview.emily-cogsdill.workers.dev" >> $GITHUB_OUTPUT
+        echo "Preview deployment: games-preview"
     
     - name: Deploy to preview environment
       id: deploy-preview
       run: |
         npm install -g wrangler
-        # Deploy with dynamic preview name
-        wrangler deploy --env preview --name "${{ steps.preview.outputs.preview_name }}"
+        # Deploy to single preview worker (games-preview)
+        wrangler deploy --env preview
         echo "Preview deployed to: ${{ steps.preview.outputs.preview_url }}"
       env:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

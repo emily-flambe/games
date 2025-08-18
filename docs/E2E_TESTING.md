@@ -1,14 +1,14 @@
 # E2E Testing with Preview Deployments
 
 ## Overview
-This project uses preview deployments for comprehensive E2E testing before production deployment. Every commit gets its own isolated preview environment for testing.
+This project uses a shared preview deployment for comprehensive E2E testing before production deployment. Every commit updates the same preview environment for testing.
 
 ## How It Works
 
 ### 1. Automatic Preview Deployments
 - Every push and PR triggers a preview deployment
-- Preview URL format: `https://games-preview-{commit-sha}.workers.dev`
-- Each preview is isolated and independent
+- Preview URL: `https://games-preview.emily-cogsdill.workers.dev` (single environment)
+- Each commit updates the same preview worker
 
 ### 2. E2E Test Execution
 - Tests run against the deployed preview URL
@@ -33,8 +33,8 @@ npm run test:e2e
 
 ### Against Preview Deployment
 ```bash
-# Test a specific preview URL
-node scripts/test-preview.js https://games-preview-abc1234.workers.dev
+# Test the preview URL
+node scripts/test-preview.js https://games-preview.emily-cogsdill.workers.dev
 ```
 
 ## CI/CD Pipeline Flow
@@ -63,10 +63,10 @@ node scripts/test-preview.js https://games-preview-abc1234.workers.dev
 
 ## Preview Cleanup
 
-Old preview deployments are automatically cleaned up:
-- Runs daily at 2 AM UTC
-- Removes previews older than 7 days
-- Can be triggered manually via GitHub Actions
+Preview deployment is maintained continuously:
+- Single `games-preview` worker updated with each deployment
+- No cleanup needed (single worker, not multiple instances)
+- Legacy cleanup workflow can be removed
 
 ## Troubleshooting
 
@@ -90,7 +90,7 @@ Old preview deployments are automatically cleaned up:
 ## Benefits
 
 ✅ **Real Environment Testing**: Tests run against actual deployed Workers
-✅ **Isolation**: Each PR gets its own test environment
+✅ **Simplicity**: Single preview environment, no worker proliferation
 ✅ **Confidence**: Production only updates after all tests pass
 ✅ **Visibility**: Preview URLs in PR comments for manual testing
 ✅ **Cost Effective**: Leverages Workers free tier for previews
