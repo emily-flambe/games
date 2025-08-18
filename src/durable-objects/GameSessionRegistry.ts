@@ -34,7 +34,6 @@ export class GameSessionRegistry implements DurableObject {
           gameStatus: 'waiting',
           lastHeartbeat: Date.now()
         });
-        console.log(`Registered session: ${data.sessionId} (${data.gameType})`);
         return new Response('OK');
       }
       
@@ -49,7 +48,6 @@ export class GameSessionRegistry implements DurableObject {
             ...updateData,
             lastHeartbeat: Date.now()
           });
-          console.log(`Updated session: ${sessionId}`);
         }
         return new Response('OK');
       }
@@ -64,7 +62,6 @@ export class GameSessionRegistry implements DurableObject {
             gameStatus: gameStatus,
             lastHeartbeat: Date.now()
           });
-          console.log(`Updated game status for session ${sessionId} to: ${gameStatus}`);
         }
         return new Response('OK');
       }
@@ -72,7 +69,6 @@ export class GameSessionRegistry implements DurableObject {
       if (request.method === 'DELETE' && url.pathname.startsWith('/unregister/')) {
         const sessionId = url.pathname.split('/')[2];
         this.sessions.delete(sessionId);
-        console.log(`Unregistered session: ${sessionId}`);
         return new Response('OK');
       }
       
@@ -97,7 +93,6 @@ export class GameSessionRegistry implements DurableObject {
     for (const [id, session] of this.sessions) {
       if (now - session.lastHeartbeat > TTL) {
         this.sessions.delete(id);
-        console.log(`Cleaned up stale session: ${id}`);
       }
     }
   }

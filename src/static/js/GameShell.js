@@ -54,7 +54,6 @@ class GameShell {
         
         // Check for game-specific paths
         if (path === '/everybody-votes') {
-            console.log('Everybody Votes URL detected - auto-creating room');
             setTimeout(() => {
                 this.startGame('everybody-votes');
             }, 100);
@@ -280,7 +279,6 @@ class GameShell {
             const message = JSON.parse(event.data);
             
             if (message.type === 'game_ended') {
-                console.log('[GameShell] Received game_ended message:', message);
             }
 
             switch (message.type) {
@@ -474,7 +472,6 @@ class GameShell {
      * Handle game ended message
      */
     handleGameEnded(message) {
-        console.log('[GameShell] handleGameEnded called, data:', message.data);
         this.gameState = 'finished';
         
         // Pass the game_ended message to the module before cleanup
@@ -1245,12 +1242,10 @@ class GameShell {
      * Show game end screen
      */
     showGameEndScreen(gameEndData) {
-        console.log('[GameShell] showGameEndScreen called');
         const endScreen = document.getElementById('end-game-screen');
         const resultMessage = document.getElementById('game-result-message');
         const finalScores = document.getElementById('final-scores');
         
-        console.log('[GameShell] Elements:', { endScreen: !!endScreen, resultMessage: !!resultMessage, finalScores: !!finalScores });
         
         if (endScreen && resultMessage) {
             // Update message with server's result message
@@ -1284,7 +1279,6 @@ class GameShell {
                 }
             }
             
-            console.log('[GameShell] Setting endScreen.style.display = block');
             endScreen.style.display = 'block';
             
             // Handle OK button - return to lobby

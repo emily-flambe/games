@@ -644,7 +644,6 @@ class GameShell {
         
         // Check for game-specific paths
         if (path === '/everybody-votes') {
-            console.log('Everybody Votes URL detected - auto-creating room');
             setTimeout(() => {
                 this.startGame('everybody-votes');
             }, 100);
@@ -870,7 +869,6 @@ class GameShell {
             const message = JSON.parse(event.data);
             
             if (message.type === 'game_ended') {
-                console.log('[GameShell] Received game_ended message:', message);
             }
 
             switch (message.type) {
@@ -1064,7 +1062,6 @@ class GameShell {
      * Handle game ended message
      */
     handleGameEnded(message) {
-        console.log('[GameShell] handleGameEnded called, data:', message.data);
         this.gameState = 'finished';
         
         // Pass the game_ended message to the module before cleanup
@@ -1835,12 +1832,10 @@ class GameShell {
      * Show game end screen
      */
     showGameEndScreen(gameEndData) {
-        console.log('[GameShell] showGameEndScreen called');
         const endScreen = document.getElementById('end-game-screen');
         const resultMessage = document.getElementById('game-result-message');
         const finalScores = document.getElementById('final-scores');
         
-        console.log('[GameShell] Elements:', { endScreen: !!endScreen, resultMessage: !!resultMessage, finalScores: !!finalScores });
         
         if (endScreen && resultMessage) {
             // Update message with server's result message
@@ -1874,7 +1869,6 @@ class GameShell {
                 }
             }
             
-            console.log('[GameShell] Setting endScreen.style.display = block');
             endScreen.style.display = 'block';
             
             // Handle OK button - return to lobby
@@ -2878,7 +2872,6 @@ class EverybodyVotesGameModule extends GameModule {
     init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement) {
         super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement);
         
-        console.log('EverybodyVotesGameModule.init() called with initialState:', initialState);
         
         // Set initial state if provided
         if (initialState) {
@@ -2895,7 +2888,6 @@ class EverybodyVotesGameModule extends GameModule {
             this.finalScores = initialState.finalScores || [];
             this.isHost = initialState.isHost || false;
             
-            console.log(\`Initial phase: \${this.currentPhase}, question: \${this.question}, round: \${this.currentRound}/\${this.totalRounds}\`);
         } else {
             // Default to VOTING phase
             this.currentPhase = 'VOTING';
@@ -3065,7 +3057,6 @@ class EverybodyVotesGameModule extends GameModule {
      * Render voting phase
      */
     renderVotingPhase() {
-        console.log('Rendering voting phase...');
         
         return \`
             <div class="everybody-votes-container" style="
@@ -3156,7 +3147,6 @@ class EverybodyVotesGameModule extends GameModule {
      * Render predicting phase
      */
     renderPredictingPhase() {
-        console.log('Rendering predicting phase...');
         
         return \`
             <div class="everybody-votes-container" style="
@@ -3240,7 +3230,6 @@ class EverybodyVotesGameModule extends GameModule {
      * Render results phase
      */
     renderResultsPhase() {
-        console.log('Rendering results phase...');
         
         if (!this.results) {
             return \`<div class="everybody-votes-container">Loading results...</div>\`;
@@ -3413,7 +3402,6 @@ class EverybodyVotesGameModule extends GameModule {
      * Render round transition phase
      */
     renderRoundTransitionPhase() {
-        console.log('Rendering round transition phase...');
         
         // Get current scores display
         const scoresHtml = this.getPlayerScoresHtml();
@@ -3474,7 +3462,6 @@ class EverybodyVotesGameModule extends GameModule {
      * Render final results phase
      */
     renderFinalResultsPhase() {
-        console.log('Rendering final results phase...');
         
         const finalScoresHtml = this.getFinalScoresHtml();
         const roundSummaryHtml = this.getRoundSummaryHtml();
@@ -3662,7 +3649,6 @@ class EverybodyVotesGameModule extends GameModule {
             btn.addEventListener('click', (e) => {
                 const vote = e.target.dataset.vote;
                 if (vote && this.onPlayerAction) {
-                    console.log(\`Player voting for: \${vote}\`);
                     this.myVote = vote; // Remember the vote
                     this.onPlayerAction({
                         type: 'submit_vote',
@@ -3678,7 +3664,6 @@ class EverybodyVotesGameModule extends GameModule {
             btn.addEventListener('click', (e) => {
                 const prediction = e.target.dataset.prediction;
                 if (prediction && this.onPlayerAction) {
-                    console.log(\`🔮 Player predicting: \${prediction}\`);
                     this.myPrediction = prediction; // Remember the prediction
                     this.onPlayerAction({
                         type: 'submit_prediction',
@@ -3692,7 +3677,6 @@ class EverybodyVotesGameModule extends GameModule {
         const nextQuestionBtn = this.gameAreaElement.querySelector('#next-question-btn');
         if (nextQuestionBtn && this.onPlayerAction) {
             nextQuestionBtn.addEventListener('click', () => {
-                console.log('➡️ Next Question button clicked');
                 this.onPlayerAction({
                     type: 'advance_round',
                     data: {}
@@ -3704,7 +3688,6 @@ class EverybodyVotesGameModule extends GameModule {
         const continueRoundBtn = this.gameAreaElement.querySelector('#continue-round-btn');
         if (continueRoundBtn && this.onPlayerAction) {
             continueRoundBtn.addEventListener('click', () => {
-                console.log('🚀 Continue to next round button clicked');
                 this.onPlayerAction({
                     type: 'advance_round',
                     data: {}
@@ -3716,7 +3699,6 @@ class EverybodyVotesGameModule extends GameModule {
         const endGameBtn = this.gameAreaElement.querySelector('#end-game-btn');
         if (endGameBtn && this.onPlayerAction) {
             endGameBtn.addEventListener('click', () => {
-                console.log('End Game button clicked');
                 this.onPlayerAction({
                     type: 'end_game',
                     data: {}
@@ -3728,7 +3710,6 @@ class EverybodyVotesGameModule extends GameModule {
         const newGameBtn = this.gameAreaElement.querySelector('#new-game-btn');
         if (newGameBtn && this.onPlayerAction) {
             newGameBtn.addEventListener('click', () => {
-                console.log('The End button clicked');
                 // Show everyone wins screen
                 this.showEveryoneWins();
             });
@@ -3831,11 +3812,9 @@ class EverybodyVotesGameModule extends GameModule {
      * Handle WebSocket messages
      */
     handleMessage(message) {
-        console.log('🎮 Handling message:', message.type, message);
         
         switch (message.type) {
             case 'game_started':
-                console.log('🎮 Game started message received:', message.data);
                 if (message.data && message.data.phase) {
                     this.currentPhase = message.data.phase;
                     this.question = message.data.question || this.question;
@@ -3877,7 +3856,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'predicting_started':
-                console.log('🔮 Predicting phase started:', message.data);
                 this.currentPhase = 'PREDICTING';
                 this.timeRemaining = message.data.timeLimit || 15;
                 this.startTimer();
@@ -3885,7 +3863,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'prediction_phase':
-                console.log('🔮 Prediction phase message:', message.data);
                 if (message.data) {
                     this.currentPhase = message.data.phase || 'PREDICTING';
                     this.question = message.data.question || this.question;
@@ -3913,7 +3890,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'vote_progress':
-                console.log('📊 Vote progress update:', message.data);
                 this.votesCount = message.data.votesCount || 0;
                 this.totalPlayers = message.data.totalPlayers || 0;
                 this.lastVoterName = message.data.voterName;
@@ -3922,7 +3898,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'round_results':
-                console.log('📊 Round results received:', message.data);
                 this.currentPhase = 'RESULTS';
                 this.results = message.data.results;
                 this.question = message.data.question;
@@ -3939,14 +3914,11 @@ class EverybodyVotesGameModule extends GameModule {
             // Removed round_transition - we now auto-advance after results
                 
             case 'host_assigned':
-                console.log('👑 Host assigned:', message.data);
                 this.isHost = (this.currentPlayerId === message.data.hostId);
-                console.log(\`👑 Is host: \${this.isHost}, currentPlayerId: \${this.currentPlayerId}, hostId: \${message.data.hostId}\`);
                 this.render();
                 break;
                 
             case 'voting_results':
-                console.log('📊 Voting results received:', message.data);
                 this.currentPhase = 'RESULTS';
                 this.results = message.data.results;
                 this.question = message.data.question;
@@ -3954,7 +3926,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'final_summary':
-                console.log('🏆 Final summary received:', message.data);
                 this.currentPhase = 'ENDED';
                 if (message.data.finalScores) {
                     this.finalScores = message.data.finalScores;
@@ -3969,12 +3940,10 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'advance_round':
-                console.log('🚀 Advancing to next round:', message.data);
                 // Server will send new_round message for the next round
                 break;
                 
             case 'new_round':
-                console.log('🆕 New round started:', message.data);
                 if (message.data) {
                     this.currentPhase = message.data.phase || 'VOTING';
                     this.question = message.data.question || this.question;
@@ -3991,7 +3960,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'game_results':
-                console.log('📊 Game results received:', message);
                 this.currentPhase = 'RESULTS';
                 this.results = message.results;
                 this.question = message.question;
@@ -3999,13 +3967,11 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'game_ended':
-                console.log('🏁 Game ended:', message.data);
                 // Don't handle game_ended here - let GameShell show the unified end screen
                 // GameShell will call showGameEndScreen() which has the OK button to return to lobby
                 break;
                 
             case 'final_results':
-                console.log('🏆 Final results message:', message.data);
                 // Don't handle final_results here - let GameShell handle the game_ended message
                 // to show the unified end screen with proper OK button functionality
                 break;
@@ -4015,7 +3981,6 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             default:
-                console.log('🤷 Unhandled message type:', message.type);
                 break;
         }
     }
