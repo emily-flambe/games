@@ -54,3 +54,24 @@ new_classes = [ "CountyGameSession" ]
 name = "games-preview"
 # Preview deployments use workers.dev subdomain
 # The actual subdomain will be set dynamically in CI/CD
+
+# Durable Objects (inherited from top level)
+[[env.preview.durable_objects.bindings]]
+name = "GAME_SESSIONS"
+class_name = "GameSession"
+
+[[env.preview.durable_objects.bindings]]
+name = "CHECKBOX_SESSIONS"
+class_name = "CheckboxGameSession"
+
+[[env.preview.durable_objects.bindings]]
+name = "EVERYBODY_VOTES_SESSIONS"
+class_name = "EverybodyVotesGameSession"
+
+[[env.preview.durable_objects.bindings]]
+name = "COUNTY_GAME_SESSIONS"
+class_name = "CountyGameSession"
+
+[[env.preview.durable_objects.bindings]]
+name = "GAME_REGISTRY"
+class_name = "GameSessionRegistry"

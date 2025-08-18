@@ -1,0 +1,407 @@
+{
+  "summary": {
+    "total": 27,
+    "passed": 0,
+    "failed": 27,
+    "passRate": "0.0",
+    "duration": "23.59s"
+  },
+  "environment": {
+    "browser": "chrome",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "environment": "test",
+    "threshold": 0.1
+  },
+  "results": [
+    {
+      "name": "county-game-portal-card",
+      "description": "County Game card display in game portal",
+      "timestamp": "2025-08-18T03:27:02.867Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-player-setup",
+      "description": "County Game player setup screen",
+      "timestamp": "2025-08-18T03:27:03.504Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-player-setup-with-name",
+      "description": "County Game player setup with name entered",
+      "timestamp": "2025-08-18T03:27:04.163Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-waiting-room",
+      "description": "County Game waiting room after joining",
+      "timestamp": "2025-08-18T03:27:04.830Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-active-gameplay",
+      "description": "County Game during active gameplay (county input)",
+      "timestamp": "2025-08-18T03:27:05.521Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-input-with-text",
+      "description": "County Game input field with user text",
+      "timestamp": "2025-08-18T03:27:06.165Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-win-screen",
+      "description": "County Game win screen - critical end state",
+      "timestamp": "2025-08-18T03:27:06.874Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-win-screen-no-scores-box",
+      "description": "Verify final-scores element is completely hidden in win screen",
+      "timestamp": "2025-08-18T03:27:07.554Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-ok-button-state",
+      "description": "OK button in win screen - ready to click",
+      "timestamp": "2025-08-18T03:27:08.219Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-responsive-mobile",
+      "description": "County Game win screen on mobile viewport",
+      "timestamp": "2025-08-18T03:27:09.022Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-portal-full",
+      "description": "Full game portal showing all games including County Game",
+      "timestamp": "2025-08-18T03:27:09.739Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "everybody-votes-portal-card",
+      "description": "Everybody Votes game card in portal",
+      "timestamp": "2025-08-18T03:27:10.458Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "everybody-votes-setup",
+      "description": "Everybody Votes player setup screen",
+      "timestamp": "2025-08-18T03:27:11.144Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "everybody-votes-waiting-room",
+      "description": "Everybody Votes waiting room",
+      "timestamp": "2025-08-18T03:27:11.872Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "checkbox-game-portal-card",
+      "description": "Checkbox game card in portal",
+      "timestamp": "2025-08-18T03:27:12.933Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "checkbox-game-setup",
+      "description": "Checkbox game player setup screen",
+      "timestamp": "2025-08-18T03:27:13.979Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "checkbox-game-waiting-room",
+      "description": "Checkbox game waiting room",
+      "timestamp": "2025-08-18T03:27:15.026Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "price-is-weird-portal-card",
+      "description": "Price Is Weird game card in portal",
+      "timestamp": "2025-08-18T03:27:16.070Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "price-is-weird-setup",
+      "description": "Price Is Weird player setup screen",
+      "timestamp": "2025-08-18T03:27:17.116Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "price-is-weird-waiting-room",
+      "description": "Price Is Weird waiting room",
+      "timestamp": "2025-08-18T03:27:18.175Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "thats-a-paddlin-portal-card",
+      "description": "That's A Paddlin game card in portal",
+      "timestamp": "2025-08-18T03:27:19.236Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "thats-a-paddlin-setup",
+      "description": "That's A Paddlin player setup screen",
+      "timestamp": "2025-08-18T03:27:20.291Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "thats-a-paddlin-waiting-room",
+      "description": "That's A Paddlin waiting room",
+      "timestamp": "2025-08-18T03:27:21.343Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "game-cards-layout-consistency",
+      "description": "All game cards displayed consistently in portal",
+      "timestamp": "2025-08-18T03:27:22.407Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "header-consistency-across-games",
+      "description": "Header layout consistency across different game states",
+      "timestamp": "2025-08-18T03:27:23.467Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "mobile-portal-responsive",
+      "description": "Game portal responsive layout on mobile",
+      "timestamp": "2025-08-18T03:27:24.519Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "tablet-portal-responsive",
+      "description": "Game portal responsive layout on tablet",
+      "timestamp": "2025-08-18T03:27:25.572Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    }
+  ],
+  "failed_tests": [
+    {
+      "name": "county-game-portal-card",
+      "description": "County Game card display in game portal",
+      "timestamp": "2025-08-18T03:27:02.867Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-player-setup",
+      "description": "County Game player setup screen",
+      "timestamp": "2025-08-18T03:27:03.504Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-player-setup-with-name",
+      "description": "County Game player setup with name entered",
+      "timestamp": "2025-08-18T03:27:04.163Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-waiting-room",
+      "description": "County Game waiting room after joining",
+      "timestamp": "2025-08-18T03:27:04.830Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-active-gameplay",
+      "description": "County Game during active gameplay (county input)",
+      "timestamp": "2025-08-18T03:27:05.521Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-input-with-text",
+      "description": "County Game input field with user text",
+      "timestamp": "2025-08-18T03:27:06.165Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-win-screen",
+      "description": "County Game win screen - critical end state",
+      "timestamp": "2025-08-18T03:27:06.874Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-win-screen-no-scores-box",
+      "description": "Verify final-scores element is completely hidden in win screen",
+      "timestamp": "2025-08-18T03:27:07.554Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-ok-button-state",
+      "description": "OK button in win screen - ready to click",
+      "timestamp": "2025-08-18T03:27:08.219Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-responsive-mobile",
+      "description": "County Game win screen on mobile viewport",
+      "timestamp": "2025-08-18T03:27:09.022Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "county-game-portal-full",
+      "description": "Full game portal showing all games including County Game",
+      "timestamp": "2025-08-18T03:27:09.739Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "everybody-votes-portal-card",
+      "description": "Everybody Votes game card in portal",
+      "timestamp": "2025-08-18T03:27:10.458Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "everybody-votes-setup",
+      "description": "Everybody Votes player setup screen",
+      "timestamp": "2025-08-18T03:27:11.144Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "everybody-votes-waiting-room",
+      "description": "Everybody Votes waiting room",
+      "timestamp": "2025-08-18T03:27:11.872Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "checkbox-game-portal-card",
+      "description": "Checkbox game card in portal",
+      "timestamp": "2025-08-18T03:27:12.933Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "checkbox-game-setup",
+      "description": "Checkbox game player setup screen",
+      "timestamp": "2025-08-18T03:27:13.979Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "checkbox-game-waiting-room",
+      "description": "Checkbox game waiting room",
+      "timestamp": "2025-08-18T03:27:15.026Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "price-is-weird-portal-card",
+      "description": "Price Is Weird game card in portal",
+      "timestamp": "2025-08-18T03:27:16.070Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "price-is-weird-setup",
+      "description": "Price Is Weird player setup screen",
+      "timestamp": "2025-08-18T03:27:17.116Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "price-is-weird-waiting-room",
+      "description": "Price Is Weird waiting room",
+      "timestamp": "2025-08-18T03:27:18.175Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "thats-a-paddlin-portal-card",
+      "description": "That's A Paddlin game card in portal",
+      "timestamp": "2025-08-18T03:27:19.236Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "thats-a-paddlin-setup",
+      "description": "That's A Paddlin player setup screen",
+      "timestamp": "2025-08-18T03:27:20.291Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "thats-a-paddlin-waiting-room",
+      "description": "That's A Paddlin waiting room",
+      "timestamp": "2025-08-18T03:27:21.343Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "game-cards-layout-consistency",
+      "description": "All game cards displayed consistently in portal",
+      "timestamp": "2025-08-18T03:27:22.407Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "header-consistency-across-games",
+      "description": "Header layout consistency across different game states",
+      "timestamp": "2025-08-18T03:27:23.467Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "mobile-portal-responsive",
+      "description": "Game portal responsive layout on mobile",
+      "timestamp": "2025-08-18T03:27:24.519Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    },
+    {
+      "name": "tablet-portal-responsive",
+      "description": "Game portal responsive layout on tablet",
+      "timestamp": "2025-08-18T03:27:25.572Z",
+      "passed": false,
+      "error": "page.waitForTimeout is not a function"
+    }
+  ],
+  "baseline_info": {
+    "environment": "test",
+    "browser": "chrome",
+    "viewport": "1280x720",
+    "totalBaselines": 0,
+    "baselines": []
+  }
+}

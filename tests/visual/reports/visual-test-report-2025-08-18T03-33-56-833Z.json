@@ -1,0 +1,435 @@
+{
+  "summary": {
+    "total": 27,
+    "passed": 0,
+    "failed": 27,
+    "passRate": "0.0",
+    "duration": "70.79s"
+  },
+  "environment": {
+    "browser": "chrome",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "environment": "test",
+    "threshold": 0.1
+  },
+  "results": [
+    {
+      "name": "county-game-portal-card",
+      "description": "County Game card display in game portal",
+      "timestamp": "2025-08-18T03:32:46.918Z",
+      "status": "baseline_created",
+      "testName": "county-game-portal-card",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/county-game-portal-card.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/county-game-portal-card.png"
+    },
+    {
+      "name": "county-game-player-setup",
+      "description": "County Game player setup screen",
+      "timestamp": "2025-08-18T03:32:47.757Z",
+      "status": "baseline_created",
+      "testName": "county-game-player-setup",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/county-game-player-setup.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/county-game-player-setup.png"
+    },
+    {
+      "name": "county-game-player-setup-with-name",
+      "description": "County Game player setup with name entered",
+      "timestamp": "2025-08-18T03:32:48.545Z",
+      "status": "baseline_created",
+      "testName": "county-game-player-setup-with-name",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/county-game-player-setup-with-name.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/county-game-player-setup-with-name.png"
+    },
+    {
+      "name": "county-game-waiting-room",
+      "description": "County Game waiting room after joining",
+      "timestamp": "2025-08-18T03:32:49.327Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-active-gameplay",
+      "description": "County Game during active gameplay (county input)",
+      "timestamp": "2025-08-18T03:32:50.121Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-input-with-text",
+      "description": "County Game input field with user text",
+      "timestamp": "2025-08-18T03:32:50.888Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-win-screen",
+      "description": "County Game win screen - critical end state",
+      "timestamp": "2025-08-18T03:32:51.587Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-win-screen-no-scores-box",
+      "description": "Verify final-scores element is completely hidden in win screen",
+      "timestamp": "2025-08-18T03:32:52.277Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-ok-button-state",
+      "description": "OK button in win screen - ready to click",
+      "timestamp": "2025-08-18T03:32:53.007Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-responsive-mobile",
+      "description": "County Game win screen on mobile viewport",
+      "timestamp": "2025-08-18T03:32:53.763Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-portal-full",
+      "description": "Full game portal showing all games including County Game",
+      "timestamp": "2025-08-18T03:32:59.827Z",
+      "passed": false,
+      "error": "Waiting for selector `.game-grid` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "everybody-votes-portal-card",
+      "description": "Everybody Votes game card in portal",
+      "timestamp": "2025-08-18T03:33:00.647Z",
+      "status": "baseline_created",
+      "testName": "everybody-votes-portal-card",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/everybody-votes-portal-card.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/everybody-votes-portal-card.png"
+    },
+    {
+      "name": "everybody-votes-setup",
+      "description": "Everybody Votes player setup screen",
+      "timestamp": "2025-08-18T03:33:01.477Z",
+      "status": "baseline_created",
+      "testName": "everybody-votes-setup",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/everybody-votes-setup.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/everybody-votes-setup.png"
+    },
+    {
+      "name": "everybody-votes-waiting-room",
+      "description": "Everybody Votes waiting room",
+      "timestamp": "2025-08-18T03:33:02.255Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "checkbox-game-portal-card",
+      "description": "Checkbox game card in portal",
+      "timestamp": "2025-08-18T03:33:02.921Z",
+      "status": "baseline_created",
+      "testName": "checkbox-game-portal-card",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/checkbox-game-portal-card.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/checkbox-game-portal-card.png"
+    },
+    {
+      "name": "checkbox-game-setup",
+      "description": "Checkbox game player setup screen",
+      "timestamp": "2025-08-18T03:33:03.719Z",
+      "status": "baseline_created",
+      "testName": "checkbox-game-setup",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/checkbox-game-setup.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/checkbox-game-setup.png"
+    },
+    {
+      "name": "checkbox-game-waiting-room",
+      "description": "Checkbox game waiting room",
+      "timestamp": "2025-08-18T03:33:04.455Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "price-is-weird-portal-card",
+      "description": "Price Is Weird game card in portal",
+      "timestamp": "2025-08-18T03:33:10.523Z",
+      "passed": false,
+      "error": "Waiting for selector `[data-game=\"price-is-weird\"]` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "price-is-weird-setup",
+      "description": "Price Is Weird player setup screen",
+      "timestamp": "2025-08-18T03:33:16.202Z",
+      "passed": false,
+      "error": "Waiting for selector `[data-game=\"price-is-weird\"]` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "price-is-weird-waiting-room",
+      "description": "Price Is Weird waiting room",
+      "timestamp": "2025-08-18T03:33:21.876Z",
+      "passed": false,
+      "error": "Waiting for selector `[data-game=\"price-is-weird\"]` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "thats-a-paddlin-portal-card",
+      "description": "That's A Paddlin game card in portal",
+      "timestamp": "2025-08-18T03:33:27.580Z",
+      "passed": false,
+      "error": "Waiting for selector `[data-game=\"thats-a-paddlin\"]` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "thats-a-paddlin-setup",
+      "description": "That's A Paddlin player setup screen",
+      "timestamp": "2025-08-18T03:33:33.245Z",
+      "passed": false,
+      "error": "Waiting for selector `[data-game=\"thats-a-paddlin\"]` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "thats-a-paddlin-waiting-room",
+      "description": "That's A Paddlin waiting room",
+      "timestamp": "2025-08-18T03:33:38.952Z",
+      "passed": false,
+      "error": "Waiting for selector `[data-game=\"thats-a-paddlin\"]` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "game-cards-layout-consistency",
+      "description": "All game cards displayed consistently in portal",
+      "timestamp": "2025-08-18T03:33:44.659Z",
+      "passed": false,
+      "error": "Waiting for selector `.game-grid` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "header-consistency-across-games",
+      "description": "Header layout consistency across different game states",
+      "timestamp": "2025-08-18T03:33:45.414Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "mobile-portal-responsive",
+      "description": "Game portal responsive layout on mobile",
+      "timestamp": "2025-08-18T03:33:51.115Z",
+      "passed": false,
+      "error": "Waiting for selector `.game-grid` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "tablet-portal-responsive",
+      "description": "Game portal responsive layout on tablet",
+      "timestamp": "2025-08-18T03:33:56.832Z",
+      "passed": false,
+      "error": "Waiting for selector `.game-grid` failed: Waiting failed: 5000ms exceeded"
+    }
+  ],
+  "failed_tests": [
+    {
+      "name": "county-game-portal-card",
+      "description": "County Game card display in game portal",
+      "timestamp": "2025-08-18T03:32:46.918Z",
+      "status": "baseline_created",
+      "testName": "county-game-portal-card",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/county-game-portal-card.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/county-game-portal-card.png"
+    },
+    {
+      "name": "county-game-player-setup",
+      "description": "County Game player setup screen",
+      "timestamp": "2025-08-18T03:32:47.757Z",
+      "status": "baseline_created",
+      "testName": "county-game-player-setup",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/county-game-player-setup.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/county-game-player-setup.png"
+    },
+    {
+      "name": "county-game-player-setup-with-name",
+      "description": "County Game player setup with name entered",
+      "timestamp": "2025-08-18T03:32:48.545Z",
+      "status": "baseline_created",
+      "testName": "county-game-player-setup-with-name",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/county-game-player-setup-with-name.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/county-game-player-setup-with-name.png"
+    },
+    {
+      "name": "county-game-waiting-room",
+      "description": "County Game waiting room after joining",
+      "timestamp": "2025-08-18T03:32:49.327Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-active-gameplay",
+      "description": "County Game during active gameplay (county input)",
+      "timestamp": "2025-08-18T03:32:50.121Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-input-with-text",
+      "description": "County Game input field with user text",
+      "timestamp": "2025-08-18T03:32:50.888Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-win-screen",
+      "description": "County Game win screen - critical end state",
+      "timestamp": "2025-08-18T03:32:51.587Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-win-screen-no-scores-box",
+      "description": "Verify final-scores element is completely hidden in win screen",
+      "timestamp": "2025-08-18T03:32:52.277Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-ok-button-state",
+      "description": "OK button in win screen - ready to click",
+      "timestamp": "2025-08-18T03:32:53.007Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-responsive-mobile",
+      "description": "County Game win screen on mobile viewport",
+      "timestamp": "2025-08-18T03:32:53.763Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "county-game-portal-full",
+      "description": "Full game portal showing all games including County Game",
+      "timestamp": "2025-08-18T03:32:59.827Z",
+      "passed": false,
+      "error": "Waiting for selector `.game-grid` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "everybody-votes-portal-card",
+      "description": "Everybody Votes game card in portal",
+      "timestamp": "2025-08-18T03:33:00.647Z",
+      "status": "baseline_created",
+      "testName": "everybody-votes-portal-card",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/everybody-votes-portal-card.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/everybody-votes-portal-card.png"
+    },
+    {
+      "name": "everybody-votes-setup",
+      "description": "Everybody Votes player setup screen",
+      "timestamp": "2025-08-18T03:33:01.477Z",
+      "status": "baseline_created",
+      "testName": "everybody-votes-setup",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/everybody-votes-setup.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/everybody-votes-setup.png"
+    },
+    {
+      "name": "everybody-votes-waiting-room",
+      "description": "Everybody Votes waiting room",
+      "timestamp": "2025-08-18T03:33:02.255Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "checkbox-game-portal-card",
+      "description": "Checkbox game card in portal",
+      "timestamp": "2025-08-18T03:33:02.921Z",
+      "status": "baseline_created",
+      "testName": "checkbox-game-portal-card",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/checkbox-game-portal-card.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/checkbox-game-portal-card.png"
+    },
+    {
+      "name": "checkbox-game-setup",
+      "description": "Checkbox game player setup screen",
+      "timestamp": "2025-08-18T03:33:03.719Z",
+      "status": "baseline_created",
+      "testName": "checkbox-game-setup",
+      "baselinePath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/baselines/checkbox-game-setup.png",
+      "screenshotPath": "/Users/emilycogsdill/Documents/GitHub/games/worktrees/county-game/tests/visual/screenshots/checkbox-game-setup.png"
+    },
+    {
+      "name": "checkbox-game-waiting-room",
+      "description": "Checkbox game waiting room",
+      "timestamp": "2025-08-18T03:33:04.455Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "price-is-weird-portal-card",
+      "description": "Price Is Weird game card in portal",
+      "timestamp": "2025-08-18T03:33:10.523Z",
+      "passed": false,
+      "error": "Waiting for selector `[data-game=\"price-is-weird\"]` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "price-is-weird-setup",
+      "description": "Price Is Weird player setup screen",
+      "timestamp": "2025-08-18T03:33:16.202Z",
+      "passed": false,
+      "error": "Waiting for selector `[data-game=\"price-is-weird\"]` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "price-is-weird-waiting-room",
+      "description": "Price Is Weird waiting room",
+      "timestamp": "2025-08-18T03:33:21.876Z",
+      "passed": false,
+      "error": "Waiting for selector `[data-game=\"price-is-weird\"]` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "thats-a-paddlin-portal-card",
+      "description": "That's A Paddlin game card in portal",
+      "timestamp": "2025-08-18T03:33:27.580Z",
+      "passed": false,
+      "error": "Waiting for selector `[data-game=\"thats-a-paddlin\"]` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "thats-a-paddlin-setup",
+      "description": "That's A Paddlin player setup screen",
+      "timestamp": "2025-08-18T03:33:33.245Z",
+      "passed": false,
+      "error": "Waiting for selector `[data-game=\"thats-a-paddlin\"]` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "thats-a-paddlin-waiting-room",
+      "description": "That's A Paddlin waiting room",
+      "timestamp": "2025-08-18T03:33:38.952Z",
+      "passed": false,
+      "error": "Waiting for selector `[data-game=\"thats-a-paddlin\"]` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "game-cards-layout-consistency",
+      "description": "All game cards displayed consistently in portal",
+      "timestamp": "2025-08-18T03:33:44.659Z",
+      "passed": false,
+      "error": "Waiting for selector `.game-grid` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "header-consistency-across-games",
+      "description": "Header layout consistency across different game states",
+      "timestamp": "2025-08-18T03:33:45.414Z",
+      "passed": false,
+      "error": "page.clear is not a function"
+    },
+    {
+      "name": "mobile-portal-responsive",
+      "description": "Game portal responsive layout on mobile",
+      "timestamp": "2025-08-18T03:33:51.115Z",
+      "passed": false,
+      "error": "Waiting for selector `.game-grid` failed: Waiting failed: 5000ms exceeded"
+    },
+    {
+      "name": "tablet-portal-responsive",
+      "description": "Game portal responsive layout on tablet",
+      "timestamp": "2025-08-18T03:33:56.832Z",
+      "passed": false,
+      "error": "Waiting for selector `.game-grid` failed: Waiting failed: 5000ms exceeded"
+    }
+  ],
+  "baseline_info": {
+    "environment": "test",
+    "browser": "chrome",
+    "viewport": "1280x720",
+    "totalBaselines": 0,
+    "baselines": []
+  }
+}
