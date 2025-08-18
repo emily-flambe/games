@@ -45,13 +45,13 @@ npm run dev:remote
 
 This project is configured for Cloudflare Workers deployment with automated preview environments.
 
-### Preview Environments
+### Preview Environment
 
-Every commit automatically gets its own preview URL using aliased preview deployments:
+Changes are automatically deployed to a single preview environment for testing:
 
-- **Format**: `https://preview-{commit-hash}-games.emily-cogsdill.workers.dev`
-- **Example**: `https://preview-a1b2c3d-games.emily-cogsdill.workers.dev`
-- **Lifecycle**: Created automatically in CI/CD, managed by Cloudflare
+- **URL**: `https://games-preview.emily-cogsdill.workers.dev`
+- **Purpose**: Test changes before production deployment
+- **Lifecycle**: Updated automatically with each commit
 
 ### Production Deployment
 

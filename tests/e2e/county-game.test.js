@@ -221,7 +221,7 @@ describe('County Game E2E Tests', () => {
         console.log('✅ County Game extra box test passed');
     }, 45000);
 
-    test.skip('County Game announcement phase with multiple players', async () => {
+    test('County Game announcement phase with multiple players', async () => {
         // Test the announcement phase with multiple players
         
         // Host creates game
@@ -243,7 +243,7 @@ describe('County Game E2E Tests', () => {
         await player2Page.setViewport({ width: 1280, height: 720 });
         await player2Page.goto(`${baseUrl}/${roomCode}`, {
             waitUntil: 'networkidle2',
-            timeout: isCI ? 30000 : 10000  // Longer timeout for CI environment
+            timeout: 10000
         });
         await new Promise(resolve => setTimeout(resolve, 2000));
         

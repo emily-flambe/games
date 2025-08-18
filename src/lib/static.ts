@@ -2730,7 +2730,8 @@ class CountyGameModule extends GameModule {
      * Handle state updates from server
      */
     handleStateUpdate(gameSpecificState) {
-        super.handleStateUpdate(gameSpecificState);
+        // Update game state without calling super to control rendering
+        this.gameState = { ...this.gameState, ...gameSpecificState };
         
         // Track if phase changed to determine if we need to re-render
         const previousPhase = this.currentPhase;
@@ -6630,9 +6631,9 @@ main {
   "version": "1.1.2",
   "baseVersion": "1.1.2",
   "branch": "county-game",
-  "commit": "a177739",
-  "timestamp": "2025-08-18T03:11:57.758Z",
-  "deployedAt": "Aug 17, 2025, 09:11 PM MDT"
+  "commit": "695cf7f",
+  "timestamp": "2025-08-18T04:43:10.277Z",
+  "deployedAt": "Aug 17, 2025, 10:43 PM MDT"
 }`
 };
 
