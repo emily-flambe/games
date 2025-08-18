@@ -93,10 +93,27 @@ class CountyGameModule extends GameModule {
     }
 
     /**
+     * Update submission status without re-rendering the entire UI
+     */
+    updateSubmissionStatus() {
+        // Update all submission status elements (both in form and in submitted view)
+        const statusElements = this.gameAreaElement?.querySelectorAll('.submission-status');
+        if (statusElements) {
+            statusElements.forEach(element => {
+                element.textContent = `${this.submittedCount} of ${this.totalPlayers} players submitted`;
+            });
+        }
+    }
+
+    /**
      * Render the game UI based on current phase
      */
     render() {
         if (!this.gameAreaElement) return;
+        
+        // Preserve current input value if it exists
+        const existingInput = this.gameAreaElement.querySelector('#county-input');
+        const preservedValue = existingInput ? existingInput.value : '';
         
         let content = '';
         
@@ -119,6 +136,15 @@ class CountyGameModule extends GameModule {
         }
         
         this.gameAreaElement.innerHTML = content;
+        
+        // Restore input value if we're still in submission phase and haven't submitted yet
+        if (this.currentPhase === 'COUNTY_SUBMISSION' && !this.myCounty && preservedValue) {
+            const newInput = this.gameAreaElement.querySelector('#county-input');
+            if (newInput) {
+                newInput.value = preservedValue;
+            }
+        }
+        
         this.attachEventListeners();
     }
 
@@ -166,6 +192,9 @@ class CountyGameModule extends GameModule {
                             autocomplete="off"
                         />
                         <button id="submit-county-btn" class="submit-btn">Submit County</button>
+                        <div class="submission-status">
+                            ${this.submittedCount} of ${this.totalPlayers} players submitted
+                        </div>
                     </div>
                 `}
             </div>
@@ -193,11 +222,20 @@ class CountyGameModule extends GameModule {
                 </div>
             `;
         } else {
-            content += `
-                <div class="announcement-waiting">
-                    <p>Waiting for host to begin announcements...</p>
-                </div>
-            `;
+            // Show different message for host vs other players
+            if (this.isHost) {
+                content += `
+                    <div class="announcement-waiting">
+                        <p>Click BEGIN to start the excitement!</p>
+                    </div>
+                `;
+            } else {
+                content += `
+                    <div class="announcement-waiting">
+                        <p>Waiting for host to begin announcements...</p>
+                    </div>
+                `;
+            }
         }
 
         // Show controls for host
@@ -310,6 +348,9 @@ class CountyGameModule extends GameModule {
     handleStateUpdate(gameSpecificState) {
         super.handleStateUpdate(gameSpecificState);
         
+        // Track if phase changed to determine if we need to re-render
+        const previousPhase = this.currentPhase;
+        
         // Check if we have the full gameState to determine host
         if (gameSpecificState.hostId) {
             this.isHost = (this.currentPlayerId === gameSpecificState.hostId);
@@ -332,7 +373,11 @@ class CountyGameModule extends GameModule {
             }
         }
         
-        this.render();
+        // Only render if phase changed or we're not in submission phase
+        // This prevents re-rendering (and clearing inputs) during submission updates
+        if (previousPhase !== this.currentPhase || this.currentPhase !== 'COUNTY_SUBMISSION') {
+            this.render();
+        }
     }
 
     /**
@@ -369,7 +414,8 @@ class CountyGameModule extends GameModule {
             case 'submission_update':
                 this.submittedCount = message.submittedCount;
                 this.totalPlayers = message.totalPlayers;
-                this.render();
+                // Only update the submission status display, don't re-render the whole UI
+                this.updateSubmissionStatus();
                 break;
                 
             case 'player_announcement':
