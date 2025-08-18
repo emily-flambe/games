@@ -167,7 +167,7 @@ export class EverybodyVotesGameSession extends GameSession {
     }
   }
 
-  private async handleVote(data: any, ws: WebSocket, playerId: string, isSpectator: boolean) {
+  private async handleVote(ws: WebSocket, playerId: string, data: any, isSpectator: boolean) {
 
     // Must be in voting phase
     if (this.gameState.phase !== 'VOTING') {
@@ -226,7 +226,7 @@ export class EverybodyVotesGameSession extends GameSession {
     
   }
 
-  private async handlePrediction(data: any, ws: WebSocket, playerId: string, isSpectator: boolean) {
+  private async handlePrediction(ws: WebSocket, playerId: string, data: any, isSpectator: boolean) {
 
     // Must be in predicting phase
     if (this.gameState.phase !== 'PREDICTING') {
