@@ -40,20 +40,25 @@ jobs:
         CI: true
         NODE_ENV: test
     
-    # Deploy to preview environment for E2E testing
-    - name: Set preview URL
+    # Deploy to preview environment for E2E testing using aliased preview URLs
+    - name: Set preview alias and URL
       id: preview
       run: |
-        echo "preview_url=https://games-preview.emily-cogsdill.workers.dev" >> $GITHUB_OUTPUT
-        echo "Preview deployment: games-preview"
+        # Use short commit hash as alias for preview deployment
+        COMMIT_HASH=$(git rev-parse --short HEAD)
+        echo "commit_hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+        echo "preview_url=https://$COMMIT_HASH-games.emily-cogsdill.workers.dev" >> $GITHUB_OUTPUT
+        echo "Preview deployment alias: $COMMIT_HASH"
     
-    - name: Deploy to preview environment
+    - name: Deploy to preview environment with commit hash alias
       id: deploy-preview
       run: |
         npm install -g wrangler
-        # Deploy to single preview worker (games-preview)
-        wrangler deploy --env preview
+        # Upload version with commit hash as preview alias
+        COMMIT_HASH=${{ steps.preview.outputs.commit_hash }}
+        wrangler versions upload --preview-alias $COMMIT_HASH
         echo "Preview deployed to: ${{ steps.preview.outputs.preview_url }}"
+        echo "Preview alias: $COMMIT_HASH"
       env:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -117,16 +122,21 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const preview_url = '${{ steps.preview.outputs.preview_url }}';
+          const commit_hash = '${{ steps.preview.outputs.commit_hash }}';
           const comment = `🚀 **Preview Deployment Ready!**
           
           Your changes have been deployed to: ${preview_url}
+          
+          **Preview Details:**
+          - Commit: \`${commit_hash}\`
+          - URL Alias: \`${commit_hash}-games\`
           
           ✅ All tests passed successfully!
           - Unit tests: ✅
           - Integration tests: ✅
           - E2E tests: ✅
           
-          Preview deployments are automatically created for each commit.`;
+          Each commit gets its own unique preview URL using the commit hash as an alias.`;
           
           github.rest.issues.createComment({
             issue_number: context.issue.number,

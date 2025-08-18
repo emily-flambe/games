@@ -43,7 +43,19 @@ npm run dev:remote
 
 ## Deployment
 
-This project is configured for Cloudflare Workers deployment. You'll need:
+This project is configured for Cloudflare Workers deployment with automated preview environments.
+
+### Preview Environments
+
+Every commit automatically gets its own preview URL using aliased preview deployments:
+
+- **Format**: `https://{commit-hash}-games.emily-cogsdill.workers.dev`
+- **Example**: `https://a1b2c3d-games.emily-cogsdill.workers.dev`
+- **Lifecycle**: Created automatically in CI/CD, managed by Cloudflare
+
+### Production Deployment
+
+For production deployment, you'll need:
 
 1. A Cloudflare account with Workers enabled
 2. Your own domain configured in `wrangler.toml`

@@ -49,30 +49,6 @@ new_classes = [ "CheckboxGameSession", "EverybodyVotesGameSession" ]
 tag = "v4"
 new_classes = [ "CountyGameSession" ]
 
-# Preview Environment Configuration
-# Each preview deployment gets its own subdomain on workers.dev
-[env.preview]
-name = "games-preview"
-# Preview deployments use workers.dev subdomain
-# The actual subdomain will be set dynamically in CI/CD
-
-# Durable Objects (inherited from top level)
-[[env.preview.durable_objects.bindings]]
-name = "GAME_SESSIONS"
-class_name = "GameSession"
-
-[[env.preview.durable_objects.bindings]]
-name = "CHECKBOX_SESSIONS"
-class_name = "CheckboxGameSession"
-
-[[env.preview.durable_objects.bindings]]
-name = "EVERYBODY_VOTES_SESSIONS"
-class_name = "EverybodyVotesGameSession"
-
-[[env.preview.durable_objects.bindings]]
-name = "COUNTY_GAME_SESSIONS"
-class_name = "CountyGameSession"
-
-[[env.preview.durable_objects.bindings]]
-name = "GAME_REGISTRY"
-class_name = "GameSessionRegistry"
+# Preview deployments now use aliased preview URLs with commit hashes
+# No separate preview environment needed - aliases are created automatically
+# Format: https://{commit-hash}-games.emily-cogsdill.workers.dev
