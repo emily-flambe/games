@@ -22,10 +22,12 @@ interface CountyGameState {
   spectators: Record<string, any>;
   
   // County Game specific
-  phase: 'WAITING' | 'COUNTY_SUBMISSION' | 'GAME_OVER';
+  phase: 'WAITING' | 'COUNTY_SUBMISSION' | 'COUNTY_ANNOUNCEMENT' | 'GAME_OVER';
   counties: Record<string, string>; // playerId -> county name
   submissionEndTime: number | null;
   timeLimit: number; // 30 seconds
+  announcementIndex: number; // Current player being announced
+  playerOrder: string[]; // Order of players to announce
 }
 
 export class CountyGameSession extends GameSession {
@@ -47,7 +49,9 @@ export class CountyGameSession extends GameSession {
       phase: 'WAITING',
       counties: {},
       submissionEndTime: null,
-      timeLimit: 30
+      timeLimit: 30,
+      announcementIndex: -1,
+      playerOrder: []
     };
   }
 
@@ -73,6 +77,7 @@ export class CountyGameSession extends GameSession {
       data: {
         gameType: this.gameState.type,
         gameState: this.gameState,
+        gameSpecificState: this.getGameSpecificState(),
         phase: this.gameState.phase
       },
       timestamp: Date.now()
@@ -106,33 +111,21 @@ export class CountyGameSession extends GameSession {
       this.submissionTimer = null;
     }
 
-    // Change to game over phase
-    this.gameState.phase = 'GAME_OVER';
-    this.gameState.gameFinished = true;
-    this.gameState.status = 'finished';
+    // Transition to announcement phase
+    this.gameState.phase = 'COUNTY_ANNOUNCEMENT';
+    this.gameState.announcementIndex = -1;
+    this.gameState.playerOrder = Object.keys(this.gameState.counties);
 
-    // Prepare counties list for display
-    const countiesList = Object.entries(this.gameState.counties).map(([playerId, county]) => {
-      const player = this.gameState.players[playerId];
-      return {
-        playerName: player ? player.name : 'Unknown',
-        county: county
-      };
-    });
-
-    // Update registry status
+    // Save state
     await this.saveGameState();
-    this.updateRegistryStatus('finished');
 
-    // Send game_ended message using standard framework
+    // Notify all players of phase change
     this.broadcast({
-      type: 'game_ended',
+      type: 'phase_changed',
+      phase: 'COUNTY_ANNOUNCEMENT',
       data: {
-        message: 'Yaaaay',
-        winners: Object.keys(this.gameState.players), // Everyone wins
-        scores: {} // No scoring in County Game - remove gameState to avoid extra UI
-      },
-      timestamp: Date.now()
+        totalPlayers: this.gameState.playerOrder.length
+      }
     });
   }
 
@@ -140,6 +133,15 @@ export class CountyGameSession extends GameSession {
     switch (data.type) {
       case 'submit_county':
         await this.handleCountySubmission(ws, playerId, data.county);
+        break;
+      case 'begin_announcements':
+        await this.handleBeginAnnouncements(ws, playerId);
+        break;
+      case 'next_announcement':
+        await this.handleNextAnnouncement(ws, playerId);
+        break;
+      case 'conclude_announcements':
+        await this.handleConcludeAnnouncements(ws, playerId);
         break;
     }
   }
@@ -198,8 +200,130 @@ export class CountyGameSession extends GameSession {
     }
   }
 
+  private async handleBeginAnnouncements(ws: WebSocket, playerId: string) {
+    // Only host can begin announcements
+    if (this.gameState.hostId !== playerId) {
+      this.sendTo(ws, {
+        type: 'error',
+        message: 'Only host can control announcements'
+      });
+      return;
+    }
+
+    // Validate phase
+    if (this.gameState.phase !== 'COUNTY_ANNOUNCEMENT') {
+      this.sendTo(ws, {
+        type: 'error',
+        message: 'Not in announcement phase'
+      });
+      return;
+    }
+
+    // Begin with first player
+    this.gameState.announcementIndex = 0;
+    await this.announceCurrentPlayer();
+  }
+
+  private async handleNextAnnouncement(ws: WebSocket, playerId: string) {
+    // Only host can control announcements
+    if (this.gameState.hostId !== playerId) {
+      this.sendTo(ws, {
+        type: 'error',
+        message: 'Only host can control announcements'
+      });
+      return;
+    }
+
+    // Validate phase
+    if (this.gameState.phase !== 'COUNTY_ANNOUNCEMENT') {
+      this.sendTo(ws, {
+        type: 'error',
+        message: 'Not in announcement phase'
+      });
+      return;
+    }
+
+    // Move to next player
+    this.gameState.announcementIndex++;
+    
+    if (this.gameState.announcementIndex < this.gameState.playerOrder.length) {
+      await this.announceCurrentPlayer();
+    } else {
+      // All players announced, show conclude button
+      this.broadcast({
+        type: 'all_announced',
+        data: {
+          canConclude: true
+        }
+      });
+    }
+  }
+
+  private async handleConcludeAnnouncements(ws: WebSocket, playerId: string) {
+    // Only host can conclude announcements
+    if (this.gameState.hostId !== playerId) {
+      this.sendTo(ws, {
+        type: 'error',
+        message: 'Only host can conclude announcements'
+      });
+      return;
+    }
+
+    // Validate phase
+    if (this.gameState.phase !== 'COUNTY_ANNOUNCEMENT') {
+      this.sendTo(ws, {
+        type: 'error',
+        message: 'Not in announcement phase'
+      });
+      return;
+    }
+
+    // End the game
+    await this.endGame();
+  }
+
+  private async announceCurrentPlayer() {
+    const playerId = this.gameState.playerOrder[this.gameState.announcementIndex];
+    const player = this.gameState.players[playerId];
+    const county = this.gameState.counties[playerId];
+
+    this.broadcast({
+      type: 'player_announcement',
+      data: {
+        playerNumber: this.gameState.announcementIndex + 1,
+        playerName: player ? player.name : 'Unknown',
+        playerEmoji: player ? player.emoji : '👤',
+        county: county,
+        isLast: this.gameState.announcementIndex === this.gameState.playerOrder.length - 1
+      }
+    });
+  }
+
+  private async endGame() {
+    // Change to game over phase
+    this.gameState.phase = 'GAME_OVER';
+    this.gameState.gameFinished = true;
+    this.gameState.status = 'finished';
+
+    // Update registry status
+    await this.saveGameState();
+    this.updateRegistryStatus('finished');
+
+    // Send game_ended message using standard framework
+    this.broadcast({
+      type: 'game_ended',
+      data: {
+        message: 'Yaaaay',
+        winners: Object.keys(this.gameState.players), // Everyone wins
+        scores: {} // No scoring in County Game
+      },
+      timestamp: Date.now()
+    });
+  }
+
   async handlePlayerDisconnect(playerId: string) {
-    await super.handlePlayerDisconnect(playerId);
+    // Remove player from game state
+    delete this.gameState.players[playerId];
 
     // If in submission phase and all remaining players have submitted, end phase
     if (this.gameState.phase === 'COUNTY_SUBMISSION') {
@@ -217,7 +341,9 @@ export class CountyGameSession extends GameSession {
       phase: this.gameState.phase,
       counties: this.gameState.counties,
       submissionEndTime: this.gameState.submissionEndTime,
-      timeLimit: this.gameState.timeLimit
+      timeLimit: this.gameState.timeLimit,
+      announcementIndex: this.gameState.announcementIndex,
+      playerOrder: this.gameState.playerOrder
     };
   }
 
@@ -234,7 +360,6 @@ export class CountyGameSession extends GameSession {
       clearTimeout(this.submissionTimer);
       this.submissionTimer = null;
     }
-    await super.cleanup();
   }
 }
 

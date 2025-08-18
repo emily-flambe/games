@@ -130,3 +130,101 @@ The issue resolved itself during the debugging process, likely due to:
 
 ## Conclusion
 The deployment issue was resolved through systematic debugging that revealed the core WebSocket and Durable Objects infrastructure was working correctly. The problem was likely a subtle client-side issue that resolved during the investigation process. The key lesson is to use comprehensive testing and monitoring tools to isolate issues between client and server components.
+
+---
+
+# County Game UI Bug: The Hidden Empty Box Issue
+
+## Issue Summary
+**Date**: August 2025  
+**Severity**: Medium (Visual bug affecting user experience)  
+**Time to Resolve**: ~45 minutes of intense troubleshooting
+
+The County Game's end screen displayed an extraneous empty box between "Yaaaay" and the OK button, despite the game having no scores to display.
+
+## Critical Lessons Learned
+
+### 1. CSS Can Betray Your JavaScript Logic
+**The Fatal Assumption**: Setting `display: none` on an element makes it invisible.
+
+**The Harsh Reality**: CSS properties like `border`, `padding`, `margin`, and `background` can still create visual artifacts even when an element has `display: none`. The `.final-scores` div had default CSS styling that created a visible box despite JavaScript attempting to hide it.
+
+**The Only Solution**: `element.remove()` - complete DOM removal, not CSS manipulation.
+
+### 2. Shared UI Components Are Double-Edged Swords
+**The Problem**: GameShell.js's `showGameEndScreen()` was designed for games WITH scores. County Game has NO scores (everyone wins).
+
+**The Failure**: The generic implementation tried to handle both cases with conditional CSS hiding, but the CSS framework fought back.
+
+**The Lesson**: When a component fundamentally doesn't apply (like scores in a no-score game), remove it entirely rather than trying to hide it.
+
+### 3. Puppeteer Testing Is Harder Than It Looks
+**Failed Attempts**:
+- Wrong element selectors (`#player-name` vs `#player-name-input`)
+- Wrong button selectors (`#county-game-btn` vs `[data-game="county-game"]`)
+- Timing issues with WebSocket connections
+- API changes (`page.waitForTimeout` doesn't exist anymore)
+
+**The Brutal Truth**: E2E tests often fail not because your fix is wrong, but because the test itself is fighting the framework.
+
+### 4. Screenshot-Driven Development Works
+**What Failed**: Complex Puppeteer automation scripts
+**What Worked**: Simple HTML test pages with direct screenshots
+
+When automation becomes the bottleneck, sometimes the most primitive approach (static HTML + screenshot) provides the fastest path to verification.
+
+### 5. The Hidden Cost of "Clean" Code
+The original code tried to be "clean" by reusing CSS properties to hide elements:
+```javascript
+finalScores.style.display = 'none';
+finalScores.style.visibility = 'hidden';
+finalScores.style.height = '0px';
+// ... 4 more CSS properties
+```
+
+**The Reality Check**: Seven lines of "hiding" code couldn't do what one line of removal could: `finalScores.remove()`
+
+### 6. Framework Abstraction Obscures Simple Problems
+**Layers of Indirection**:
+1. CountyGameSession.ts sends `game_ended` message
+2. GameShell.js receives and processes it
+3. Generic handler tries to display scores that don't exist
+4. CSS framework applies default styling
+5. Empty box appears despite no content
+
+**The Lesson**: Each abstraction layer is a potential failure point. The more generic the solution, the more edge cases it will have.
+
+## Technical Debt Identified
+
+### 1. GameShell.js Assumes All Games Have Scores
+The `showGameEndScreen()` function should be refactored to handle score-less games as first-class citizens, not edge cases.
+
+### 2. No Visual Regression Testing
+A simple screenshot comparison test would have caught this immediately. Visual bugs need visual tests.
+
+### 3. Inconsistent Element Removal Strategies
+The codebase mixes CSS hiding (setting display/visibility) with DOM manipulation (remove()). Pick one strategy and stick with it.
+
+## Recommended Actions
+
+### Immediate
+1. **Add Visual Regression Tests**: Implement screenshot-based tests for all game end states
+2. **Audit Other Games**: Check if similar issues exist in other game modules
+3. **Document UI Contracts**: Clearly specify what each game module expects from GameShell
+
+### Long-term
+1. **Refactor GameShell**: Make it truly game-agnostic or create game-specific shells
+2. **CSS Reset Strategy**: Implement consistent patterns for hiding vs removing elements
+3. **E2E Test Simplification**: Create helper utilities that abstract Puppeteer complexity
+
+## The Critic's Verdict
+
+This bug existed because:
+1. **Nobody tested the actual visual output** - Tests checked for element presence, not appearance
+2. **CSS and JavaScript were fighting each other** - Two systems trying to control visibility
+3. **Generic solutions created specific problems** - One-size-fits-all UI failed edge cases
+4. **Developer convenience trumped correctness** - Reusing components incorrectly
+
+The fix was trivial (`remove()` instead of hide), but finding it required peeling back layers of abstraction, failed test attempts, and CSS mysteries. This is what happens when "good enough" code meets real-world edge cases.
+
+**Final Judgment**: A 45-minute debugging session for a one-line fix is unacceptable. The architecture failed to make the simple case simple.

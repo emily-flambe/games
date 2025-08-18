@@ -399,7 +399,7 @@ class GameShell {
                     this.gameModule.init(
                         this.gameAreaElement,
                         this.players,
-                        message.gameState,
+                        {...message.gameState, hostId: message.gameState.hostId},
                         (action) => this.sendPlayerAction(action),
                         (state) => this.onGameStateChange(state),
                         rulesElement
@@ -429,6 +429,11 @@ class GameShell {
     handleGameStarted(message) {
         this.gameState = 'playing';
         
+        // Update room state if gameState is provided
+        if (message.data?.gameState) {
+            this.roomState = message.data.gameState;
+        }
+        
         // Load and initialize the appropriate game module
         this.loadGameModule(this.gameType).then(() => {
             if (this.gameModule) {
@@ -442,7 +447,7 @@ class GameShell {
                 this.gameModule.init(
                     this.gameAreaElement,
                     this.players,
-                    message.data?.gameSpecificState,
+                    {...(message.data?.gameSpecificState || {}), hostId: message.data?.gameState?.hostId || this.roomState.hostId},
                     (action) => this.sendPlayerAction(action),
                     (state) => this.onGameStateChange(state),
                     rulesElement

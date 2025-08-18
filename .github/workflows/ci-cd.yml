@@ -26,17 +26,19 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
+    - name: Build project
+      run: npm run build
+    
     - name: Run unit tests
       run: npm run test:unit
       env:
         CI: true
     
-    # E2E tests are disabled in CI/CD due to Cloudflare Workers runtime requirements
-    # E2E tests should be run locally before deployment
-    # TODO: Consider using Cloudflare's Vitest integration for better CI/CD testing
-    
-    - name: Build project
-      run: npm run build
+    - name: Run Vitest integration tests
+      run: npm run test:vitest
+      env:
+        CI: true
+        NODE_ENV: test
     
     # Only run version bump and deploy on main branch pushes (not PRs) AND if all tests pass
     - name: Bump version based on conventional commits

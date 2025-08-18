@@ -989,7 +989,7 @@ class GameShell {
                     this.gameModule.init(
                         this.gameAreaElement,
                         this.players,
-                        message.gameState,
+                        {...message.gameState, hostId: message.gameState.hostId},
                         (action) => this.sendPlayerAction(action),
                         (state) => this.onGameStateChange(state),
                         rulesElement
@@ -1019,6 +1019,11 @@ class GameShell {
     handleGameStarted(message) {
         this.gameState = 'playing';
         
+        // Update room state if gameState is provided
+        if (message.data?.gameState) {
+            this.roomState = message.data.gameState;
+        }
+        
         // Load and initialize the appropriate game module
         this.loadGameModule(this.gameType).then(() => {
             if (this.gameModule) {
@@ -1032,7 +1037,7 @@ class GameShell {
                 this.gameModule.init(
                     this.gameAreaElement,
                     this.players,
-                    message.data?.gameSpecificState,
+                    {...(message.data?.gameSpecificState || {}), hostId: message.data?.gameState?.hostId || this.roomState.hostId},
                     (action) => this.sendPlayerAction(action),
                     (state) => this.onGameStateChange(state),
                     rulesElement
@@ -1855,14 +1860,8 @@ class GameShell {
                     }
                 });
             } else {
-                // Completely hide and remove content when there are no scores
-                finalScores.innerHTML = '';
-                finalScores.style.display = 'none';
-                finalScores.style.visibility = 'hidden';
-                finalScores.style.height = '0px';
-                finalScores.style.padding = '0px';
-                finalScores.style.margin = '0px';
-                finalScores.style.border = '0px';
+                // Completely remove the scores element when there are no scores
+                finalScores.remove();
             }
             
             endScreen.style.display = 'block';
@@ -2380,13 +2379,16 @@ if (typeof module !== 'undefined' && module.exports) {
 class CountyGameModule extends GameModule {
     constructor() {
         super();
-        this.currentPhase = 'WAITING'; // WAITING, COUNTY_SUBMISSION, GAME_OVER
+        this.currentPhase = 'WAITING'; // WAITING, COUNTY_SUBMISSION, COUNTY_ANNOUNCEMENT, GAME_OVER
         this.myCounty = null;
         this.submittedCount = 0;
         this.totalPlayers = 0;
         this.timeRemaining = 0;
         this.timerInterval = null;
-        this.counties = [];
+        this.counties = {};
+        this.currentAnnouncement = null;
+        this.canConclude = false;
+        this.isHost = false;
     }
 
     /**
@@ -2394,6 +2396,11 @@ class CountyGameModule extends GameModule {
      */
     init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement) {
         super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement);
+        
+        // Check if current player is host
+        if (initialState && initialState.hostId) {
+            this.isHost = (this.currentPlayerId === initialState.hostId);
+        }
         
         // Set initial state if provided
         if (initialState) {
@@ -2474,6 +2481,9 @@ class CountyGameModule extends GameModule {
             case 'COUNTY_SUBMISSION':
                 content = this.renderSubmissionPhase();
                 break;
+            case 'COUNTY_ANNOUNCEMENT':
+                content = this.renderAnnouncementPhase();
+                break;
             case 'GAME_OVER':
                 // Game over is handled by the shell's win screen
                 content = '';
@@ -2537,6 +2547,56 @@ class CountyGameModule extends GameModule {
     }
 
     /**
+     * Render announcement phase
+     */
+    renderAnnouncementPhase() {
+        let content = \`
+            <div class="county-game-announcement">
+                <h2>County Announcements</h2>
+        \`;
+
+        if (this.currentAnnouncement) {
+            content += \`
+                <div class="announcement-display">
+                    <div class="player-number">PLAYER \${this.currentAnnouncement.playerNumber}</div>
+                    <div class="player-info">
+                        <span class="player-emoji">\${this.currentAnnouncement.playerEmoji}</span>
+                        <span class="player-name">\${this.currentAnnouncement.playerName}</span>
+                    </div>
+                    <div class="county-name">"\${this.currentAnnouncement.county}"</div>
+                </div>
+            \`;
+        } else {
+            content += \`
+                <div class="announcement-waiting">
+                    <p>Waiting for host to begin announcements...</p>
+                </div>
+            \`;
+        }
+
+        // Show controls for host
+        if (this.isHost) {
+            content += '<div class="host-controls">';
+            
+            if (!this.currentAnnouncement) {
+                content += '<button id="begin-btn" class="control-btn">BEGIN</button>';
+            } else if (this.canConclude) {
+                content += '<button id="conclude-btn" class="control-btn">CONCLUDE</button>';
+            } else if (!this.currentAnnouncement.isLast) {
+                content += '<button id="next-btn" class="control-btn">NEXT</button>';
+            } else {
+                content += '<p>All players announced!</p>';
+                content += '<button id="conclude-btn" class="control-btn">CONCLUDE</button>';
+            }
+            
+            content += '</div>';
+        }
+
+        content += '</div>';
+        return content;
+    }
+
+    /**
      * Attach event listeners
      */
     attachEventListeners() {
@@ -2554,6 +2614,41 @@ class CountyGameModule extends GameModule {
             
             // Focus the input
             countyInput.focus();
+        }
+
+        // Announcement phase buttons (host only)
+        const beginBtn = this.gameAreaElement?.querySelector('#begin-btn');
+        const nextBtn = this.gameAreaElement?.querySelector('#next-btn');
+        const concludeBtn = this.gameAreaElement?.querySelector('#conclude-btn');
+
+        if (beginBtn) {
+            beginBtn.addEventListener('click', () => {
+                if (this.onPlayerAction) {
+                    this.onPlayerAction({
+                        type: 'begin_announcements'
+                    });
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (this.onPlayerAction) {
+                    this.onPlayerAction({
+                        type: 'next_announcement'
+                    });
+                }
+            });
+        }
+
+        if (concludeBtn) {
+            concludeBtn.addEventListener('click', () => {
+                if (this.onPlayerAction) {
+                    this.onPlayerAction({
+                        type: 'conclude_announcements'
+                    });
+                }
+            });
         }
     }
 
@@ -2589,6 +2684,11 @@ class CountyGameModule extends GameModule {
     handleStateUpdate(gameSpecificState) {
         super.handleStateUpdate(gameSpecificState);
         
+        // Check if we have the full gameState to determine host
+        if (gameSpecificState.hostId) {
+            this.isHost = (this.currentPlayerId === gameSpecificState.hostId);
+        }
+        
         if (gameSpecificState.phase) {
             this.currentPhase = gameSpecificState.phase;
         }
@@ -2620,6 +2720,10 @@ class CountyGameModule extends GameModule {
                     // Clear previous submission
                     this.myCounty = null;
                     this.submittedCount = 0;
+                } else if (message.phase === 'COUNTY_ANNOUNCEMENT') {
+                    // Reset announcement state
+                    this.currentAnnouncement = null;
+                    this.canConclude = false;
                 }
                 this.render();
                 break;
@@ -2639,6 +2743,19 @@ class CountyGameModule extends GameModule {
             case 'submission_update':
                 this.submittedCount = message.submittedCount;
                 this.totalPlayers = message.totalPlayers;
+                this.render();
+                break;
+                
+            case 'player_announcement':
+                // Display the current player's county
+                this.currentAnnouncement = message.data;
+                this.canConclude = false;
+                this.render();
+                break;
+                
+            case 'all_announced':
+                // All players have been announced, can now conclude
+                this.canConclude = true;
                 this.render();
                 break;
                 
@@ -6292,7 +6409,8 @@ main {
 
 /* County Game Styles */
 .county-game-waiting,
-.county-game-submission {
+.county-game-submission,
+.county-game-announcement {
     text-align: center;
     padding: 2rem;
     max-width: 600px;
@@ -6369,14 +6487,115 @@ main {
     padding: 0.5rem;
     background: white;
     border-radius: 6px;
+}
+
+/* County Game Announcement Phase */
+.county-game-announcement h2 {
+    color: #333;
+    margin-bottom: 2rem;
+}
+
+.announcement-display {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 3rem 2rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    margin: 2rem 0;
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.announcement-display .player-number {
+    font-size: 1.5rem;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 1rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+}
+
+.announcement-display .player-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.announcement-display .player-emoji {
+    font-size: 3rem;
+}
+
+.announcement-display .player-name {
+    font-size: 1.8rem;
+    color: white;
+    font-weight: bold;
+}
+
+.announcement-display .county-name {
+    font-size: 2.5rem;
+    color: #fff;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    margin-top: 1rem;
+    font-style: italic;
+}
+
+.announcement-waiting {
+    padding: 3rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    color: #666;
+}
+
+.host-controls {
+    margin-top: 2rem;
+}
+
+.host-controls .control-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 1rem 3rem;
+    font-size: 1.3rem;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    letter-spacing: 1px;
+}
+
+.host-controls .control-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.host-controls .control-btn:active {
+    transform: translateY(0);
+}
+
+.host-controls p {
+    color: #666;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
 }`,
   '/static/version.json': `{
   "version": "1.1.2",
   "baseVersion": "1.1.2",
   "branch": "county-game",
-  "commit": "132520b",
-  "timestamp": "2025-08-18T01:21:52.840Z",
-  "deployedAt": "Aug 17, 2025, 07:21 PM MDT"
+  "commit": "ec90544",
+  "timestamp": "2025-08-18T02:19:24.709Z",
+  "deployedAt": "Aug 17, 2025, 08:19 PM MDT"
 }`
 };
 

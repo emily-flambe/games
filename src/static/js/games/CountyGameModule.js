@@ -5,13 +5,16 @@
 class CountyGameModule extends GameModule {
     constructor() {
         super();
-        this.currentPhase = 'WAITING'; // WAITING, COUNTY_SUBMISSION, GAME_OVER
+        this.currentPhase = 'WAITING'; // WAITING, COUNTY_SUBMISSION, COUNTY_ANNOUNCEMENT, GAME_OVER
         this.myCounty = null;
         this.submittedCount = 0;
         this.totalPlayers = 0;
         this.timeRemaining = 0;
         this.timerInterval = null;
-        this.counties = [];
+        this.counties = {};
+        this.currentAnnouncement = null;
+        this.canConclude = false;
+        this.isHost = false;
     }
 
     /**
@@ -19,6 +22,11 @@ class CountyGameModule extends GameModule {
      */
     init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement) {
         super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement);
+        
+        // Check if current player is host
+        if (initialState && initialState.hostId) {
+            this.isHost = (this.currentPlayerId === initialState.hostId);
+        }
         
         // Set initial state if provided
         if (initialState) {
@@ -99,6 +107,9 @@ class CountyGameModule extends GameModule {
             case 'COUNTY_SUBMISSION':
                 content = this.renderSubmissionPhase();
                 break;
+            case 'COUNTY_ANNOUNCEMENT':
+                content = this.renderAnnouncementPhase();
+                break;
             case 'GAME_OVER':
                 // Game over is handled by the shell's win screen
                 content = '';
@@ -162,6 +173,56 @@ class CountyGameModule extends GameModule {
     }
 
     /**
+     * Render announcement phase
+     */
+    renderAnnouncementPhase() {
+        let content = `
+            <div class="county-game-announcement">
+                <h2>County Announcements</h2>
+        `;
+
+        if (this.currentAnnouncement) {
+            content += `
+                <div class="announcement-display">
+                    <div class="player-number">PLAYER ${this.currentAnnouncement.playerNumber}</div>
+                    <div class="player-info">
+                        <span class="player-emoji">${this.currentAnnouncement.playerEmoji}</span>
+                        <span class="player-name">${this.currentAnnouncement.playerName}</span>
+                    </div>
+                    <div class="county-name">"${this.currentAnnouncement.county}"</div>
+                </div>
+            `;
+        } else {
+            content += `
+                <div class="announcement-waiting">
+                    <p>Waiting for host to begin announcements...</p>
+                </div>
+            `;
+        }
+
+        // Show controls for host
+        if (this.isHost) {
+            content += '<div class="host-controls">';
+            
+            if (!this.currentAnnouncement) {
+                content += '<button id="begin-btn" class="control-btn">BEGIN</button>';
+            } else if (this.canConclude) {
+                content += '<button id="conclude-btn" class="control-btn">CONCLUDE</button>';
+            } else if (!this.currentAnnouncement.isLast) {
+                content += '<button id="next-btn" class="control-btn">NEXT</button>';
+            } else {
+                content += '<p>All players announced!</p>';
+                content += '<button id="conclude-btn" class="control-btn">CONCLUDE</button>';
+            }
+            
+            content += '</div>';
+        }
+
+        content += '</div>';
+        return content;
+    }
+
+    /**
      * Attach event listeners
      */
     attachEventListeners() {
@@ -179,6 +240,41 @@ class CountyGameModule extends GameModule {
             
             // Focus the input
             countyInput.focus();
+        }
+
+        // Announcement phase buttons (host only)
+        const beginBtn = this.gameAreaElement?.querySelector('#begin-btn');
+        const nextBtn = this.gameAreaElement?.querySelector('#next-btn');
+        const concludeBtn = this.gameAreaElement?.querySelector('#conclude-btn');
+
+        if (beginBtn) {
+            beginBtn.addEventListener('click', () => {
+                if (this.onPlayerAction) {
+                    this.onPlayerAction({
+                        type: 'begin_announcements'
+                    });
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (this.onPlayerAction) {
+                    this.onPlayerAction({
+                        type: 'next_announcement'
+                    });
+                }
+            });
+        }
+
+        if (concludeBtn) {
+            concludeBtn.addEventListener('click', () => {
+                if (this.onPlayerAction) {
+                    this.onPlayerAction({
+                        type: 'conclude_announcements'
+                    });
+                }
+            });
         }
     }
 
@@ -214,6 +310,11 @@ class CountyGameModule extends GameModule {
     handleStateUpdate(gameSpecificState) {
         super.handleStateUpdate(gameSpecificState);
         
+        // Check if we have the full gameState to determine host
+        if (gameSpecificState.hostId) {
+            this.isHost = (this.currentPlayerId === gameSpecificState.hostId);
+        }
+        
         if (gameSpecificState.phase) {
             this.currentPhase = gameSpecificState.phase;
         }
@@ -245,6 +346,10 @@ class CountyGameModule extends GameModule {
                     // Clear previous submission
                     this.myCounty = null;
                     this.submittedCount = 0;
+                } else if (message.phase === 'COUNTY_ANNOUNCEMENT') {
+                    // Reset announcement state
+                    this.currentAnnouncement = null;
+                    this.canConclude = false;
                 }
                 this.render();
                 break;
@@ -264,6 +369,19 @@ class CountyGameModule extends GameModule {
             case 'submission_update':
                 this.submittedCount = message.submittedCount;
                 this.totalPlayers = message.totalPlayers;
+                this.render();
+                break;
+                
+            case 'player_announcement':
+                // Display the current player's county
+                this.currentAnnouncement = message.data;
+                this.canConclude = false;
+                this.render();
+                break;
+                
+            case 'all_announced':
+                // All players have been announced, can now conclude
+                this.canConclude = true;
                 this.render();
                 break;
                 

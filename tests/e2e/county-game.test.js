@@ -78,7 +78,26 @@ describe('County Game E2E Tests', () => {
         await page.waitForSelector('#submit-county-btn', { timeout: 5000 });
         await page.click('#submit-county-btn');
         
-        // Phase 5: Verify Win Screen
+        // Phase 5: County Announcement Phase
+        // Wait for announcement phase to start
+        await page.waitForSelector('.county-game-announcement', { timeout: 35000 });
+        
+        // As host, click BEGIN button
+        await page.waitForSelector('#begin-btn', { timeout: 5000 });
+        await page.click('#begin-btn');
+        
+        // Wait for player announcement to appear
+        await page.waitForSelector('.announcement-display', { timeout: 5000 });
+        
+        // Verify the county is displayed
+        const countyName = await page.$eval('.county-name', el => el.textContent);
+        expect(countyName).toContain('Rock');
+        
+        // Since it's single player, should be able to conclude immediately
+        await page.waitForSelector('#conclude-btn', { timeout: 5000 });
+        await page.click('#conclude-btn');
+        
+        // Phase 6: Verify Win Screen
         await page.waitForSelector('#end-game-screen', { 
             visible: true, 
             timeout: 30000 
@@ -154,6 +173,14 @@ describe('County Game E2E Tests', () => {
         await page.type('#county-input', 'TestCounty');
         await page.click('#submit-county-btn');
         
+        // Handle announcement phase
+        await page.waitForSelector('.county-game-announcement', { timeout: 35000 });
+        await page.waitForSelector('#begin-btn', { timeout: 5000 });
+        await page.click('#begin-btn');
+        await page.waitForSelector('.announcement-display', { timeout: 5000 });
+        await page.waitForSelector('#conclude-btn', { timeout: 5000 });
+        await page.click('#conclude-btn');
+        
         // Wait for win screen
         await page.waitForSelector('#end-game-screen', { visible: true, timeout: 30000 });
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -186,6 +213,99 @@ describe('County Game E2E Tests', () => {
         
         console.log('✅ County Game extra box test passed');
     }, 45000);
+
+    test('County Game announcement phase with multiple players', async () => {
+        // Test the announcement phase with multiple players
+        
+        // Host creates game
+        const hostPage = page;
+        await hostPage.click('[data-game="county-game"]');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Get room code
+        const roomCode = await hostPage.$eval('#room-code-display', el => el.textContent);
+        
+        // Host sets name
+        await hostPage.type('#player-name-input', 'Host');
+        await hostPage.evaluate(() => {
+            document.getElementById('update-name-btn').click();
+        });
+        
+        // Player 2 joins
+        const player2Page = await browser.newPage();
+        await player2Page.setViewport({ width: 1280, height: 720 });
+        await player2Page.goto(`http://localhost:8777/${roomCode}`, {
+            waitUntil: 'networkidle2',
+            timeout: 10000
+        });
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        await player2Page.type('#player-name-input', 'Player2');
+        await player2Page.evaluate(() => {
+            document.getElementById('update-name-btn').click();
+        });
+        
+        // Host starts game
+        await hostPage.click('#start-game-btn-header');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Both players submit counties
+        await hostPage.type('#county-input', 'Alameda');
+        await hostPage.click('#submit-county-btn');
+        
+        await player2Page.waitForSelector('#county-input', { timeout: 10000 });
+        await player2Page.type('#county-input', 'Orange');
+        await player2Page.click('#submit-county-btn');
+        
+        // Wait for announcement phase
+        await hostPage.waitForSelector('.county-game-announcement', { timeout: 35000 });
+        await player2Page.waitForSelector('.county-game-announcement', { timeout: 35000 });
+        
+        // Host clicks BEGIN
+        await hostPage.waitForSelector('#begin-btn', { timeout: 5000 });
+        await hostPage.click('#begin-btn');
+        
+        // Verify first announcement appears on both screens
+        await hostPage.waitForSelector('.announcement-display', { timeout: 5000 });
+        await player2Page.waitForSelector('.announcement-display', { timeout: 5000 });
+        
+        // Verify both players see the same announcement
+        const hostCounty1 = await hostPage.$eval('.county-name', el => el.textContent);
+        const player2County1 = await player2Page.$eval('.county-name', el => el.textContent);
+        expect(hostCounty1).toBe(player2County1);
+        expect(hostCounty1).toContain('Alameda');
+        
+        // Host clicks NEXT
+        await hostPage.waitForSelector('#next-btn', { timeout: 5000 });
+        await hostPage.click('#next-btn');
+        
+        // Wait for second announcement
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Verify both players see the same second announcement
+        const hostCounty2 = await hostPage.$eval('.county-name', el => el.textContent);
+        const player2County2 = await player2Page.$eval('.county-name', el => el.textContent);
+        expect(hostCounty2).toBe(player2County2);
+        expect(hostCounty2).toContain('Orange');
+        
+        // Host clicks CONCLUDE
+        await hostPage.waitForSelector('#conclude-btn', { timeout: 5000 });
+        await hostPage.click('#conclude-btn');
+        
+        // Verify win screen on both pages
+        await hostPage.waitForSelector('#end-game-screen', { visible: true, timeout: 10000 });
+        await player2Page.waitForSelector('#end-game-screen', { visible: true, timeout: 10000 });
+        
+        const hostMessage = await hostPage.$eval('#game-result-message', el => el.textContent);
+        const player2Message = await player2Page.$eval('#game-result-message', el => el.textContent);
+        
+        expect(hostMessage).toBe('Yaaaay');
+        expect(player2Message).toBe('Yaaaay');
+        
+        await player2Page.close();
+        
+        console.log('✅ County Game announcement phase test passed');
+    }, 60000);
 
     test('County Game handles player disconnection gracefully', async () => {
         // Test edge case: player disconnects during game
