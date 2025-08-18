@@ -129,7 +129,7 @@ export class CountyGameSession extends GameSession {
     });
   }
 
-  protected async handleGameSpecificMessage(ws: WebSocket, playerId: string, data: any) {
+  protected async handleGameSpecificMessage(ws: WebSocket, playerId: string, data: any, isSpectator: boolean) {
     switch (data.type) {
       case 'submit_county':
         await this.handleCountySubmission(ws, playerId, data.county);
@@ -322,9 +322,9 @@ export class CountyGameSession extends GameSession {
   }
 
   async handlePlayerDisconnect(playerId: string) {
-    // Remove player from game state
-    delete this.gameState.players[playerId];
-
+    // Player removal is already handled by base class
+    // Handle game-specific logic for County Game
+    
     // If in submission phase and all remaining players have submitted, end phase
     if (this.gameState.phase === 'COUNTY_SUBMISSION') {
       const remainingPlayers = Object.keys(this.gameState.players).length;

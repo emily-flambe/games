@@ -9,14 +9,8 @@ import { CheckboxGameSession } from './durable-objects/CheckboxGameSession';
 import { EverybodyVotesGameSession } from './durable-objects/EverybodyVotesGameSession';
 import { CountyGameSession } from './durable-objects/CountyGameSession';
 import { GameSessionRegistry } from './durable-objects/GameSessionRegistry';
+import { Env } from './types';
 
-export interface Env {
-  GAME_SESSIONS: DurableObjectNamespace;
-  CHECKBOX_SESSIONS: DurableObjectNamespace;
-  EVERYBODY_VOTES_SESSIONS: DurableObjectNamespace;
-  COUNTY_GAME_SESSIONS: DurableObjectNamespace;
-  GAME_REGISTRY: DurableObjectNamespace;
-}
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {

@@ -42,7 +42,7 @@ export class CheckboxGameSession extends GameSession {
     };
   }
 
-  protected async handleGameSpecificMessage(data: any, ws: WebSocket, playerId: string, isSpectator: boolean) {
+  protected async handleGameSpecificMessage(ws: WebSocket, playerId: string, data: any, isSpectator: boolean) {
     switch (data.type) {
       case 'toggle_checkbox':
       case 'TOGGLE_CHECKBOX':

@@ -135,14 +135,14 @@ export class EverybodyVotesGameSession extends GameSession {
     // Game starts in voting phase - wait for player votes
   }
 
-  protected async handleGameSpecificMessage(data: any, ws: WebSocket, playerId: string, isSpectator: boolean) {
+  protected async handleGameSpecificMessage(ws: WebSocket, playerId: string, data: any, isSpectator: boolean) {
     switch (data.type) {
       case 'submit_vote':
-        await this.handleVote(data, ws, playerId, isSpectator);
+        await this.handleVote(ws, playerId, data, isSpectator);
         break;
         
       case 'submit_prediction':
-        await this.handlePrediction(data, ws, playerId, isSpectator);
+        await this.handlePrediction(ws, playerId, data, isSpectator);
         break;
         
       case 'advance_round':

@@ -4,22 +4,7 @@
  */
 
 import { DurableObject, DurableObjectState } from '@cloudflare/workers-types';
-
-export interface Env {
-  GAME_SESSIONS: DurableObjectNamespace;
-  GAME_REGISTRY: DurableObjectNamespace;
-}
-
-interface SessionMetadata {
-  sessionId: string;
-  gameType: string;
-  playerCount: number;
-  players: Array<{name: string; emoji: string}>;
-  createdAt: number;
-  lastHeartbeat: number;
-  roomStatus: 'active' | 'inactive';
-  gameStatus: 'waiting' | 'in-progress' | 'finished';
-}
+import { Env, SessionMetadata } from '../types';
 
 export class GameSession implements DurableObject {
   protected websockets: Map<WebSocket, string> = new Map();
@@ -300,6 +285,11 @@ export class GameSession implements DurableObject {
         gameState: this.gameState
       });
 
+      // Call game-specific disconnect handler if available
+      if (typeof this.handlePlayerDisconnect === 'function') {
+        await this.handlePlayerDisconnect(playerId);
+      }
+
       if (this.players.size === 0 && this.sessionId) {
         await this.unregisterFromRegistry();
       } else if (this.sessionId) {
@@ -442,15 +432,19 @@ export class GameSession implements DurableObject {
           break;
 
         default:
-          await this.handleGameSpecificMessage(ws, playerId, data);
+          await this.handleGameSpecificMessage(ws, playerId, data, isSpectator);
       }
     } catch (error) {
       console.error('Error handling message:', error);
     }
   }
 
-  protected async handleGameSpecificMessage(ws: WebSocket, playerId: string, data: any) {
+  protected async handleGameSpecificMessage(ws: WebSocket, playerId: string, data: any, isSpectator: boolean) {
     // Override in subclasses
+  }
+
+  protected async handlePlayerDisconnect(playerId: string) {
+    // Override in subclasses for game-specific disconnect logic
   }
 
   protected async handleStartGame(ws: WebSocket, playerId: string) {

@@ -32,11 +32,9 @@
     "jsdom": "^26.1.0",
     "pixelmatch": "^6.0.0",
     "pngjs": "^7.0.0",
+    "puppeteer": "^24.16.0",
     "typescript": "^5.7.3",
     "vitest": "^3.2.4",
     "wrangler": "^4.28.1"
-  },
-  "dependencies": {
-    "puppeteer": "^24.16.0"
   }
 }
