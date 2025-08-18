@@ -1835,8 +1835,16 @@ class GameShell {
             
             // Show final scores - server sends 'scores', not 'finalScores'
             const scores = gameEndData.scores || gameEndData.finalScores;
-            if (scores) {
+            if (scores && Object.keys(scores).length > 0) {
+                // Show scores when they exist - restore normal styling
                 finalScores.innerHTML = '';
+                finalScores.style.display = 'block';
+                finalScores.style.visibility = 'visible';
+                finalScores.style.height = '';
+                finalScores.style.padding = '';
+                finalScores.style.margin = '';
+                finalScores.style.border = '';
+                
                 Object.entries(scores).forEach(([playerId, score]) => {
                     const player = this.players[playerId];
                     if (player) {
@@ -1846,6 +1854,15 @@ class GameShell {
                         finalScores.appendChild(scoreItem);
                     }
                 });
+            } else {
+                // Completely hide and remove content when there are no scores
+                finalScores.innerHTML = '';
+                finalScores.style.display = 'none';
+                finalScores.style.visibility = 'hidden';
+                finalScores.style.height = '0px';
+                finalScores.style.padding = '0px';
+                finalScores.style.margin = '0px';
+                finalScores.style.border = '0px';
             }
             
             endScreen.style.display = 'block';
@@ -2401,14 +2418,10 @@ class CountyGameModule extends GameModule {
     getRules() {
         return \`
             <h3>County Game</h3>
-            <p><strong>A silly celebration game!</strong></p>
-            <ol>
-                <li>Enter the name of a county (where you're from, where you live, or any county!)</li>
-                <li>You have 30 seconds to submit</li>
-                <li>Once everyone submits (or time runs out), we all celebrate!</li>
-                <li>Everyone wins! Yay!</li>
-            </ol>
-            <p><em>It's just silly fun - there's no wrong answer!</em></p>
+            <ul>
+                <li>enter the name of a county</li>
+                <li>everybody wins!</li>
+            </ul>
         \`;
     }
 
@@ -2629,8 +2642,8 @@ class CountyGameModule extends GameModule {
                 this.render();
                 break;
                 
-            case 'game_over':
-                // Game over is handled by the shell
+            case 'game_ended':
+                // Game ended is handled by the shell - just cleanup
                 this.clearTimer();
                 break;
         }
@@ -6361,9 +6374,9 @@ main {
   "version": "1.1.2",
   "baseVersion": "1.1.2",
   "branch": "county-game",
-  "commit": "7e7b6e4",
-  "timestamp": "2025-08-16T13:38:16.563Z",
-  "deployedAt": "Aug 16, 2025, 08:38 AM CDT"
+  "commit": "132520b",
+  "timestamp": "2025-08-18T01:21:52.840Z",
+  "deployedAt": "Aug 17, 2025, 07:21 PM MDT"
 }`
 };
 

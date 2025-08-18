@@ -51,17 +51,8 @@ export class CountyGameSession extends GameSession {
     };
   }
 
-  async handleStartGame(ws: WebSocket, playerId: string) {
+  protected async handleStartGame(ws: WebSocket, playerId: string) {
     if (this.gameState.phase !== 'WAITING' || this.gameState.gameStarted) {
-      return;
-    }
-
-    const playerCount = Object.keys(this.gameState.players).length;
-    if (playerCount < 2) {
-      this.sendTo(ws, {
-        type: 'error',
-        message: 'Need at least 2 players to start'
-      });
       return;
     }
 
@@ -72,10 +63,19 @@ export class CountyGameSession extends GameSession {
     this.gameState.counties = {};
     this.gameState.submissionEndTime = Date.now() + (this.gameState.timeLimit * 1000);
 
+    // Save state and update registry
+    await this.saveGameState();
+    this.updateRegistryStatus('in-progress');
+
     // Notify all players
     this.broadcast({
       type: 'game_started',
-      phase: 'COUNTY_SUBMISSION'
+      data: {
+        gameType: this.gameState.type,
+        gameState: this.gameState,
+        phase: this.gameState.phase
+      },
+      timestamp: Date.now()
     });
 
     this.broadcast({
@@ -120,18 +120,19 @@ export class CountyGameSession extends GameSession {
       };
     });
 
-    // Send game over with everyone as winner
-    this.broadcast({
-      type: 'phase_changed',
-      phase: 'GAME_OVER'
-    });
+    // Update registry status
+    await this.saveGameState();
+    this.updateRegistryStatus('finished');
 
+    // Send game_ended message using standard framework
     this.broadcast({
-      type: 'game_over',
-      winner: 'Everyone!',
-      additionalInfo: {
-        counties: countiesList
-      }
+      type: 'game_ended',
+      data: {
+        message: 'Yaaaay',
+        winners: Object.keys(this.gameState.players), // Everyone wins
+        scores: {} // No scoring in County Game - remove gameState to avoid extra UI
+      },
+      timestamp: Date.now()
     });
   }
 

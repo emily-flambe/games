@@ -43,14 +43,10 @@ class CountyGameModule extends GameModule {
     getRules() {
         return `
             <h3>County Game</h3>
-            <p><strong>A silly celebration game!</strong></p>
-            <ol>
-                <li>Enter the name of a county (where you're from, where you live, or any county!)</li>
-                <li>You have 30 seconds to submit</li>
-                <li>Once everyone submits (or time runs out), we all celebrate!</li>
-                <li>Everyone wins! Yay!</li>
-            </ol>
-            <p><em>It's just silly fun - there's no wrong answer!</em></p>
+            <ul>
+                <li>enter the name of a county</li>
+                <li>everybody wins!</li>
+            </ul>
         `;
     }
 
@@ -271,8 +267,8 @@ class CountyGameModule extends GameModule {
                 this.render();
                 break;
                 
-            case 'game_over':
-                // Game over is handled by the shell
+            case 'game_ended':
+                // Game ended is handled by the shell - just cleanup
                 this.clearTimer();
                 break;
         }

@@ -2,7 +2,7 @@
 
 ## HISTORICAL DOCUMENT - NODE.JS DEV SERVER HAS BEEN REMOVED
 
-**UPDATE (January 2025)**: The Node.js development server has been completely removed from the project. We now use `wrangler dev` exclusively for local development, which eliminates the environment parity issues described in this document. This document is preserved for historical reference only.
+**UPDATE (August 2025)**: The Node.js development server has been completely removed from the project. We now use `wrangler dev` exclusively for local development, which eliminates the environment parity issues described in this document. This document is preserved for historical reference only.
 
 ## Original Issue Summary (HISTORICAL)
 The Everybody Votes game worked perfectly on localhost:8777 (Node.js development server) but failed to work on production (games.emilycogsdill.com using Cloudflare Workers). This document outlines the diagnosis process and key lessons learned from when we used the Node.js dev server.

@@ -1245,8 +1245,16 @@ class GameShell {
             
             // Show final scores - server sends 'scores', not 'finalScores'
             const scores = gameEndData.scores || gameEndData.finalScores;
-            if (scores) {
+            if (scores && Object.keys(scores).length > 0) {
+                // Show scores when they exist - restore normal styling
                 finalScores.innerHTML = '';
+                finalScores.style.display = 'block';
+                finalScores.style.visibility = 'visible';
+                finalScores.style.height = '';
+                finalScores.style.padding = '';
+                finalScores.style.margin = '';
+                finalScores.style.border = '';
+                
                 Object.entries(scores).forEach(([playerId, score]) => {
                     const player = this.players[playerId];
                     if (player) {
@@ -1256,6 +1264,15 @@ class GameShell {
                         finalScores.appendChild(scoreItem);
                     }
                 });
+            } else {
+                // Completely hide and remove content when there are no scores
+                finalScores.innerHTML = '';
+                finalScores.style.display = 'none';
+                finalScores.style.visibility = 'hidden';
+                finalScores.style.height = '0px';
+                finalScores.style.padding = '0px';
+                finalScores.style.margin = '0px';
+                finalScores.style.border = '0px';
             }
             
             endScreen.style.display = 'block';

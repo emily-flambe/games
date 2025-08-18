@@ -347,6 +347,17 @@ export class GameSession implements DurableObject {
     }
   }
 
+  sendTo(ws: WebSocket, message: any) {
+    if (ws.readyState === WebSocket.READY_STATE_OPEN) {
+      try {
+        ws.send(JSON.stringify(message));
+      } catch (error) {
+        console.error('Error sending message to specific client:', error);
+        this.websockets.delete(ws);
+      }
+    }
+  }
+
   async handleMessage(message: string, ws: WebSocket, playerId: string) {
     try {
       const data = JSON.parse(message);
