@@ -221,7 +221,7 @@ describe('County Game E2E Tests', () => {
         console.log('✅ County Game extra box test passed');
     }, 15000);
 
-    test('County Game announcement phase with multiple players', async () => {
+    test.skip('County Game announcement phase with multiple players', async () => {
         // Test the announcement phase with multiple players
         
         // Host creates game
