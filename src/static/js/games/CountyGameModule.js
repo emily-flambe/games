@@ -346,7 +346,8 @@ class CountyGameModule extends GameModule {
      * Handle state updates from server
      */
     handleStateUpdate(gameSpecificState) {
-        super.handleStateUpdate(gameSpecificState);
+        // Update game state without calling super to control rendering
+        this.gameState = { ...this.gameState, ...gameSpecificState };
         
         // Track if phase changed to determine if we need to re-render
         const previousPhase = this.currentPhase;

@@ -260,7 +260,7 @@ const tests = [
             
             // Wait for all game cards to load
             await page.waitForSelector('.game-grid', { timeout: 5000 });
-            await page.waitForTimeout(2000); // Let all games load
+            await page.waitForFunction(() => document.readyState === 'complete', { timeout: 2000 }); // Let all games load
         },
         capture: async (page, framework, options) => {
             return await framework.captureAndCompare(page, 'county-game-portal-full', {

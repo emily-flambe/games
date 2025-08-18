@@ -223,7 +223,7 @@ const tests = [
                 await page.waitForSelector(cardSelector, { timeout: 5000 });
             }
             
-            await page.waitForTimeout(2000); // Let everything settle
+            await page.waitForFunction(() => document.readyState === 'complete', { timeout: 2000 }); // Let everything settle
         },
         capture: async (page, framework, options) => {
             // Focus on the game grid area
@@ -269,7 +269,7 @@ const tests = [
             
             await framework.navigateToPortal(page);
             await page.waitForSelector('.game-grid', { timeout: 5000 });
-            await page.waitForTimeout(2000);
+            await page.waitForFunction(() => document.readyState === 'complete', { timeout: 2000 });
         },
         capture: async (page, framework, options) => {
             return await framework.captureAndCompare(page, 'mobile-portal-responsive', {
@@ -290,7 +290,7 @@ const tests = [
             
             await framework.navigateToPortal(page);
             await page.waitForSelector('.game-grid', { timeout: 5000 });
-            await page.waitForTimeout(2000);
+            await page.waitForFunction(() => document.readyState === 'complete', { timeout: 2000 });
         },
         capture: async (page, framework, options) => {
             return await framework.captureAndCompare(page, 'tablet-portal-responsive', {

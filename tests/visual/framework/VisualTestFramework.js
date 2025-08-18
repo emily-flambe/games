@@ -135,7 +135,7 @@ class VisualTestFramework {
         });
         
         // Wait for scripts to load
-        await page.waitForTimeout(2000);
+        await page.waitForFunction(() => document.readyState === 'complete', { timeout: 2000 });
     }
 
     /**
@@ -151,7 +151,7 @@ class VisualTestFramework {
         };
 
         // Wait for UI to settle
-        await page.waitForTimeout(testOptions.delay);
+        await page.waitForFunction(() => document.readyState === 'complete', { timeout: testOptions.delay });
 
         // Remove any potentially flaky elements
         await page.evaluate(() => {
@@ -321,7 +321,7 @@ class VisualTestFramework {
         await this.navigateToPortal(page);
         await page.waitForSelector(`[data-game="${gameId}"]`, { timeout: 5000 });
         await page.click(`[data-game="${gameId}"]`);
-        await page.waitForTimeout(2000);
+        await page.waitForFunction(() => document.readyState === 'complete', { timeout: 2000 });
     }
 
     /**
@@ -332,7 +332,7 @@ class VisualTestFramework {
         await page.clear('#player-name-input');
         await page.type('#player-name-input', playerName);
         await page.click('#join-room-btn');
-        await page.waitForTimeout(3000);
+        await page.waitForFunction(() => document.readyState === 'complete', { timeout: 3000 });
     }
 
     /**
@@ -341,7 +341,7 @@ class VisualTestFramework {
     async startGame(page) {
         await page.waitForSelector('#start-game-btn', { timeout: 5000 });
         await page.click('#start-game-btn');
-        await page.waitForTimeout(2000);
+        await page.waitForFunction(() => document.readyState === 'complete', { timeout: 2000 });
     }
 
     /**
@@ -352,7 +352,7 @@ class VisualTestFramework {
             visible: true, 
             timeout 
         });
-        await page.waitForTimeout(2000); // Let animations settle
+        await page.waitForFunction(() => document.readyState === 'complete', { timeout: 2000 }); // Let animations settle
     }
 
     /**

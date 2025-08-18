@@ -28,6 +28,7 @@
     "@cloudflare/workers-types": "^4.20241230.0",
     "@types/jest": "^30.0.0",
     "jest": "^30.0.5",
+    "jest-environment-jsdom": "^30.0.5",
     "jsdom": "^26.1.0",
     "pixelmatch": "^6.0.0",
     "pngjs": "^7.0.0",

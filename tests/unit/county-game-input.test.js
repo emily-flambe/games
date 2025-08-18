@@ -20,9 +20,16 @@ describe('CountyGameModule Input Preservation', () => {
         mockOnPlayerAction = jest.fn();
         mockOnStateChange = jest.fn();
         
+        // Load base GameModule first
+        const GameModule = require('../../src/static/js/GameModule.js');
+        global.GameModule = GameModule;
+        
         // Create module instance
         const CountyGameModule = require('../../src/static/js/games/CountyGameModule.js');
         gameModule = new CountyGameModule();
+        
+        // Set currentPlayerId before init
+        gameModule.currentPlayerId = 'player1';
         
         // Initialize with test data
         const players = {
@@ -37,7 +44,6 @@ describe('CountyGameModule Input Preservation', () => {
             submissionEndTime: Date.now() + 30000
         };
         
-        gameModule.currentPlayerId = 'player1';
         gameModule.init(gameAreaElement, players, initialState, mockOnPlayerAction, mockOnStateChange);
     });
     
