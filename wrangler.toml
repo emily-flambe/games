@@ -1,11 +1,12 @@
 name = "games"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
 
+# Production routes (not inherited by preview)
+[env.production]
 routes = [
   { pattern = "games.emilycogsdill.com/*", zone_name = "emilycogsdill.com" }
 ]
-main = "src/index.ts"
-compatibility_date = "2024-12-30"
-compatibility_flags = ["nodejs_compat"]
 
 [dev]
 port = 8777
