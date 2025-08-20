@@ -276,58 +276,118 @@ class GameShell {
      */
     handleWebSocketMessage(event) {
         try {
-            const message = JSON.parse(event.data);
+            // Handle plain text messages (ping/pong) FIRST
+            if (typeof event.data === 'string') {
+                if (event.data === 'ping') {
+                    this.ws.send('pong');
+                    return;
+                }
+                if (event.data === 'pong') {
+                    // Handle pong response if needed for heartbeat
+                    this.lastPongReceived = Date.now();
+                    return;
+                }
+            }
             
-            if (message.type === 'game_ended') {
-            }
-
-            switch (message.type) {
-                case 'gameState':
-                    this.handleGameStateUpdate(message);
-                    break;
-                case 'game_started':
-                    this.handleGameStarted(message);
-                    break;
-                case 'game_ended':
-                    this.handleGameEnded(message);
-                    break;
-                case 'playerJoined':
-                case 'playerLeft':
-                case 'playerUpdated':
-                    this.handlePlayerUpdate(message);
-                    break;
-                case 'spectator_identity':
-                case 'spectator_joined':
-                case 'spectator_left':
-                    this.handleSpectatorUpdate(message);
-                    break;
-                case 'chat_message':
-                    this.handleChatMessage(message);
-                    break;
-                case 'chat_history':
-                    this.handleChatHistory(message);
-                    break;
-                case 'checkbox_toggled':
-                    // Handle checkbox specific messages
-                    if (this.gameModule && message.data) {
-                        // Update players if gameState is included
-                        if (message.data.gameState && message.data.gameState.players) {
-                            this.players = message.data.gameState.players;
-                            this.gameModule.updatePlayers(this.players);
-                        }
-                        const playerId = message.data.playerId || message.data.toggledBy || message.playerId;
-                        this.gameModule.handlePlayerAction(playerId, message);
-                    }
-                    break;
-                default:
-                    
-                    // Pass unknown messages to game module
-                    if (this.gameModule && this.gameModule.handleMessage) {
-                        this.gameModule.handleMessage(message);
-                    }
-            }
+            // Parse JSON messages
+            const message = JSON.parse(event.data);
+            this.routeMessage(message);
         } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
+            console.error('Error handling WebSocket message:', error);
+        }
+    }
+
+    /**
+     * Route messages to appropriate handlers
+     */
+    routeMessage(message) {
+        // Message routing table - clear and maintainable
+        const messageRoutes = {
+            'gameState': this.handleGameStateUpdate,
+            'game_started': this.handleGameStarted,
+            'game_ended': this.handleGameEnded,
+            'playerJoined': this.handlePlayerUpdate,
+            'playerLeft': this.handlePlayerUpdate,
+            'playerUpdated': this.handlePlayerUpdate,
+            'spectator_identity': this.handleSpectatorUpdate,
+            'spectator_joined': this.handleSpectatorUpdate,
+            'spectator_left': this.handleSpectatorUpdate,
+            'chat_message': this.handleChatMessage,
+            'chat_history': this.handleChatHistory,
+            'checkbox_toggled': this.handleCheckboxToggled
+        };
+
+        const handler = messageRoutes[message.type];
+        if (handler) {
+            handler.call(this, message);
+        } else if (this.gameModule?.handleMessage) {
+            this.gameModule.handleMessage(message);
+        } else {
+            console.log('Unhandled message type:', message.type);
+        }
+    }
+
+    /**
+     * Handle checkbox toggle messages
+     */
+    handleCheckboxToggled(message) {
+        if (this.gameModule && message.data) {
+            // Update players if gameState is included
+            if (message.data.gameState && message.data.gameState.players) {
+                this.updatePlayerData(message.data.gameState.players);
+            }
+            const playerId = message.data.playerId || message.data.toggledBy || message.playerId;
+            this.gameModule.handlePlayerAction(playerId, message);
+        }
+    }
+
+    /**
+     * Single source of truth for player updates
+     */
+    updatePlayerData(players = null, options = {}) {
+        if (players !== null) {
+            this.players = players;
+        }
+        
+        // Update current player reference if it's us
+        if (this.currentPlayerId && this.players[this.currentPlayerId]) {
+            this.currentPlayer = this.players[this.currentPlayerId];
+        }
+        
+        // Update all UI components
+        if (options.updateUI !== false) {
+            this.updatePlayersList();
+            this.updateCurrentPlayerInfo();
+            this.updateChatUsersList();
+        }
+        
+        // Notify game module
+        if (this.gameModule?.updatePlayers && options.updateModule !== false) {
+            this.gameModule.updatePlayers(this.players);
+        }
+    }
+
+    /**
+     * Consolidate state reset logic
+     */
+    resetGameState() {
+        // All state reset in one place
+        this.currentPlayerId = null;
+        this.currentPlayer = null;
+        this.players = {};
+        this.sessionId = '';
+        this.gameType = '';
+        this.gameState = 'waiting';
+        this.roomState = {};
+        this.isSpectator = false;
+        this.spectatorId = null;
+        this.spectators = {};
+        this.chatMessages = [];
+        
+        // Cleanup module
+        if (this.gameModule) {
+            this.gameModule.cleanup();
+            this.gameModule = null;
         }
     }
 
@@ -344,12 +404,9 @@ class GameShell {
         }
         
         this.roomState = message.gameState;
-        this.players = message.gameState.players || {};
         
-        // Set currentPlayer after updating players
-        if (this.currentPlayerId && this.players[this.currentPlayerId]) {
-            this.currentPlayer = this.players[this.currentPlayerId];
-        }
+        // Use centralized player update logic
+        this.updatePlayerData(message.gameState.players || {}, { updateUI: false });
         
         // Extract game type from server state
         if (message.gameState.type) {
@@ -413,15 +470,9 @@ class GameShell {
             });
         }
         
-        // Pass both updated players and game-specific state to module
-        if (this.gameModule) {
-            // Update players in the module
-            this.gameModule.updatePlayers(this.players);
-            
-            // Pass game-specific state to module
-            if (message.gameState.gameSpecificState) {
-                this.gameModule.handleStateUpdate(message.gameState.gameSpecificState);
-            }
+        // Pass game-specific state to module (players already updated by updatePlayerData)
+        if (this.gameModule && message.gameState.gameSpecificState) {
+            this.gameModule.handleStateUpdate(message.gameState.gameSpecificState);
         }
     }
 
@@ -643,20 +694,8 @@ class GameShell {
      */
     handlePlayerUpdate(message) {
         if (message.gameState) {
-            this.players = message.gameState.players || {};
-            
-            // Update currentPlayer if it's the current player who was updated
-            if (this.currentPlayerId && this.players[this.currentPlayerId]) {
-                this.currentPlayer = this.players[this.currentPlayerId];
-            }
-            
-            // Update players in the game module too
-            if (this.gameModule) {
-                this.gameModule.updatePlayers(this.players);
-            }
-            
-            this.updatePlayersList();
-            this.updateCurrentPlayerInfo();
+            // Use centralized player update logic
+            this.updatePlayerData(message.gameState.players || {});
         }
     }
 
@@ -784,8 +823,8 @@ class GameShell {
                 if (this.players[this.currentPlayerId]) {
                     this.players[this.currentPlayerId].name = name;
                 }
-                this.updatePlayersList();
-                this.updateCurrentPlayerInfo();
+                // Use centralized UI update
+                this.updatePlayerData(null, { updateModule: false });
             }
         }
     }
@@ -924,9 +963,8 @@ class GameShell {
             emojiBtn.textContent = emoji;
         }
         
-        // Update all UI elements with new emoji
-        this.updatePlayersList();
-        this.updateCurrentPlayerInfo();
+        // Use centralized UI update
+        this.updatePlayerData(null, { updateModule: false });
         
         // Hide picker
         const picker = document.getElementById('emoji-picker');
@@ -1306,23 +1344,8 @@ class GameShell {
             this.ws.close();
         }
         
-        // Clean up game module
-        if (this.gameModule) {
-            this.gameModule.cleanup();
-            this.gameModule = null;
-        }
-        
-        // Reset all state
-        this.currentPlayerId = null;
-        this.currentPlayer = null;
-        this.players = {};
-        this.sessionId = '';
-        this.gameType = '';
-        this.gameState = 'waiting';
-        this.roomState = {};
-        this.isSpectator = false;
-        this.spectatorId = null;
-        this.spectators = {};
+        // Use centralized state reset
+        this.resetGameState();
         
         // Clean up UI
         this.cleanupGameUI();
@@ -1376,7 +1399,7 @@ class GameShell {
         if (chatSendBtn) {
             chatSendBtn.disabled = true;
         }
-        this.chatMessages = [];
+        // chatMessages array reset handled by resetGameState()
         
         // Hide end game screen
         const endScreen = document.getElementById('end-game-screen');
