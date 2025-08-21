@@ -25,6 +25,13 @@ const dom = new JSDOM(`
 global.window = dom.window;
 global.document = dom.window.document;
 
+// Ensure DOM elements are accessible
+global.document.body.innerHTML = `
+  <div id="game-area"></div>
+  <input id="player-name" type="text" value="TestPlayer" />
+  <div class="emoji selected" data-emoji="😀"></div>
+`;
+
 // Mock WebSocket
 class MockWebSocket {
   constructor(url) {

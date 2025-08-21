@@ -60,7 +60,9 @@ class GameModule {
   }
 
   handleStateUpdate(gameSpecificState) {
-    this.gameState = { ...this.gameState, ...gameSpecificState };
+    if (gameSpecificState) {
+      this.gameState = { ...this.gameState, ...gameSpecificState };
+    }
     this.render();
   }
 
@@ -117,6 +119,10 @@ class CheckboxGameModule extends GameModule {
   handleStateUpdate(gameSpecificState) {
     super.handleStateUpdate(gameSpecificState);
     
+    if (!gameSpecificState) {
+      return;
+    }
+    
     if (gameSpecificState.checkboxStates) {
       this.checkboxStates = gameSpecificState.checkboxStates;
     }
@@ -134,6 +140,10 @@ class CheckboxGameModule extends GameModule {
   }
 
   handlePlayerAction(playerId, action) {
+    if (!action || !action.type) {
+      return;
+    }
+    
     switch (action.type) {
       case 'checkbox_toggled':
         if (action.data) {
@@ -191,8 +201,25 @@ describe('CheckboxGameModule', () => {
 
   beforeEach(() => {
     checkboxGame = new CheckboxGameModule();
-    mockGameAreaElement = document.getElementById('game-area');
-    mockRulesElement = document.getElementById('rules-section');
+    
+    // Ensure DOM elements exist
+    let gameArea = document.getElementById('game-area');
+    let rulesSection = document.getElementById('rules-section');
+    
+    if (!gameArea) {
+      gameArea = document.createElement('div');
+      gameArea.id = 'game-area';
+      document.body.appendChild(gameArea);
+    }
+    
+    if (!rulesSection) {
+      rulesSection = document.createElement('div');
+      rulesSection.id = 'rules-section';
+      document.body.appendChild(rulesSection);
+    }
+    
+    mockGameAreaElement = gameArea;
+    mockRulesElement = rulesSection;
     mockOnPlayerAction = jest.fn();
     mockOnStateChange = jest.fn();
     

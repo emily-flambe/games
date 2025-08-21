@@ -98,8 +98,25 @@ describe('GameModule Base Class', () => {
 
   beforeEach(() => {
     gameModule = new GameModule();
-    mockGameAreaElement = document.getElementById('game-area');
-    mockRulesElement = document.getElementById('rules-section');
+    
+    // Ensure DOM elements exist
+    let gameArea = document.getElementById('game-area');
+    let rulesSection = document.getElementById('rules-section');
+    
+    if (!gameArea) {
+      gameArea = document.createElement('div');
+      gameArea.id = 'game-area';
+      document.body.appendChild(gameArea);
+    }
+    
+    if (!rulesSection) {
+      rulesSection = document.createElement('div');
+      rulesSection.id = 'rules-section';
+      document.body.appendChild(rulesSection);
+    }
+    
+    mockGameAreaElement = gameArea;
+    mockRulesElement = rulesSection;
     mockOnPlayerAction = jest.fn();
     mockOnStateChange = jest.fn();
   });
