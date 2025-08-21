@@ -33,6 +33,9 @@ class GameShell {
         
         // Chat state
         this.chatMessages = [];
+        
+        // WebSocket heartbeat
+        this.lastPongReceived = null;
     }
 
     /**
