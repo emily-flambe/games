@@ -2,6 +2,33 @@ module.exports = {
   // Test environment
   testEnvironment: 'node',
   
+  // Override test environment for specific test patterns
+  projects: [
+    {
+      displayName: 'node',
+      testEnvironment: 'node',
+      testMatch: [
+        '**/tests/unit/utilities/**/*.test.js',
+        '**/tests/unit/durable-objects/**/*.test.js'
+      ]
+    },
+    {
+      displayName: 'jsdom',
+      testEnvironment: 'jsdom',
+      testMatch: [
+        '**/tests/unit/game-logic/**/*.test.js',
+        '**/tests/unit/client/**/*.test.js',
+        '**/tests/unit/county-game-input.test.js'
+      ],
+      setupFilesAfterEnv: ['<rootDir>/tests/setup/jsdom.js']
+    },
+    {
+      displayName: 'e2e',
+      testEnvironment: 'node',
+      testMatch: ['**/tests/e2e/**/*.test.js']
+    }
+  ],
+  
   // Test file patterns
   testMatch: [
     '**/tests/unit/**/*.test.js',
