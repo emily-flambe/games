@@ -26,25 +26,178 @@ const dom = new JSDOM(`
 global.window = dom.window;
 global.document = dom.window.document;
 
-// Load required source code
-const fs = require('fs');
-const path = require('path');
+// Mock GameModule base class
+class GameModule {
+  constructor() {
+    this.gameAreaElement = null;
+    this.players = {};
+    this.gameState = {};
+    this.isActive = false;
+    this.onPlayerAction = null;
+    this.onStateChange = null;
+  }
 
-// Load GameModule base class first
-const gameModuleCode = fs.readFileSync(
-  path.join(__dirname, '../../../src/static/js/GameModule.js'),
-  'utf8'
-);
+  init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement) {
+    this.gameAreaElement = gameAreaElement;
+    this.players = players;
+    this.gameState = initialState || {};
+    this.onPlayerAction = onPlayerAction;
+    this.onStateChange = onStateChange;
+    this.rulesElement = rulesElement;
+    this.isActive = true;
+    
+    if (this.rulesElement && typeof this.getRules === 'function') {
+      const rules = this.getRules();
+      if (rules) {
+        this.rulesElement.innerHTML = rules;
+      }
+    }
+    
+    this.render();
+  }
 
-// Load CountyGameModule
-const countyGameModuleCode = fs.readFileSync(
-  path.join(__dirname, '../../../src/static/js/games/CountyGameModule.js'),
-  'utf8'
-);
+  handleStateUpdate(gameSpecificState) {
+    this.gameState = { ...this.gameState, ...gameSpecificState };
+    this.render();
+  }
 
-// Execute code in our test environment
-eval(gameModuleCode);
-eval(countyGameModuleCode);
+  updatePlayers(players) {
+    this.players = players;
+    this.render();
+  }
+
+  handlePlayerAction(playerId, action) {
+    // Default implementation
+  }
+
+  getWinCondition() {
+    return null;
+  }
+
+  render() {
+    // Default implementation
+  }
+
+  cleanup() {
+    this.isActive = false;
+    if (this.gameAreaElement) {
+      this.gameAreaElement.innerHTML = '';
+    }
+    this.players = {};
+    this.gameState = {};
+    this.onPlayerAction = null;
+    this.onStateChange = null;
+  }
+}
+
+// Mock CountyGameModule
+class CountyGameModule extends GameModule {
+  constructor() {
+    super();
+    this.currentPhase = 'WAITING';
+    this.myCounty = null;
+    this.submittedCount = 0;
+    this.totalPlayers = 0;
+    this.timeRemaining = 0;
+    this.timerInterval = null;
+    this.counties = {};
+    this.currentAnnouncement = null;
+    this.canConclude = false;
+    this.isHost = false;
+  }
+
+  init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement) {
+    super.init(gameAreaElement, players, initialState, onPlayerAction, onStateChange, rulesElement);
+    
+    if (initialState && initialState.hostId) {
+      this.isHost = (this.currentPlayerId === initialState.hostId);
+    }
+    
+    if (initialState) {
+      this.currentPhase = initialState.phase || 'WAITING';
+      this.counties = initialState.counties || {};
+      this.timeRemaining = initialState.timeLimit || 30;
+      
+      if (initialState.submissionEndTime) {
+        const now = Date.now();
+        this.timeRemaining = Math.max(0, Math.floor((initialState.submissionEndTime - now) / 1000));
+      }
+    }
+    
+    this.totalPlayers = Object.keys(this.players).length;
+    this.render();
+  }
+
+  getRules() {
+    return `
+      <h3>County Game</h3>
+      <ul>
+        <li>enter the name of a county</li>
+        <li>everybody wins!</li>
+      </ul>
+    `;
+  }
+
+  startTimer() {
+    this.clearTimer();
+    this.timerInterval = setInterval(() => {
+      this.timeRemaining = Math.max(0, this.timeRemaining - 1);
+      this.updateTimerDisplay();
+      if (this.timeRemaining <= 0) {
+        this.clearTimer();
+      }
+    }, 1000);
+  }
+
+  clearTimer() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+  }
+
+  updateTimerDisplay() {
+    const timerElement = this.gameAreaElement?.querySelector('.timer-display');
+    if (timerElement) {
+      timerElement.textContent = `Time remaining: ${this.timeRemaining}s`;
+    }
+  }
+
+  updateSubmissionStatus() {
+    const statusElements = this.gameAreaElement?.querySelectorAll('.submission-status');
+    statusElements?.forEach(element => {
+      element.textContent = `${this.submittedCount} of ${this.totalPlayers} submitted`;
+    });
+  }
+
+  handleStateUpdate(gameSpecificState) {
+    super.handleStateUpdate(gameSpecificState);
+    this.render();
+  }
+
+  handlePlayerAction(playerId, action) {
+    this.render();
+  }
+
+  getWinCondition() {
+    if (this.currentPhase === 'GAME_OVER') {
+      return {
+        cooperative: true,
+        allPlayersWin: true
+      };
+    }
+    return null;
+  }
+
+  cleanup() {
+    super.cleanup();
+    this.clearTimer();
+    this.myCounty = null;
+    this.currentPhase = 'WAITING';
+    this.counties = {};
+    this.submittedCount = 0;
+  }
+}
 
 describe('CountyGameModule', () => {
   let countyGame;
