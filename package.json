@@ -12,7 +12,7 @@
     "bump-major": "node scripts/bump-version.js major",
     "test": "npm run test:unit && npm run test:browser",
     "test:unit": "jest tests/unit",
-    "test:browser": "jest tests/browser --forceExit",
+    "test:browser": "jest tests/browser --forceExit --detectOpenHandles --maxWorkers=1",
     "test:e2e": "jest tests/e2e --forceExit",
     "test:e2e:ci": "jest tests/e2e --forceExit --detectOpenHandles --maxWorkers=1",
     "test:all": "npm run test:unit && npm run test:browser && npm run test:e2e",
@@ -23,7 +23,8 @@
     "test:visual:cli": "node scripts/visual-test.js run",
     "test:visual:update-cli": "node scripts/visual-test.js update",
     "test:watch": "jest --watch tests/unit",
-    "test:coverage": "jest tests/unit --coverage"
+    "test:coverage": "jest tests/unit --coverage",
+    "test:safe": "./scripts/test-with-timeout.sh"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.8.64",

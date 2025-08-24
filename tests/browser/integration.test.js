@@ -1,6 +1,10 @@
 /**
  * Browser-based integration tests using Puppeteer
  * These tests run the actual application in a real browser environment
+ * 
+ * NOTE: Tests that require WebSocket connections may timeout if the
+ * dev server isn't properly handling WebSocket connections. Run with
+ * npm run dev first to ensure the server is ready.
  */
 
 const puppeteer = require('puppeteer');
@@ -189,7 +193,7 @@ describe('Browser Integration Tests', () => {
       // Set up WebSocket monitoring
       const wsConnected = page.waitForFunction(
         () => window.gameApp && window.gameApp.gameShell && window.gameApp.gameShell.isConnected === true,
-        { timeout: 10000 }
+        { timeout: 5000 }
       );
       
       await page.click('.game-card[data-game="checkbox-game"]');
@@ -235,7 +239,7 @@ describe('Browser Integration Tests', () => {
       
       // Clean up
       await hostPage.close();
-    });
+    }, 15000); // 15 second timeout
   });
 
   describe('Player Management', () => {
@@ -283,7 +287,7 @@ describe('Browser Integration Tests', () => {
         await host.close();
         await player.close();
       }
-    });
+    }, 15000); // 15 second timeout
   });
 
   describe('Error Handling', () => {

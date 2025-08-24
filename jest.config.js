@@ -72,7 +72,7 @@ module.exports = {
   moduleDirectories: ['node_modules', 'src'],
   
   // Timeout for tests
-  testTimeout: 30000,
+  testTimeout: 10000,
   
   // Verbose output
   verbose: true,
