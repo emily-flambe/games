@@ -3,6 +3,8 @@
 ## Testing Philosophy
 **Strict verification-based approach** - Every change MUST be tested on localhost:8777 using Puppeteer. No theoretical fixes or assumptions allowed.
 
+**NOTE**: For detailed testing structure and patterns, see `testing-strategy.md` which explains our three-tier testing approach for browser-based code.
+
 ## When We Write Tests
 
 ### Test-First (TDD)

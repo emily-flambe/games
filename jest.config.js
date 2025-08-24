@@ -23,6 +23,11 @@ module.exports = {
       setupFilesAfterEnv: ['<rootDir>/tests/setup/jsdom.js']
     },
     {
+      displayName: 'browser',
+      testEnvironment: 'node',
+      testMatch: ['**/tests/browser/**/*.test.js']
+    },
+    {
       displayName: 'e2e',
       testEnvironment: 'node',
       testMatch: ['**/tests/e2e/**/*.test.js']
@@ -32,6 +37,7 @@ module.exports = {
   // Test file patterns
   testMatch: [
     '**/tests/unit/**/*.test.js',
+    '**/tests/browser/**/*.test.js',
     '**/tests/integration/**/*.test.js',
     '**/tests/e2e/**/*.test.js',
     '**/tests/visual/**/*.test.js'
