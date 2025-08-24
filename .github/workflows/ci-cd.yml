@@ -128,7 +128,7 @@ jobs:
           - Integration tests: ✅
           - E2E tests: ✅
 
-          Preview deployments are automatically updated for each commit.`;
+          The preview environment is shared and will be updated with each new commit.`;
 
           github.rest.issues.createComment({
             issue_number: context.issue.number,
@@ -136,19 +136,3 @@ jobs:
             repo: context.repo.repo,
             body: comment
           });
-    
-
-  # Cleanup old preview deployments (runs daily)
-  cleanup-previews:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    
-    steps:
-    - name: Cleanup old preview deployments
-      run: |
-        echo "Cleaning up preview deployments older than 7 days..."
-        # This would require Cloudflare API calls to list and delete old Workers
-        # For now, this is a placeholder
-      env:
-        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
