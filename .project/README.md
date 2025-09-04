@@ -1,18 +1,27 @@
 # Games Platform - Project Documentation
 
 ## For AI Assistants
-**MANDATORY**: Read ALL files in `.project/` before starting work, especially:
+**MANDATORY**: Read the following files in `.project/` before starting work:
 1. `guidelines/ai-behavior.md` - Critical behavioral rules (NO EMOJIS, DELETE TEST FILES)
 2. `requirements/overview.md` - What we're building
 3. `requirements/technical.md` - How we're building it
 4. `guidelines/tdd-approach.md` - Testing philosophy (Puppeteer on port 8777)
 5. `guidelines/troubleshooting.md` - Common issues and solutions
 
+**NOTE**: Do NOT read files in `docs/` by default. The `docs/` directory contains:
+- Detailed documentation for human collaborators
+- Specific feature specifications
+- Historical design decisions
+- Deployment guides
+
+Only read from `docs/` when the user specifically references a feature or asks for information contained there.
+
 ## For Humans
 - Requirements: See `requirements/overview.md`  
 - Tech Stack: See `requirements/technical.md`
 - Common Issues: See `guidelines/troubleshooting.md`
 - Testing: See `guidelines/tdd-approach.md`
+- Detailed Documentation: See `docs/` for in-depth information
 
 ## Project Overview
 A multiplayer games platform built on Cloudflare Workers that provides instant, real-time gaming experiences without downloads or accounts. Features multiple game types with shared infrastructure for chat, player management, and session handling.
@@ -72,19 +81,19 @@ Game Types:
 ```
 .project/
 ├── README.md                    # This file - entry point
-├── guidelines/                  # How we work
+├── guidelines/                  # How we work (MUST READ)
 │   ├── ai-behavior.md          # AI assistant rules
 │   ├── coding-standards.md     # Code style and patterns
 │   ├── tdd-approach.md         # Test-driven development
 │   └── troubleshooting.md      # Common issues and fixes
-├── requirements/                # What we're building
+├── requirements/                # What we're building (MUST READ)
 │   ├── overview.md             # High-level goals
 │   └── technical.md            # Tech stack and architecture
-└── docs/                       # Additional documentation
-    ├── architecture.md         # Detailed system design
-    ├── deployment/            # Deployment guides
-    ├── development/           # Legacy development docs
-    └── ...
+└── docs/                       # Reference-only documentation (DO NOT READ BY DEFAULT)
+    ├── architecture.md         # Detailed system design for humans
+    ├── deployment/            # Deployment guides for operations
+    ├── specs/                 # Feature specifications (read when requested)
+    └── ...                    # Other human-oriented documentation
 ```
 
 ## Quick Diagnostics
