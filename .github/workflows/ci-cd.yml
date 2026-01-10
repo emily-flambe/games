@@ -70,7 +70,7 @@ jobs:
             echo "ci=false" >> $GITHUB_OUTPUT
           fi
 
-  # Step 1: Build the application
+  # Step 1: Build verification (ensures build succeeds)
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -91,22 +91,12 @@ jobs:
       - name: Build application
         run: npm run build
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-          retention-days: 7
-
-  # Step 2: Unit Tests
+  # Step 2: Unit Tests (parallel with build)
   test-unit:
     name: Unit Tests
     runs-on: ubuntu-latest
-    needs: [changes, build]
-    if: |
-      always() &&
-      (needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true') &&
-      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -124,15 +114,12 @@ jobs:
         env:
           CI: true
 
-  # Step 3: Vitest Integration Tests
+  # Step 3: Vitest Integration Tests (parallel with build)
   test-vitest:
     name: Vitest Tests
     runs-on: ubuntu-latest
-    needs: [changes, build]
-    if: |
-      always() &&
-      (needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true') &&
-      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -150,14 +137,16 @@ jobs:
         env:
           CI: true
 
-  # Step 4: Deploy Preview (skip for Dependabot)
+  # Step 4: Deploy Preview (skip for Dependabot, wait for build)
   deploy-preview:
     name: Deploy Preview
     runs-on: ubuntu-latest
     needs: [changes, build]
     if: |
+      always() &&
       github.actor != 'dependabot[bot]' &&
-      (needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true')
+      (needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true') &&
+      needs.build.result == 'success'
     permissions:
       contents: read
       pull-requests: write
@@ -175,11 +164,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
+      - name: Build application
+        run: npm run build
 
       - name: Deploy to Cloudflare Preview
         id: deploy
@@ -187,7 +173,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          echo "Deploying preview for PR #${{ github.event.pull_request.number }}..."
+          echo "Deploying preview for PR..."
           npx wrangler deploy --env preview
           PREVIEW_URL="https://games-preview.emily-cogsdill.workers.dev"
           echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
@@ -211,7 +197,7 @@ jobs:
   test-e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    needs: [changes, build, deploy-preview]
+    needs: [changes, deploy-preview]
     if: |
       always() &&
       (needs.changes.outputs.code == 'true' || needs.changes.outputs.e2e == 'true' || needs.changes.outputs.ci == 'true') &&
