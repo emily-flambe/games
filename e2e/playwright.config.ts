@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// In CI, use TEST_URL (deployed preview); locally use dev server
+const baseURL = process.env.TEST_URL || 'http://localhost:8777';
+const isRemote = !!process.env.TEST_URL;
+
 export default defineConfig({
   testDir: '.',
   fullyParallel: true,
@@ -11,7 +15,7 @@ export default defineConfig({
     ['list']
   ],
   use: {
-    baseURL: 'http://localhost:8777',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -21,10 +25,13 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:8777',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-  },
+  // Only start local dev server when not using remote TEST_URL
+  ...(isRemote ? {} : {
+    webServer: {
+      command: 'npm run dev',
+      url: 'http://localhost:8777',
+      reuseExistingServer: true,
+      timeout: 120000,
+    },
+  }),
 });
