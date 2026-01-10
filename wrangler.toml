@@ -49,6 +49,32 @@ new_classes = [ "CheckboxGameSession", "EverybodyVotesGameSession" ]
 tag = "v4"
 new_classes = [ "CountyGameSession" ]
 
+# Staging Environment Configuration
+# Deployed on merge to main
+[env.staging]
+name = "games-staging"
+
+# Staging Durable Objects
+[[env.staging.durable_objects.bindings]]
+name = "GAME_SESSIONS"
+class_name = "GameSession"
+
+[[env.staging.durable_objects.bindings]]
+name = "CHECKBOX_SESSIONS"
+class_name = "CheckboxGameSession"
+
+[[env.staging.durable_objects.bindings]]
+name = "EVERYBODY_VOTES_SESSIONS"
+class_name = "EverybodyVotesGameSession"
+
+[[env.staging.durable_objects.bindings]]
+name = "COUNTY_GAME_SESSIONS"
+class_name = "CountyGameSession"
+
+[[env.staging.durable_objects.bindings]]
+name = "GAME_REGISTRY"
+class_name = "GameSessionRegistry"
+
 # Preview Environment Configuration
 # Single preview deployment for testing changes before production
 [env.preview]

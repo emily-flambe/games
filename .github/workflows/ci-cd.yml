@@ -2,98 +2,293 @@ name: CI/CD Pipeline
 
 on:
   pull_request:
-    branches: [ main ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Cancel in-progress runs when a new commit is pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test-and-deploy:
+  # Step 0: Detect what changed to skip unnecessary jobs
+  changes:
+    name: Detect Changes
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      e2e: ${{ steps.filter.outputs.e2e }}
+      ci: ${{ steps.filter.outputs.ci }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed files
+        id: filter
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          BASE_COMMIT="$BASE_SHA"
+          if ! git cat-file -e "$BASE_COMMIT^{commit}" 2>/dev/null; then
+            echo "Base SHA not found; falling back to HEAD~1"
+            BASE_COMMIT="HEAD~1"
+          fi
+
+          CHANGED=$(git diff --name-only "$BASE_COMMIT" "$HEAD_SHA" || echo "")
+
+          if [[ -z "$CHANGED" ]]; then
+            echo "No changed files detected, running all jobs"
+            echo "code=true" >> $GITHUB_OUTPUT
+            echo "e2e=true" >> $GITHUB_OUTPUT
+            echo "ci=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Code changes (anything that affects build/runtime)
+          if echo "$CHANGED" | grep -qE '^(src/|scripts/|package\.json|package-lock\.json|tsconfig\.json|wrangler\.toml)'; then
+            echo "code=true" >> $GITHUB_OUTPUT
+          else
+            echo "code=false" >> $GITHUB_OUTPUT
+          fi
+
+          # E2E test changes
+          if echo "$CHANGED" | grep -qE '^(e2e/|playwright\.config\.)'; then
+            echo "e2e=true" >> $GITHUB_OUTPUT
+          else
+            echo "e2e=false" >> $GITHUB_OUTPUT
+          fi
+
+          # CI config changes (run everything)
+          if echo "$CHANGED" | grep -qE '^\.github/'; then
+            echo "ci=true" >> $GITHUB_OUTPUT
+          else
+            echo "ci=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Step 1: Build the application
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  # Step 2: Unit Tests
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: [changes, build]
+    if: |
+      always() &&
+      (needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true') &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+        env:
+          CI: true
+
+  # Step 3: Vitest Integration Tests
+  test-vitest:
+    name: Vitest Tests
+    runs-on: ubuntu-latest
+    needs: [changes, build]
+    if: |
+      always() &&
+      (needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true') &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest tests
+        run: npm run test:vitest
+        env:
+          CI: true
+
+  # Step 4: Deploy Preview (skip for Dependabot)
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    needs: [changes, build]
+    if: |
+      github.actor != 'dependabot[bot]' &&
+      (needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true')
     permissions:
       contents: read
       pull-requests: write
-      issues: write
-    
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.preview_url }}
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Get full history for conventional commits
-        token: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Build project
-      run: npm run build
-    
-    - name: Run unit tests
-      run: npm run test:unit
-      env:
-        CI: true
-    
-    - name: Run Vitest integration tests
-      run: npm run test:vitest
-      env:
-        CI: true
-        NODE_ENV: test
-    
-    # Deploy to preview environment for E2E testing
-    - name: Set preview URL
-      id: preview
-      run: |
-        echo "preview_url=https://games-preview.emily-cogsdill.workers.dev" >> $GITHUB_OUTPUT
-        echo "Preview deployment: games-preview"
-    
-    - name: Deploy to preview environment
-      id: deploy-preview
-      run: |
-        npm install -g wrangler
-        # Deploy to single preview worker (games-preview)
-        wrangler deploy --env preview
-        echo "Preview deployed to: ${{ steps.preview.outputs.preview_url }}"
-      env:
-        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-    
-    # Run E2E tests against preview deployment
-    - name: Install Playwright browsers
-      run: npx playwright install --with-deps chromium
+      - uses: actions/checkout@v4
 
-    - name: Run E2E tests against preview
-      run: |
-        echo "Running E2E tests against preview"
-        npm run test:e2e
-      env:
-        CI: true
-        TEST_URL: ${{ steps.preview.outputs.preview_url }}
-    
-    # Add preview URL comment to PR
-    - name: Comment PR with preview URL
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const preview_url = '${{ steps.preview.outputs.preview_url }}';
-          const comment = `🚀 **Preview Deployment Ready!**
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
 
-          Your changes have been deployed to: ${preview_url}
+      - name: Install dependencies
+        run: npm ci
 
-          ✅ All tests passed successfully!
-          - Unit tests: ✅
-          - Integration tests: ✅
-          - E2E tests: ✅
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
-          The preview environment is shared and will be updated with each new commit.`;
+      - name: Deploy to Cloudflare Preview
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "Deploying preview for PR #${{ github.event.pull_request.number }}..."
+          npx wrangler deploy --env preview
+          PREVIEW_URL="https://games-preview.emily-cogsdill.workers.dev"
+          echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
+          echo "Deployed to: $PREVIEW_URL"
 
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
+      - name: Comment PR with preview URL
+        if: steps.deploy.outputs.preview_url
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const previewUrl = '${{ steps.deploy.outputs.preview_url }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `### Preview Deployment Ready\n\nYour changes have been deployed to:\n\n**${previewUrl}**\n\n_Tip: Cmd/Ctrl + Click to open in a new tab_`
+            });
+
+  # Step 5: E2E Tests (against preview deployment)
+  test-e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [changes, build, deploy-preview]
+    if: |
+      always() &&
+      (needs.changes.outputs.code == 'true' || needs.changes.outputs.e2e == 'true' || needs.changes.outputs.ci == 'true') &&
+      needs.deploy-preview.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          CI: true
+          TEST_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+  # Final status check (blocks PR merge if anything fails)
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs: [changes, build, test-unit, test-vitest, deploy-preview, test-e2e]
+    if: always()
+    steps:
+      - name: Check overall status
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          UNIT_TEST_RESULT: ${{ needs.test-unit.result }}
+          VITEST_RESULT: ${{ needs.test-vitest.result }}
+          DEPLOY_RESULT: ${{ needs.deploy-preview.result }}
+          E2E_RESULT: ${{ needs.test-e2e.result }}
+        run: |
+          echo "Job Results:"
+          echo "  Changes: $CHANGES_RESULT"
+          echo "  Build: $BUILD_RESULT"
+          echo "  Unit Tests: $UNIT_TEST_RESULT"
+          echo "  Vitest: $VITEST_RESULT"
+          echo "  Deploy: $DEPLOY_RESULT"
+          echo "  E2E Tests: $E2E_RESULT"
+
+          FAILED=false
+
+          check_job() {
+            local name="$1"
+            local result="$2"
+            if [[ "$result" != "success" && "$result" != "skipped" ]]; then
+              echo "FAILED: $name ($result)"
+              FAILED=true
+            fi
+          }
+
+          check_job "Changes" "$CHANGES_RESULT"
+          check_job "Build" "$BUILD_RESULT"
+          check_job "Unit Tests" "$UNIT_TEST_RESULT"
+          check_job "Vitest" "$VITEST_RESULT"
+          check_job "Deploy" "$DEPLOY_RESULT"
+          check_job "E2E Tests" "$E2E_RESULT"
+
+          if [[ "$FAILED" == "true" ]]; then
+            echo "CI failed"
+            exit 1
+          fi
+          echo "All CI checks passed"
