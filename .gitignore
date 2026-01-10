@@ -84,4 +84,5 @@ DEPLOYMENT_*.md
 TROUBLESHOOTING*.md
 github-issue-*.md
 *-lessons-learned.md
-*-best-practices.md
+*-best-practices.mdplaywright-report/
+test-results/
