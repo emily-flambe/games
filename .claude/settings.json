@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npx wrangler *)",
+      "Bash(npx playwright *)",
+      "Bash(git *)",
+      "Bash(make *)"
+    ],
+    "deny": [
+      "Bash(cat .env*)",
+      "Bash(cat .dev.vars)",
+      "Bash(*CLOUDFLARE_API_TOKEN*)",
+      "Bash(*CLOUDFLARE_ACCOUNT_ID*)",
+      "Bash(echo *SECRET*)",
+      "Bash(echo *TOKEN*)",
+      "Bash(echo *KEY*)"
+    ]
+  }
+}
