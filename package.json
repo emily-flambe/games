@@ -28,16 +28,16 @@
     "test:safe": "./scripts/test-with-timeout.sh"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.8.64",
+    "@cloudflare/vitest-pool-workers": "^0.12.1",
     "@cloudflare/workers-types": "^4.20241230.0",
     "@playwright/test": "^1.57.0",
     "@types/jest": "^30.0.0",
-    "jest": "^30.0.5",
-    "jest-environment-jsdom": "^30.0.5",
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
     "jsdom": "^26.1.0",
     "pixelmatch": "^6.0.0",
     "pngjs": "^7.0.0",
-    "typescript": "^5.7.3",
+    "typescript": "^5.9.3",
     "vitest": "^3.2.4",
     "wrangler": "^4.28.1"
   }
