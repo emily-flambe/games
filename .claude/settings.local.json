@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__screenshot-website-fast__take_screenshot",
+      "mcp__screenshot-website-fast__take_screencast",
+      "mcp__screenshot-website-fast__capture_console"
+    ],
+    "deny": []
+  }
+}
