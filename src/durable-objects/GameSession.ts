@@ -13,6 +13,7 @@ import { GameHandler, GameContext, GameState } from '../games/types';
 import { handler as checkboxHandler } from '../games/checkbox-game/handler';
 import { handler as everybodyVotesHandler } from '../games/everybody-votes/handler';
 import { handler as countyHandler } from '../games/county-game/handler';
+import { handler as clickerRaceHandler } from '../games/clicker-race/handler';
 
 /**
  * Handler registry - maps game type IDs to their handlers.
@@ -22,6 +23,7 @@ const handlers: Record<string, GameHandler> = {
   'checkbox-game': checkboxHandler,
   'everybody-votes': everybodyVotesHandler,
   'county-game': countyHandler,
+  'clicker-race': clickerRaceHandler,
 };
 
 export class GameSession implements DurableObject {
