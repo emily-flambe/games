@@ -6656,10 +6656,10 @@ main {
   '/static/version.json': `{
   "version": "1.1.2",
   "baseVersion": "1.1.2",
-  "branch": "playwright-migration",
-  "commit": "7e4f578",
-  "timestamp": "2026-01-10T20:08:42.483Z",
-  "deployedAt": "Jan 10, 2026, 01:08 PM MST"
+  "branch": "unified-game-handlers",
+  "commit": "94097fd",
+  "timestamp": "2026-01-11T18:33:48.487Z",
+  "deployedAt": "Jan 11, 2026, 11:33 AM MST"
 }`
 };
 

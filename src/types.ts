@@ -8,6 +8,31 @@ export interface Env {
   GAME_REGISTRY: DurableObjectNamespace;
 }
 
+/**
+ * A connected player in a game session.
+ */
+export interface Player {
+  id: string;
+  name: string;
+  emoji: string;
+  connected: boolean;
+  joinedAt: number;
+  isHost: boolean;
+  isSpectator: false;
+}
+
+/**
+ * A spectator watching a game session.
+ */
+export interface Spectator {
+  id: string;
+  name: string;
+  emoji: string;
+  connected: boolean;
+  joinedAt: number;
+  isSpectator: true;
+}
+
 export interface SessionMetadata {
   sessionId: string;
   gameType: string;
