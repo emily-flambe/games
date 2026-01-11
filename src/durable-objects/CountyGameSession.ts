@@ -71,15 +71,13 @@ export class CountyGameSession extends GameSession {
     await this.saveGameState();
     this.updateRegistryStatus('in-progress');
 
-    // Notify all players
+    // Notify all players (flattened message format)
     this.broadcast({
-      type: 'game_started',
-      data: {
-        gameType: this.gameState.type,
-        gameState: this.gameState,
-        gameSpecificState: this.getGameSpecificState(),
-        phase: this.gameState.phase
-      },
+      type: 'gameStarted',
+      gameType: this.gameState.type,
+      gameState: this.gameState,
+      gameSpecificState: this.getGameSpecificState(),
+      phase: this.gameState.phase,
       timestamp: Date.now()
     });
 

@@ -116,19 +116,17 @@ export class EverybodyVotesGameSession extends GameSession {
     await this.saveGameState();
     this.updateRegistryStatus('in-progress');
     
-    // Send game started with voting phase immediately
+    // Send game started with voting phase immediately (flattened message format)
     this.broadcast({
-      type: 'game_started',
-      data: {
-        gameType: 'everybody-votes',
-        gameState: this.gameState,
-        phase: 'VOTING',
-        question: this.gameState.question,
-        options: this.gameState.options,
-        currentRound: this.gameState.currentRound,
-        totalRounds: this.gameState.totalRounds,
-        hostId: this.gameState.hostId
-      },
+      type: 'gameStarted',
+      gameType: 'everybody-votes',
+      gameState: this.gameState,
+      phase: 'VOTING',
+      question: this.gameState.question,
+      options: this.gameState.options,
+      currentRound: this.gameState.currentRound,
+      totalRounds: this.gameState.totalRounds,
+      hostId: this.gameState.hostId,
       timestamp: Date.now()
     });
     
