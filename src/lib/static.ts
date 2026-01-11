@@ -6657,9 +6657,9 @@ main {
   "version": "1.1.2",
   "baseVersion": "1.1.2",
   "branch": "unified-game-handlers",
-  "commit": "94097fd",
-  "timestamp": "2026-01-11T18:33:48.487Z",
-  "deployedAt": "Jan 11, 2026, 11:33 AM MST"
+  "commit": "35c923e",
+  "timestamp": "2026-01-11T18:53:56.091Z",
+  "deployedAt": "Jan 11, 2026, 11:53 AM MST"
 }`
 };
 

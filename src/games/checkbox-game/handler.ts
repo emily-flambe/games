@@ -119,6 +119,7 @@ async function handleCheckboxToggle(ctx: GameContext, data: any): Promise<void> 
   if (allBoxesChecked && gameState.gameStarted) {
     await handleGameEnd(ctx);
   } else {
+    await ctx.saveState();
     ctx.broadcast({
       type: 'checkbox_toggled',
       data: {
