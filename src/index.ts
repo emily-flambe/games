@@ -225,3 +225,7 @@ function getStaticAsset(path: string): { content: string | ArrayBuffer; contentT
 
 // Export Durable Objects for wrangler
 export { GameSession, GameSessionRegistry };
+
+// Export legacy DO stubs for migration compatibility (v3, v4 migrations)
+// These are not used - all games use unified GameSession with handler registry
+export { CheckboxGameSession, EverybodyVotesGameSession, CountyGameSession } from './durable-objects/legacy-stubs';
