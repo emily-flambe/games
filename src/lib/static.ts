@@ -6656,10 +6656,10 @@ main {
   '/static/version.json': `{
   "version": "1.1.2",
   "baseVersion": "1.1.2",
-  "branch": "unified-game-handlers",
-  "commit": "35c923e",
-  "timestamp": "2026-01-11T18:53:56.091Z",
-  "deployedAt": "Jan 11, 2026, 11:53 AM MST"
+  "branch": "cleanup-legacy-do-classes",
+  "commit": "3e5bbc2",
+  "timestamp": "2026-01-11T18:55:43.770Z",
+  "deployedAt": "Jan 11, 2026, 11:55 AM MST"
 }`
 };
 

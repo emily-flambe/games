@@ -9,12 +9,6 @@ import { GameSessionRegistry } from './durable-objects/GameSessionRegistry';
 import { Env } from './types';
 import { getEnabledGames } from './games/manifest';
 
-// Legacy exports for backwards compatibility during migration
-// TODO: Remove these after migration is complete
-import { CheckboxGameSession } from './durable-objects/CheckboxGameSession';
-import { EverybodyVotesGameSession } from './durable-objects/EverybodyVotesGameSession';
-import { CountyGameSession } from './durable-objects/CountyGameSession';
-
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -230,4 +224,4 @@ function getStaticAsset(path: string): { content: string | ArrayBuffer; contentT
 }
 
 // Export Durable Objects for wrangler
-export { GameSession, CheckboxGameSession, EverybodyVotesGameSession, CountyGameSession, GameSessionRegistry };
+export { GameSession, GameSessionRegistry };
