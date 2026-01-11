@@ -2,6 +2,10 @@
  * CountyGameModule
  * A silly game where players submit county names and celebrate together
  */
+
+/** @typedef {import('../GameShell.js').Player} Player */
+/** @typedef {import('../GameShell.js').Spectator} Spectator */
+
 class CountyGameModule extends GameModule {
     constructor() {
         super();
