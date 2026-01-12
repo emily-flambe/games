@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.12.1",
-    "@cloudflare/workers-types": "^4.20241230.0",
+    "@cloudflare/workers-types": "^4.20260111.0",
     "@playwright/test": "^1.57.0",
     "@types/jest": "^30.0.0",
     "jest": "^30.2.0",
