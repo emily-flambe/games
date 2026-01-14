@@ -570,6 +570,13 @@ class GameShell {
                     console.error('CountyGameModule class not found - check script loading');
                     this.gameModule = null;
                 }
+            } else if (gameType === 'clicker-race') {
+                if (typeof ClickerRaceGameModule !== 'undefined') {
+                    this.gameModule = new ClickerRaceGameModule();
+                } else {
+                    console.error('ClickerRaceGameModule class not found - check script loading');
+                    this.gameModule = null;
+                }
             } else {
                 console.warn(`Game module not implemented: ${gameType}`);
                 this.gameModule = null;

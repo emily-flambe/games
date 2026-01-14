@@ -34,6 +34,12 @@ export const games: GameDefinition[] = [
     enabled: true,
   },
   {
+    id: 'clicker-race',
+    name: 'Clicker Race',
+    description: 'Race to click 10 times first!',
+    enabled: true,
+  },
+  {
     id: 'price-is-weird',
     name: 'The Price is Weird',
     description: 'Guess prices of real Etsy products without going over',
