@@ -317,7 +317,8 @@ class GameShell {
             'spectator_left': this.handleSpectatorUpdate,
             'chat_message': this.handleChatMessage,
             'chat_history': this.handleChatHistory,
-            'checkbox_toggled': this.handleCheckboxToggled
+            'checkbox_toggled': this.handleCheckboxToggled,
+            'click_registered': this.handleGameAction
         };
 
         const handler = messageRoutes[message.type];
@@ -340,6 +341,16 @@ class GameShell {
                 this.updatePlayerData(message.data.gameState.players);
             }
             const playerId = message.data.playerId || message.data.toggledBy || message.playerId;
+            this.gameModule.handlePlayerAction(playerId, message);
+        }
+    }
+
+    /**
+     * Generic handler for game-specific action messages
+     */
+    handleGameAction(message) {
+        if (this.gameModule && message.data) {
+            const playerId = message.data.playerId || message.playerId;
             this.gameModule.handlePlayerAction(playerId, message);
         }
     }

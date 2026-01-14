@@ -8,6 +8,15 @@ routes = [
   { pattern = "games.emilycogsdill.com/*", zone_name = "emilycogsdill.com" }
 ]
 
+# Production Durable Objects
+[[env.production.durable_objects.bindings]]
+name = "GAME_SESSIONS"
+class_name = "GameSession"
+
+[[env.production.durable_objects.bindings]]
+name = "GAME_REGISTRY"
+class_name = "GameSessionRegistry"
+
 [dev]
 port = 8777
 
