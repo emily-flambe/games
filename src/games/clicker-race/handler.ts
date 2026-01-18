@@ -48,7 +48,10 @@ export const handler: GameHandler = {
       data: {
         gameType: ctx.gameState.type,
         gameState: ctx.gameState,
-        targetScore: TARGET_SCORE,
+        gameSpecificState: {
+          playerClicks: ctx.gameState.playerClicks,
+          targetScore: TARGET_SCORE,
+        },
       },
       timestamp: Date.now(),
     });
