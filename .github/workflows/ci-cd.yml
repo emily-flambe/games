@@ -193,15 +193,19 @@ jobs:
               body: `### Preview Deployment Ready\n\nYour changes have been deployed to:\n\n**${previewUrl}**\n\n_Tip: Cmd/Ctrl + Click to open in a new tab_`
             });
 
-  # Step 5: E2E Tests (against preview deployment)
+  # Step 5: E2E Tests (against preview deployment, parallelized by game)
   test-e2e:
-    name: E2E Tests
+    name: E2E - ${{ matrix.game }}
     runs-on: ubuntu-latest
     needs: [changes, deploy-preview]
     if: |
       always() &&
       (needs.changes.outputs.code == 'true' || needs.changes.outputs.e2e == 'true' || needs.changes.outputs.ci == 'true') &&
       needs.deploy-preview.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        game: [checkbox-game, county-game, everybody-votes, clicker-race]
     steps:
       - uses: actions/checkout@v6
 
@@ -217,8 +221,8 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run E2E tests
-        run: npm run test:e2e
+      - name: Run E2E tests for ${{ matrix.game }}
+        run: npm run test:e2e -- e2e/games/${{ matrix.game }}.spec.ts
         env:
           CI: true
           TEST_URL: ${{ needs.deploy-preview.outputs.preview_url }}
@@ -227,7 +231,7 @@ jobs:
         uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.game }}
           path: playwright-report/
           retention-days: 30
 
