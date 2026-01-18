@@ -174,8 +174,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           echo "Deploying preview for PR..."
-          npx wrangler deploy --env preview
-          PREVIEW_URL="https://games-preview.emily-cogsdill.workers.dev"
+          npx wrangler deploy
+          PREVIEW_URL="https://games.emily-cogsdill.workers.dev"
           echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
           echo "Deployed to: $PREVIEW_URL"
 
