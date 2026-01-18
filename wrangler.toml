@@ -8,6 +8,15 @@ routes = [
   { pattern = "games.emilycogsdill.com/*", zone_name = "emilycogsdill.com" }
 ]
 
+# Production Durable Objects
+[[env.production.durable_objects.bindings]]
+name = "GAME_SESSIONS"
+class_name = "GameSession"
+
+[[env.production.durable_objects.bindings]]
+name = "GAME_REGISTRY"
+class_name = "GameSessionRegistry"
+
 [dev]
 port = 8777
 
@@ -15,18 +24,6 @@ port = 8777
 [[durable_objects.bindings]]
 name = "GAME_SESSIONS"
 class_name = "GameSession"
-
-[[durable_objects.bindings]]
-name = "CHECKBOX_SESSIONS"
-class_name = "CheckboxGameSession"
-
-[[durable_objects.bindings]]
-name = "EVERYBODY_VOTES_SESSIONS"
-class_name = "EverybodyVotesGameSession"
-
-[[durable_objects.bindings]]
-name = "COUNTY_GAME_SESSIONS"
-class_name = "CountyGameSession"
 
 [[durable_objects.bindings]]
 name = "GAME_REGISTRY"
@@ -49,6 +46,10 @@ new_classes = [ "CheckboxGameSession", "EverybodyVotesGameSession" ]
 tag = "v4"
 new_classes = [ "CountyGameSession" ]
 
+# Note: Legacy DO classes (CheckboxGameSession, EverybodyVotesGameSession, CountyGameSession)
+# are kept registered for migration history but are no longer used.
+# All games now use the unified GameSession with handler registry.
+
 # Staging Environment Configuration
 # Deployed on merge to main
 [env.staging]
@@ -58,18 +59,6 @@ name = "games-staging"
 [[env.staging.durable_objects.bindings]]
 name = "GAME_SESSIONS"
 class_name = "GameSession"
-
-[[env.staging.durable_objects.bindings]]
-name = "CHECKBOX_SESSIONS"
-class_name = "CheckboxGameSession"
-
-[[env.staging.durable_objects.bindings]]
-name = "EVERYBODY_VOTES_SESSIONS"
-class_name = "EverybodyVotesGameSession"
-
-[[env.staging.durable_objects.bindings]]
-name = "COUNTY_GAME_SESSIONS"
-class_name = "CountyGameSession"
 
 [[env.staging.durable_objects.bindings]]
 name = "GAME_REGISTRY"
@@ -85,18 +74,6 @@ name = "games-preview"
 [[env.preview.durable_objects.bindings]]
 name = "GAME_SESSIONS"
 class_name = "GameSession"
-
-[[env.preview.durable_objects.bindings]]
-name = "CHECKBOX_SESSIONS"
-class_name = "CheckboxGameSession"
-
-[[env.preview.durable_objects.bindings]]
-name = "EVERYBODY_VOTES_SESSIONS"
-class_name = "EverybodyVotesGameSession"
-
-[[env.preview.durable_objects.bindings]]
-name = "COUNTY_GAME_SESSIONS"
-class_name = "CountyGameSession"
 
 [[env.preview.durable_objects.bindings]]
 name = "GAME_REGISTRY"

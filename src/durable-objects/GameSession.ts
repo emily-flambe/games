@@ -1,53 +1,93 @@
 /**
- * Base GameSession Durable Object
- * Handles multiplayer game sessions with WebSocket connections
+ * Unified GameSession Durable Object
+ *
+ * Handles multiplayer game sessions with WebSocket connections.
+ * Uses a handler registry to delegate game-specific logic to modular handlers.
  */
 
 import { DurableObject, DurableObjectState } from '@cloudflare/workers-types';
 import { Env, SessionMetadata, Player, Spectator } from '../types';
+import { GameHandler, GameContext, GameState } from '../games/types';
+
+// Import game handlers
+import { handler as checkboxHandler } from '../games/checkbox-game/handler';
+import { handler as everybodyVotesHandler } from '../games/everybody-votes/handler';
+import { handler as countyHandler } from '../games/county-game/handler';
+import { handler as clickerRaceHandler } from '../games/clicker-race/handler';
+
+/**
+ * Handler registry - maps game type IDs to their handlers.
+ * Add new games here after creating their handler file.
+ */
+const handlers: Record<string, GameHandler> = {
+  'checkbox-game': checkboxHandler,
+  'everybody-votes': everybodyVotesHandler,
+  'county-game': countyHandler,
+  'clicker-race': clickerRaceHandler,
+};
 
 export class GameSession implements DurableObject {
   protected websockets: Map<WebSocket, string> = new Map();
   protected players: Map<string, Player> = new Map();
-  protected spectators: Map<string, Spectator> = new Map(); 
-  protected gameState: any;
+  protected spectators: Map<string, Spectator> = new Map();
+  protected gameState: GameState;
   protected sessionId: string = '';
   protected initialized: boolean = false;
-  protected chatHistory: Array<{playerId: string, message: string, timestamp: number}> = [];
+  protected chatHistory: Array<{ playerId: string; message: string; timestamp: number }> = [];
+  protected handler: GameHandler | null = null;
 
   constructor(protected state: DurableObjectState, protected env: Env) {
-    this.gameState = null;
+    this.gameState = null as unknown as GameState;
+  }
+
+  /**
+   * Get the handler for a game type, or throw if unknown.
+   */
+  protected getHandler(gameType: string): GameHandler {
+    const handler = handlers[gameType];
+    if (!handler) {
+      throw new Error(`Unknown game type: ${gameType}. Available: ${Object.keys(handlers).join(', ')}`);
+    }
+    return handler;
   }
 
   protected async initializeGameState(gameType: string = 'checkbox-game') {
     if (this.initialized) return;
-    
+
+    // Get the handler for this game type
+    this.handler = this.getHandler(gameType);
+
     const storedState = await this.state.storage.get('gameState');
     const storedPlayers = await this.state.storage.get('players');
     const storedSpectators = await this.state.storage.get('spectators');
     const storedChatHistory = await this.state.storage.get('chatHistory');
-    
+
     if (storedState) {
-      this.gameState = storedState;
+      this.gameState = storedState as GameState;
     } else {
       this.gameState = this.createInitialGameState(gameType);
     }
-    
+
     if (storedPlayers) {
-      this.players = new Map(storedPlayers);
+      this.players = new Map(storedPlayers as [string, Player][]);
     }
     if (storedSpectators) {
-      this.spectators = new Map(storedSpectators);
+      this.spectators = new Map(storedSpectators as [string, Spectator][]);
     }
     if (storedChatHistory) {
-      this.chatHistory = storedChatHistory as Array<{playerId: string, message: string, timestamp: number}>;
+      this.chatHistory = storedChatHistory as Array<{
+        playerId: string;
+        message: string;
+        timestamp: number;
+      }>;
     }
-    
+
     this.initialized = true;
   }
 
-  protected createInitialGameState(gameType: string): any {
-    return {
+  protected createInitialGameState(gameType: string): GameState {
+    // Base state that all games share
+    const baseState: GameState = {
       type: gameType,
       status: 'waiting',
       players: {},
@@ -55,8 +95,16 @@ export class GameSession implements DurableObject {
       gameStarted: false,
       gameFinished: false,
       spectatorCount: 0,
-      spectators: {}
+      spectators: {},
     };
+
+    // Merge with game-specific initial state from handler
+    if (this.handler) {
+      const gameSpecificState = this.handler.createInitialState();
+      return { ...baseState, ...gameSpecificState };
+    }
+
+    return baseState;
   }
 
   protected async saveGameState() {
@@ -70,7 +118,7 @@ export class GameSession implements DurableObject {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    
+
     const pathMatch = url.pathname.match(/^\/api\/game\/([A-Z0-9]+)\/ws$/);
     if (pathMatch) {
       this.sessionId = pathMatch[1];
@@ -120,7 +168,7 @@ export class GameSession implements DurableObject {
       connected: true,
       joinedAt: Date.now(),
       isHost: isFirstPlayer,
-      isSpectator: false
+      isSpectator: false,
     };
 
     this.players.set(playerId, player);
@@ -142,7 +190,7 @@ export class GameSession implements DurableObject {
       gameState: this.gameState,
       playerId: playerId
     }));
-    
+
     if (this.chatHistory.length > 0) {
       ws.send(JSON.stringify({
         type: 'chatHistory',
@@ -180,12 +228,14 @@ export class GameSession implements DurableObject {
 
   }
 
-  async addSpectator(originalId: string, ws: WebSocket) {
+  async addSpectator(connectionId: string, ws: WebSocket) {
     // Generate proper spectator ID with spectator_ prefix
     const spectatorId = 'spectator_' + Math.random().toString(36).substr(2, 9);
 
-    // Update websocket mapping to use spectator ID
-    this.websockets.set(ws, spectatorId);
+    // CRITICAL FIX: Do NOT update the websocket mapping here.
+    // The event listeners in fetch() still reference the original connectionId,
+    // so changing the mapping would break message routing and lookups.
+    // Instead, we store a mapping from connectionId -> spectatorId for lookups.
 
     const spectator: Spectator = {
       id: spectatorId,
@@ -194,11 +244,13 @@ export class GameSession implements DurableObject {
       connected: true,
       joinedAt: Date.now(),
       isHost: false,
-      isSpectator: true
+      isSpectator: true,
     };
 
     this.spectators.set(spectatorId, spectator);
-    this.gameState.spectatorCount = this.spectators.size;
+    // Also store mapping from connection ID to spectator ID for message handling
+    this.spectators.set(connectionId, spectator);
+    this.gameState.spectatorCount = this.spectators.size / 2; // Divide by 2 due to dual mapping
     this.gameState.spectators[spectatorId] = spectator;
 
     await this.saveGameState();
@@ -250,19 +302,19 @@ export class GameSession implements DurableObject {
 
   async removePlayer(playerId: string, ws: WebSocket) {
     this.websockets.delete(ws);
-    
+
     if (this.spectators.has(playerId)) {
       this.removeSpectator(playerId);
       return;
     }
-    
+
     if (this.players.has(playerId)) {
       const wasHost = this.gameState.hostId === playerId;
       this.players.delete(playerId);
       delete this.gameState.players[playerId];
-      
+
       if (wasHost && this.players.size > 0) {
-        const newHostId = this.players.keys().next().value;
+        const newHostId = this.players.keys().next().value as string;
         this.gameState.hostId = newHostId;
         const newHost = this.players.get(newHostId);
         if (newHost) {
@@ -288,7 +340,7 @@ export class GameSession implements DurableObject {
           timestamp: Date.now()
         });
       }
-      
+
       this.broadcast({
         type: 'playerLeft',
         playerId: playerId,
@@ -312,13 +364,19 @@ export class GameSession implements DurableObject {
   removeSpectator(spectatorId: string) {
     const spectator = this.spectators.get(spectatorId);
     this.spectators.delete(spectatorId);
-    delete this.gameState.spectators[spectatorId];
-    this.gameState.spectatorCount = this.spectators.size;
+    // Also try to delete by the actual spectator ID if this was a connection ID
+    if (spectator && spectator.id !== spectatorId) {
+      this.spectators.delete(spectator.id);
+    }
+    if (spectator) {
+      delete this.gameState.spectators[spectator.id];
+    }
+    this.gameState.spectatorCount = Math.floor(this.spectators.size / 2);
 
     // Flattened message format (no data wrapper)
     this.broadcast({
       type: 'spectatorLeft',
-      spectatorId: spectatorId,
+      spectatorId: spectator?.id || spectatorId,
       spectator: spectator,
       spectatorCount: this.gameState.spectatorCount,
       gameState: this.gameState,
@@ -355,8 +413,8 @@ export class GameSession implements DurableObject {
     try {
       const data = JSON.parse(message);
       const isSpectator = this.spectators.has(playerId);
-      
-      
+
+
       switch (data.type) {
         case 'ping':
           ws.send(JSON.stringify({ type: 'pong' }));
@@ -370,48 +428,46 @@ export class GameSession implements DurableObject {
           break;
 
         case 'updateName':
-        case 'change_name':
-          if (this.players.has(playerId)) {
-            const player = this.players.get(playerId);
-            if (player) {
-              player.name = data.name || data.data?.newName || player.name;
-              this.gameState.players[playerId] = player;
-              this.broadcast({
-                type: 'nameChanged',
-                playerId: playerId,
-                newName: player.name,
-                gameState: this.gameState,
-                timestamp: Date.now()
-              });
+        case 'change_name': {
+          const player = this.players.get(playerId);
+          if (player) {
+            player.name = data.name || data.data?.newName || player.name;
+            this.gameState.players[playerId] = player;
+            this.broadcast({
+              type: 'nameChanged',
+              playerId: playerId,
+              newName: player.name,
+              gameState: this.gameState,
+              timestamp: Date.now()
+            });
 
-              if (this.sessionId) {
-                await this.updateRegistry();
-              }
+            if (this.sessionId) {
+              await this.updateRegistry();
             }
           }
           break;
+        }
 
         case 'updateEmoji':
-        case 'change_emoji':
-          if (this.players.has(playerId)) {
-            const player = this.players.get(playerId);
-            if (player) {
-              player.emoji = data.emoji || data.data?.newEmoji || player.emoji;
-              this.gameState.players[playerId] = player;
-              this.broadcast({
-                type: 'emojiChanged',
-                playerId: playerId,
-                newEmoji: player.emoji,
-                gameState: this.gameState,
-                timestamp: Date.now()
-              });
+        case 'change_emoji': {
+          const player = this.players.get(playerId);
+          if (player) {
+            player.emoji = data.emoji || data.data?.newEmoji || player.emoji;
+            this.gameState.players[playerId] = player;
+            this.broadcast({
+              type: 'emojiChanged',
+              playerId: playerId,
+              newEmoji: player.emoji,
+              gameState: this.gameState,
+              timestamp: Date.now()
+            });
 
-              if (this.sessionId) {
-                await this.updateRegistry();
-              }
+            if (this.sessionId) {
+              await this.updateRegistry();
             }
           }
           break;
+        }
 
         case 'chat_message':
         case 'chatMessage':
@@ -457,28 +513,77 @@ export class GameSession implements DurableObject {
     }
   }
 
-  protected async handleGameSpecificMessage(ws: WebSocket, playerId: string, data: any, isSpectator: boolean) {
-    // Override in subclasses
+  /**
+   * Create a GameContext object for passing to handlers.
+   */
+  protected createGameContext(ws: WebSocket, playerId: string, isSpectator: boolean): GameContext {
+    return {
+      gameState: this.gameState,
+      players: this.players,
+      spectators: this.spectators,
+      hostId: this.gameState.hostId,
+      playerId,
+      ws,
+      isSpectator,
+      broadcast: this.broadcast.bind(this),
+      sendTo: this.sendTo.bind(this),
+      saveState: this.saveGameState.bind(this),
+      updateRegistryStatus: this.updateRegistryStatus.bind(this),
+    };
+  }
+
+  protected async handleGameSpecificMessage(
+    ws: WebSocket,
+    playerId: string,
+    data: any,
+    isSpectator: boolean
+  ) {
+    if (!this.handler) {
+      console.error('No handler available for game type:', this.gameState.type);
+      return;
+    }
+
+    const ctx = this.createGameContext(ws, playerId, isSpectator);
+    await this.handler.onMessage(ctx, data);
   }
 
   protected async handlePlayerDisconnect(playerId: string) {
-    // Override in subclasses for game-specific disconnect logic
+    if (!this.handler?.onPlayerDisconnect) {
+      return;
+    }
+
+    // Create a minimal context for disconnect handling
+    // We don't have a WebSocket at this point
+    const ctx = this.createGameContext(null as unknown as WebSocket, playerId, false);
+    await this.handler.onPlayerDisconnect(ctx, playerId);
   }
 
   protected async handleStartGame(ws: WebSocket, playerId: string) {
-    this.gameState.status = 'started';
-    this.gameState.gameStarted = true;
+    if (!this.handler) {
+      // Fallback to default behavior if no handler
+      this.gameState.status = 'started';
+      this.gameState.gameStarted = true;
 
-    await this.saveGameState();
-    this.updateRegistryStatus('in-progress');
+      await this.saveGameState();
+      this.updateRegistryStatus('in-progress');
 
-    // Flattened message format
-    this.broadcast({
-      type: 'gameStarted',
-      gameType: this.gameState.type,
-      gameState: this.gameState,
-      timestamp: Date.now()
-    });
+      // Use flattened camelCase message format
+      this.broadcast({
+        type: 'gameStarted',
+        gameType: this.gameState.type,
+        gameState: this.gameState,
+        timestamp: Date.now(),
+      });
+
+      if (this.sessionId) {
+        await this.updateRegistry();
+      }
+      return;
+    }
+
+    // Delegate to handler
+    const ctx = this.createGameContext(ws, playerId, false);
+    await this.handler.onStart(ctx);
 
     if (this.sessionId) {
       await this.updateRegistry();
@@ -488,12 +593,12 @@ export class GameSession implements DurableObject {
 
   async updateRegistryStatus(gameStatus: 'waiting' | 'in-progress' | 'finished') {
     if (!this.sessionId) return;
-    
+
     try {
       const registry = this.env.GAME_REGISTRY.get(
         this.env.GAME_REGISTRY.idFromName('singleton')
       );
-      
+
       await registry.fetch(new Request('http://internal/update-game-status', {
         method: 'POST',
         body: JSON.stringify({
@@ -522,7 +627,7 @@ export class GameSession implements DurableObject {
       const registry = this.env.GAME_REGISTRY.get(
         this.env.GAME_REGISTRY.idFromName('singleton')
       );
-      
+
       await registry.fetch(new Request('http://internal/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -541,13 +646,13 @@ export class GameSession implements DurableObject {
       console.error('Failed to register with registry:', error);
     }
   }
-  
+
   private async updateRegistry() {
     try {
       const registry = this.env.GAME_REGISTRY.get(
         this.env.GAME_REGISTRY.idFromName('singleton')
       );
-      
+
       await registry.fetch(new Request(`http://internal/update/${this.sessionId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -570,7 +675,7 @@ export class GameSession implements DurableObject {
       const registry = this.env.GAME_REGISTRY.get(
         this.env.GAME_REGISTRY.idFromName('singleton')
       );
-      
+
       await registry.fetch(new Request(`http://internal/unregister/${this.sessionId}`, {
         method: 'DELETE'
       }));

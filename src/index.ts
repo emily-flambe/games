@@ -5,11 +5,9 @@
 
 import { staticAssets } from './lib/static';
 import { GameSession } from './durable-objects/GameSession';
-import { CheckboxGameSession } from './durable-objects/CheckboxGameSession';
-import { EverybodyVotesGameSession } from './durable-objects/EverybodyVotesGameSession';
-import { CountyGameSession } from './durable-objects/CountyGameSession';
 import { GameSessionRegistry } from './durable-objects/GameSessionRegistry';
 import { Env } from './types';
+import { getEnabledGames } from './games/manifest';
 
 
 export default {
@@ -36,6 +34,9 @@ export default {
     }
 
     // Handle API routes
+    if (path === '/api/games' && request.method === 'GET') {
+      return handleGamesAPI();
+    }
     if (path === '/api/active-rooms' && request.method === 'GET') {
       return handleActiveRoomsAPI(env);
     }
@@ -96,37 +97,43 @@ export default {
 
 /**
  * Handle WebSocket connections
+ *
+ * All game types now route to the unified GameSession Durable Object,
+ * which uses a handler registry to delegate game-specific logic.
  */
 async function handleWebSocket(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const pathMatch = url.pathname.match(/^\/api\/game\/([A-Z0-9]+)\/ws$/);
-  
+
   if (!pathMatch) {
     return new Response('Invalid WebSocket path', { status: 400 });
   }
-  
+
   const sessionId = pathMatch[1];
-  const gameType = url.searchParams.get('gameType') || 'checkbox-game';
-  
-  // Route to appropriate Durable Object based on game type
-  let gameSession;
-  if (gameType === 'everybody-votes') {
-    const id = env.EVERYBODY_VOTES_SESSIONS.idFromName(sessionId);
-    gameSession = env.EVERYBODY_VOTES_SESSIONS.get(id);
-  } else if (gameType === 'checkbox-game') {
-    const id = env.CHECKBOX_SESSIONS.idFromName(sessionId);
-    gameSession = env.CHECKBOX_SESSIONS.get(id);
-  } else if (gameType === 'county-game') {
-    const id = env.COUNTY_GAME_SESSIONS.idFromName(sessionId);
-    gameSession = env.COUNTY_GAME_SESSIONS.get(id);
-  } else {
-    // Default to base GameSession for other games
-    const id = env.GAME_SESSIONS.idFromName(sessionId);
-    gameSession = env.GAME_SESSIONS.get(id);
-  }
-  
+  // gameType is passed to the DO via query param - it uses this to select the handler
+
+  // Route all games to the unified GameSession Durable Object
+  const id = env.GAME_SESSIONS.idFromName(sessionId);
+  const gameSession = env.GAME_SESSIONS.get(id);
+
   // Forward the WebSocket request to the Durable Object
   return gameSession.fetch(request);
+}
+
+/**
+ * Handle Games API - returns list of available games from manifest
+ */
+function handleGamesAPI(): Response {
+  const games = getEnabledGames();
+
+  return new Response(JSON.stringify(games), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
+    },
+  });
 }
 
 /**
@@ -217,4 +224,8 @@ function getStaticAsset(path: string): { content: string | ArrayBuffer; contentT
 }
 
 // Export Durable Objects for wrangler
-export { GameSession, CheckboxGameSession, EverybodyVotesGameSession, CountyGameSession, GameSessionRegistry };
+export { GameSession, GameSessionRegistry };
+
+// Export legacy DO stubs for migration compatibility (v3, v4 migrations)
+// These are not used - all games use unified GameSession with handler registry
+export { CheckboxGameSession, EverybodyVotesGameSession, CountyGameSession } from './durable-objects/legacy-stubs';

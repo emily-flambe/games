@@ -6656,10 +6656,10 @@ main {
   '/static/version.json': `{
   "version": "1.1.2",
   "baseVersion": "1.1.2",
-  "branch": "playwright-migration",
-  "commit": "7e4f578",
-  "timestamp": "2026-01-10T20:08:42.483Z",
-  "deployedAt": "Jan 10, 2026, 01:08 PM MST"
+  "branch": "cleanup-legacy-do-classes",
+  "commit": "861941f",
+  "timestamp": "2026-01-11T19:44:46.709Z",
+  "deployedAt": "Jan 11, 2026, 12:44 PM MST"
 }`
 };
 

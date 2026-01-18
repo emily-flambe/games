@@ -368,7 +368,8 @@ class GameShell {
             'chat_history': this.handleChatHistory,
             'chatHistory': this.handleChatHistory,
             // Game-specific
-            'checkbox_toggled': this.handleCheckboxToggled
+            'checkbox_toggled': this.handleCheckboxToggled,
+            'click_registered': this.handleGameAction
         };
 
         const handler = messageRoutes[message.type];
@@ -391,6 +392,16 @@ class GameShell {
                 this.updatePlayerData(message.data.gameState.players);
             }
             const playerId = message.data.playerId || message.data.toggledBy || message.playerId;
+            this.gameModule.handlePlayerAction(playerId, message);
+        }
+    }
+
+    /**
+     * Generic handler for game-specific action messages
+     */
+    handleGameAction(message) {
+        if (this.gameModule && message.data) {
+            const playerId = message.data.playerId || message.playerId;
             this.gameModule.handlePlayerAction(playerId, message);
         }
     }
@@ -633,6 +644,13 @@ class GameShell {
                     this.gameModule = new CountyGameModule();
                 } else {
                     console.error('CountyGameModule class not found - check script loading');
+                    this.gameModule = null;
+                }
+            } else if (gameType === 'clicker-race') {
+                if (typeof ClickerRaceGameModule !== 'undefined') {
+                    this.gameModule = new ClickerRaceGameModule();
+                } else {
+                    console.error('ClickerRaceGameModule class not found - check script loading');
                     this.gameModule = null;
                 }
             } else {
@@ -901,7 +919,6 @@ class GameShell {
 
         // Support both old (data wrapper) and new (flat) formats for spectator data
         const spectatorId = message.spectatorId || message.data?.spectatorId;
-        const spectator = message.spectator || message.data?.spectator;
         const spectators = message.spectators || message.data?.spectators;
 
         if (isIdentityMessage && spectatorId) {
