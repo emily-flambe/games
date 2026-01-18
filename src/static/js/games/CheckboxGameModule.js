@@ -2,6 +2,10 @@
  * CheckboxGameModule - Implements the checkbox game as a GameModule
  * Manages a 3x3 grid of checkboxes where players collaborate to check all boxes
  */
+
+/** @typedef {import('../GameShell.js').Player} Player */
+/** @typedef {import('../GameShell.js').Spectator} Spectator */
+
 class CheckboxGameModule extends GameModule {
     constructor() {
         super();

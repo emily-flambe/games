@@ -2,6 +2,36 @@
  * GameShell - Manages common game functionality across all games
  * Handles WebSocket connections, player management, room lifecycle, and UI shell
  */
+
+/**
+ * Standardized Player interface.
+ * @typedef {Object} Player
+ * @property {string} id - Format: "player_<random9>"
+ * @property {string} name - Generated silly name
+ * @property {string} emoji - Random animal emoji
+ * @property {boolean} connected - WebSocket connection status
+ * @property {number} joinedAt - Unix timestamp ms
+ * @property {boolean} isHost - true for room creator only
+ * @property {false} isSpectator - Always false for players
+ */
+
+/**
+ * Standardized Spectator interface.
+ * @typedef {Object} Spectator
+ * @property {string} id - Format: "spectator_<random9>"
+ * @property {string} name - Generated silly name
+ * @property {string} emoji - Random animal emoji
+ * @property {boolean} connected - WebSocket connection status
+ * @property {number} joinedAt - Unix timestamp ms
+ * @property {false} isHost - Always false for spectators
+ * @property {true} isSpectator - Always true for spectators
+ */
+
+/**
+ * Union type for any participant.
+ * @typedef {Player|Spectator} Participant
+ */
+
 class GameShell {
     constructor() {
         // WebSocket and connection management
@@ -167,9 +197,10 @@ class GameShell {
             const sendMessage = () => {
                 const message = chatInput.value.trim();
                 if (message && this.ws && this.isConnected) {
+                    // Use new flat message format
                     this.ws.send(JSON.stringify({
-                        type: 'chat_message',
-                        data: { message }
+                        type: 'chatMessage',
+                        message: message
                     }));
                     chatInput.value = '';
                 }
@@ -304,19 +335,39 @@ class GameShell {
      * Route messages to appropriate handlers
      */
     routeMessage(message) {
-        // Message routing table - clear and maintainable
+        // Message routing table - supports both old (snake_case) and new (camelCase) formats
         const messageRoutes = {
+            // Game state
             'gameState': this.handleGameStateUpdate,
+            // Game lifecycle (old + new)
             'game_started': this.handleGameStarted,
+            'gameStarted': this.handleGameStarted,
             'game_ended': this.handleGameEnded,
+            'gameEnded': this.handleGameEnded,
+            // Player events
             'playerJoined': this.handlePlayerUpdate,
             'playerLeft': this.handlePlayerUpdate,
             'playerUpdated': this.handlePlayerUpdate,
+            'nameChanged': this.handlePlayerUpdate,
+            'emojiChanged': this.handlePlayerUpdate,
+            // Host events (old + new)
+            'host_assigned': this.handleHostUpdate,
+            'hostAssigned': this.handleHostUpdate,
+            'host_changed': this.handleHostUpdate,
+            'hostChanged': this.handleHostUpdate,
+            // Spectator events (old + new)
             'spectator_identity': this.handleSpectatorUpdate,
+            'spectatorIdentity': this.handleSpectatorUpdate,
             'spectator_joined': this.handleSpectatorUpdate,
+            'spectatorJoined': this.handleSpectatorUpdate,
             'spectator_left': this.handleSpectatorUpdate,
+            'spectatorLeft': this.handleSpectatorUpdate,
+            // Chat events (old + new)
             'chat_message': this.handleChatMessage,
+            'chatMessage': this.handleChatMessage,
             'chat_history': this.handleChatHistory,
+            'chatHistory': this.handleChatHistory,
+            // Game-specific
             'checkbox_toggled': this.handleCheckboxToggled,
             'click_registered': this.handleGameAction
         };
@@ -492,37 +543,51 @@ class GameShell {
 
     /**
      * Handle game started message
+     * Supports both old (data wrapper) and new (flat) message formats:
+     * - Old format: message.data.gameState, message.data.gameType, message.data.gameSpecificState
+     * - New format: message.gameState, message.gameType, message.gameSpecificState
      */
     handleGameStarted(message) {
         this.gameState = 'playing';
-        
+
+        // Support both old (data wrapper) and new (flat) formats
+        const gameState = message.gameState || message.data?.gameState;
+        const gameType = message.gameType || message.data?.gameType;
+        const gameSpecificState = message.gameSpecificState || message.data?.gameSpecificState;
+        const hostId = gameState?.hostId || message.data?.gameState?.hostId || this.roomState.hostId;
+
         // Update room state if gameState is provided
-        if (message.data?.gameState) {
-            this.roomState = message.data.gameState;
+        if (gameState) {
+            this.roomState = gameState;
         }
-        
+
+        // Update gameType if provided in message
+        if (gameType) {
+            this.gameType = gameType;
+        }
+
         // Load and initialize the appropriate game module
         this.loadGameModule(this.gameType).then(() => {
             if (this.gameModule) {
                 // Pass current player context to module
                 this.gameModule.currentPlayerId = this.currentPlayerId;
                 this.gameModule.isSpectator = this.isSpectator;
-                
+
                 // Get rules element
                 const rulesElement = document.getElementById('game-rules-content');
-                
+
                 this.gameModule.init(
                     this.gameAreaElement,
                     this.players,
-                    {...(message.data?.gameSpecificState || {}), hostId: message.data?.gameState?.hostId || this.roomState.hostId},
+                    {...(gameSpecificState || {}), hostId: hostId},
                     (action) => this.sendPlayerAction(action),
                     (state) => this.onGameStateChange(state),
                     rulesElement
                 );
-                
+
                 // Show rules box if game provides rules
                 this.updateRulesDisplay();
-                
+
                 // Pass the game_started message to the module
                 if (this.gameModule.handleMessage) {
                     this.gameModule.handleMessage(message);
@@ -721,28 +786,81 @@ class GameShell {
     }
 
     /**
+     * Handle host assignment/change messages
+     */
+    handleHostUpdate(message) {
+        // Support both old (data wrapper) and new (flat) formats
+        const hostId = message.hostId || message.newHostId || message.data?.hostId || message.data?.newHostId;
+
+        if (hostId) {
+            // Update local state
+            if (this.roomState) {
+                this.roomState.hostId = hostId;
+            }
+
+            // If we are the new host, show host controls
+            if (hostId === this.currentPlayerId) {
+                this.updateGameControls();
+            }
+
+            // Update players list to reflect host status
+            if (message.gameState) {
+                this.updatePlayerData(message.gameState.players || {});
+            } else {
+                this.updatePlayersList();
+            }
+        }
+    }
+
+    /**
      * Handle incoming chat message
+     * Supports both old (data wrapper) and new (flat) formats
      */
     handleChatMessage(message) {
-        if (message.data) {
-            this.addChatMessage(message.data);
-        }
+        // Support both old (data.playerId) and new (participantId) formats
+        const messageData = message.data || {
+            participantId: message.participantId,
+            participantName: message.participantName,
+            participantEmoji: message.participantEmoji,
+            // Map old field names to new
+            playerId: message.participantId || message.playerId,
+            playerName: message.participantName || message.playerName,
+            playerEmoji: message.participantEmoji || message.playerEmoji,
+            message: message.message,
+            timestamp: message.timestamp,
+            isSpectator: message.isSpectator
+        };
+
+        this.addChatMessage(messageData);
     }
     
     /**
      * Handle chat history
+     * Supports both old (data wrapper with data.messages) and new (flat with messages array) formats
      */
     handleChatHistory(message) {
-        if (message.data && message.data.messages) {
+        // Support both old (data.messages) and new (messages at root) formats
+        const messages = message.messages || (message.data && message.data.messages);
+
+        if (messages && Array.isArray(messages)) {
             // Clear placeholder messages
             const chatMessagesEl = document.getElementById('chat-messages');
             if (chatMessagesEl) {
                 chatMessagesEl.innerHTML = '';
             }
-            
-            // Add historical messages
-            message.data.messages.forEach(msg => {
-                this.addChatMessage(msg, false);
+
+            // Add historical messages, normalizing field names
+            messages.forEach(msg => {
+                // Normalize new format (participantId/Name/Emoji) to old format (playerId/Name/Emoji)
+                const normalizedMsg = {
+                    playerId: msg.playerId || msg.participantId,
+                    playerName: msg.playerName || msg.participantName,
+                    playerEmoji: msg.playerEmoji || msg.participantEmoji,
+                    message: msg.message,
+                    timestamp: msg.timestamp,
+                    isSpectator: msg.isSpectator
+                };
+                this.addChatMessage(normalizedMsg, false);
             });
         }
     }
@@ -789,27 +907,39 @@ class GameShell {
     
     /**
      * Handle spectator update messages
+     * Supports both old (data wrapper) and new (flat) message formats:
+     * - Old types: spectator_identity, spectator_joined, spectator_left
+     * - New types: spectatorIdentity, spectatorJoined, spectatorLeft
+     * - Old format: message.data.spectatorId, message.data.spectator, message.data.spectators
+     * - New format: message.spectatorId, message.spectator, message.spectators
      */
     handleSpectatorUpdate(message) {
-        if (message.type === 'spectator_identity') {
+        // Normalize message type to detect identity messages (old or new format)
+        const isIdentityMessage = message.type === 'spectator_identity' || message.type === 'spectatorIdentity';
+
+        // Support both old (data wrapper) and new (flat) formats for spectator data
+        const spectatorId = message.spectatorId || message.data?.spectatorId;
+        const spectators = message.spectators || message.data?.spectators;
+
+        if (isIdentityMessage && spectatorId) {
             this.isSpectator = true;
-            this.spectatorId = message.data.spectatorId;
-            
+            this.spectatorId = spectatorId;
+
             // CRITICAL: Ensure view stays on room for spectators
             this.currentView = 'room';
-            
+
             // Update UI to show spectator mode
             this.showSpectatorUI();
             this.updateView();
             this.hideLoadingOverlay();
         }
-        
-        if (message.data && message.data.spectators) {
-            this.spectators = message.data.spectators;
+
+        if (spectators) {
+            this.spectators = spectators;
             this.updateSpectatorsDisplay();
             this.updateChatUsersList();
         }
-        
+
         // Update game controls for spectator
         if (this.isSpectator) {
             this.updateGameControls();

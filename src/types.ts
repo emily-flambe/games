@@ -6,35 +6,51 @@ export interface Env {
 }
 
 /**
- * A connected player in a game session.
+ * Standardized Player interface.
+ * Players are active participants who can interact with the game.
  */
 export interface Player {
-  id: string;
-  name: string;
-  emoji: string;
-  connected: boolean;
-  joinedAt: number;
-  isHost: boolean;
-  isSpectator: false;
+  id: string;           // Format: "player_<random9>"
+  name: string;         // Generated silly name
+  emoji: string;        // Random animal emoji
+  connected: boolean;   // WebSocket connection status
+  joinedAt: number;     // Unix timestamp ms
+  isHost: boolean;      // true for room creator only
+  isSpectator: false;   // Always false for players
 }
 
 /**
- * A spectator watching a game session.
+ * Standardized Spectator interface.
+ * Spectators can observe but cannot interact with the game.
  */
 export interface Spectator {
-  id: string;
+  id: string;           // Format: "spectator_<random9>"
+  name: string;         // Generated silly name
+  emoji: string;        // Random animal emoji
+  connected: boolean;   // WebSocket connection status
+  joinedAt: number;     // Unix timestamp ms
+  isHost: false;        // Always false for spectators
+  isSpectator: true;    // Always true for spectators
+}
+
+/**
+ * Union type for any participant (player or spectator).
+ */
+export type Participant = Player | Spectator;
+
+/**
+ * Minimal player info for registry/lobby display.
+ */
+export interface PlayerSummary {
   name: string;
   emoji: string;
-  connected: boolean;
-  joinedAt: number;
-  isSpectator: true;
 }
 
 export interface SessionMetadata {
   sessionId: string;
   gameType: string;
   playerCount: number;
-  players: Array<{name: string; emoji: string}>;
+  players: PlayerSummary[];
   createdAt: number;
   lastHeartbeat: number;
   roomStatus: 'active' | 'inactive';

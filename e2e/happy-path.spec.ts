@@ -260,8 +260,9 @@ test.describe('Everybody Votes - Happy Path', () => {
         }
       } else {
         // After round 3, click End Game if visible (may auto-end)
+        // Use force:true because the button can be re-rendered during state updates
         if (await endGameBtn.isVisible().catch(() => false)) {
-          await endGameBtn.click();
+          await endGameBtn.click({ force: true });
         }
       }
     }

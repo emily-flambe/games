@@ -118,7 +118,7 @@ export class GameSession implements DurableObject {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    
+
     const pathMatch = url.pathname.match(/^\/api\/game\/([A-Z0-9]+)\/ws$/);
     if (pathMatch) {
       this.sessionId = pathMatch[1];
@@ -160,7 +160,7 @@ export class GameSession implements DurableObject {
     }
 
     const isFirstPlayer = this.players.size === 0;
-    
+
     const player: Player = {
       id: playerId,
       name: this.generateSillyName(),
@@ -179,8 +179,8 @@ export class GameSession implements DurableObject {
     if (isFirstPlayer) {
       this.gameState.hostId = playerId;
       ws.send(JSON.stringify({
-        type: 'host_assigned',
-        data: { hostId: playerId },
+        type: 'hostAssigned',
+        hostId: playerId,
         timestamp: Date.now()
       }));
     }
@@ -190,31 +190,31 @@ export class GameSession implements DurableObject {
       gameState: this.gameState,
       playerId: playerId
     }));
-    
+
     if (this.chatHistory.length > 0) {
       ws.send(JSON.stringify({
-        type: 'chat_history',
-        data: {
-          messages: this.chatHistory.map(msg => {
-            const sender = this.players.get(msg.playerId) || this.spectators.get(msg.playerId);
-            return {
-              playerId: msg.playerId,
-              playerName: sender?.name || 'Unknown',
-              playerEmoji: sender?.emoji || '👤',
-              message: msg.message,
-              timestamp: msg.timestamp,
-              isSpectator: this.spectators.has(msg.playerId)
-            };
-          })
-        }
+        type: 'chatHistory',
+        messages: this.chatHistory.map(msg => {
+          const sender = this.players.get(msg.playerId) || this.spectators.get(msg.playerId);
+          return {
+            participantId: msg.playerId,
+            participantName: sender?.name || 'Unknown',
+            participantEmoji: sender?.emoji || '👤',
+            message: msg.message,
+            timestamp: msg.timestamp,
+            isSpectator: this.spectators.has(msg.playerId)
+          };
+        }),
+        timestamp: Date.now()
       }));
     }
 
     this.broadcast({
-      type: 'playerJoined', 
+      type: 'playerJoined',
       playerId: playerId,
       player: player,
-      gameState: this.gameState
+      gameState: this.gameState,
+      timestamp: Date.now()
     });
 
     if (sessionId) {
@@ -228,82 +228,91 @@ export class GameSession implements DurableObject {
 
   }
 
-  async addSpectator(spectatorId: string, ws: WebSocket) {
-    
+  async addSpectator(connectionId: string, ws: WebSocket) {
+    // Generate proper spectator ID with spectator_ prefix
+    const spectatorId = 'spectator_' + Math.random().toString(36).substr(2, 9);
+
+    // CRITICAL FIX: Do NOT update the websocket mapping here.
+    // The event listeners in fetch() still reference the original connectionId,
+    // so changing the mapping would break message routing and lookups.
+    // Instead, we store a mapping from connectionId -> spectatorId for lookups.
+
     const spectator: Spectator = {
       id: spectatorId,
       name: this.generateSillyName(),
       emoji: this.getRandomAnimalEmoji(),
-      isSpectator: true,
       connected: true,
       joinedAt: Date.now(),
+      isHost: false,
+      isSpectator: true,
     };
 
     this.spectators.set(spectatorId, spectator);
-    this.gameState.spectatorCount = this.spectators.size;
+    // Also store mapping from connection ID to spectator ID for message handling
+    this.spectators.set(connectionId, spectator);
+    this.gameState.spectatorCount = this.spectators.size / 2; // Divide by 2 due to dual mapping
     this.gameState.spectators[spectatorId] = spectator;
-    
+
     await this.saveGameState();
-    
+
+    // Send spectator identity (flattened, no data wrapper)
     ws.send(JSON.stringify({
-      type: 'spectator_identity',
-      data: { 
-        spectatorId: spectatorId,
-        spectator: spectator,
-        isSpectator: true 
-      },
+      type: 'spectatorIdentity',
+      spectatorId: spectatorId,
+      spectator: spectator,
+      isSpectator: true,
       timestamp: Date.now()
     }));
-    
+
     ws.send(JSON.stringify({
       type: 'gameState',
       gameState: this.gameState,
       spectatorId: spectatorId,
       isSpectator: true
     }));
-    
+
     if (this.chatHistory.length > 0) {
       ws.send(JSON.stringify({
-        type: 'chat_history',
-        data: {
-          messages: this.chatHistory.map(msg => {
-            const sender = this.players.get(msg.playerId) || this.spectators.get(msg.playerId);
-            return {
-              playerId: msg.playerId,
-              playerName: sender?.name || 'Unknown',
-              playerEmoji: sender?.emoji || '👤',
-              message: msg.message,
-              timestamp: msg.timestamp,
-              isSpectator: this.spectators.has(msg.playerId)
-            };
-          })
-        }
+        type: 'chatHistory',
+        messages: this.chatHistory.map(msg => {
+          const sender = this.players.get(msg.playerId) || this.spectators.get(msg.playerId);
+          return {
+            participantId: msg.playerId,
+            participantName: sender?.name || 'Unknown',
+            participantEmoji: sender?.emoji || '👤',
+            message: msg.message,
+            timestamp: msg.timestamp,
+            isSpectator: this.spectators.has(msg.playerId)
+          };
+        }),
+        timestamp: Date.now()
       }));
     }
-    
+
+    // Broadcast spectator joined (flattened, no data wrapper)
     this.broadcast({
-      type: 'spectator_joined',
-      data: {
-        spectator: spectator,
-        spectatorCount: this.gameState.spectatorCount,
-        gameState: this.gameState
-      }
+      type: 'spectatorJoined',
+      spectatorId: spectatorId,
+      spectator: spectator,
+      spectatorCount: this.gameState.spectatorCount,
+      gameState: this.gameState,
+      timestamp: Date.now()
     });
   }
 
   async removePlayer(playerId: string, ws: WebSocket) {
     this.websockets.delete(ws);
-    
+
     if (this.spectators.has(playerId)) {
       this.removeSpectator(playerId);
       return;
     }
-    
+
     if (this.players.has(playerId)) {
       const wasHost = this.gameState.hostId === playerId;
       this.players.delete(playerId);
       delete this.gameState.players[playerId];
-      
+
       if (wasHost && this.players.size > 0) {
         const newHostId = this.players.keys().next().value as string;
         this.gameState.hostId = newHostId;
@@ -315,23 +324,23 @@ export class GameSession implements DurableObject {
 
         for (const [socket, id] of this.websockets) {
           if (id === newHostId) {
-            socket.send(
-              JSON.stringify({
-                type: 'host_assigned',
-                data: { hostId: newHostId },
-                timestamp: Date.now(),
-              })
-            );
+            socket.send(JSON.stringify({
+              type: 'hostAssigned',
+              hostId: newHostId,
+              timestamp: Date.now()
+            }));
             break;
           }
         }
 
         this.broadcast({
-          type: 'host_changed',
-          data: { newHostId, gameState: this.gameState },
+          type: 'hostChanged',
+          newHostId: newHostId,
+          gameState: this.gameState,
+          timestamp: Date.now()
         });
       }
-      
+
       this.broadcast({
         type: 'playerLeft',
         playerId: playerId,
@@ -355,17 +364,23 @@ export class GameSession implements DurableObject {
   removeSpectator(spectatorId: string) {
     const spectator = this.spectators.get(spectatorId);
     this.spectators.delete(spectatorId);
-    delete this.gameState.spectators[spectatorId];
-    this.gameState.spectatorCount = this.spectators.size;
-    
+    // Also try to delete by the actual spectator ID if this was a connection ID
+    if (spectator && spectator.id !== spectatorId) {
+      this.spectators.delete(spectator.id);
+    }
+    if (spectator) {
+      delete this.gameState.spectators[spectator.id];
+    }
+    this.gameState.spectatorCount = Math.floor(this.spectators.size / 2);
+
+    // Flattened message format (no data wrapper)
     this.broadcast({
-      type: 'spectator_left',
-      data: {
-        spectatorId: spectatorId,
-        spectator: spectator,
-        spectatorCount: this.gameState.spectatorCount,
-        gameState: this.gameState
-      }
+      type: 'spectatorLeft',
+      spectatorId: spectator?.id || spectatorId,
+      spectator: spectator,
+      spectatorCount: this.gameState.spectatorCount,
+      gameState: this.gameState,
+      timestamp: Date.now()
     });
   }
 
@@ -398,8 +413,8 @@ export class GameSession implements DurableObject {
     try {
       const data = JSON.parse(message);
       const isSpectator = this.spectators.has(playerId);
-      
-      
+
+
       switch (data.type) {
         case 'ping':
           ws.send(JSON.stringify({ type: 'pong' }));
@@ -419,9 +434,11 @@ export class GameSession implements DurableObject {
             player.name = data.name || data.data?.newName || player.name;
             this.gameState.players[playerId] = player;
             this.broadcast({
-              type: 'name_changed',
+              type: 'nameChanged',
               playerId: playerId,
-              data: { playerId, newName: player.name, gameState: this.gameState },
+              newName: player.name,
+              gameState: this.gameState,
+              timestamp: Date.now()
             });
 
             if (this.sessionId) {
@@ -438,9 +455,11 @@ export class GameSession implements DurableObject {
             player.emoji = data.emoji || data.data?.newEmoji || player.emoji;
             this.gameState.players[playerId] = player;
             this.broadcast({
-              type: 'emoji_changed',
+              type: 'emojiChanged',
               playerId: playerId,
-              data: { playerId, newEmoji: player.emoji, gameState: this.gameState },
+              newEmoji: player.emoji,
+              gameState: this.gameState,
+              timestamp: Date.now()
             });
 
             if (this.sessionId) {
@@ -451,6 +470,7 @@ export class GameSession implements DurableObject {
         }
 
         case 'chat_message':
+        case 'chatMessage':
           const messageText = data.data?.message || data.message;
           if (messageText && messageText.trim()) {
             const chatMessage = {
@@ -458,26 +478,25 @@ export class GameSession implements DurableObject {
               message: messageText.trim(),
               timestamp: Date.now()
             };
-            
+
             this.chatHistory.push(chatMessage);
             if (this.chatHistory.length > 50) {
               this.chatHistory.shift();
             }
-            
+
             await this.saveGameState();
-            
+
             const sender = this.players.get(playerId) || this.spectators.get(playerId);
-            
+
+            // Flattened message format
             this.broadcast({
-              type: 'chat_message',
-              data: {
-                playerId: playerId,
-                playerName: sender?.name || 'Unknown',
-                playerEmoji: sender?.emoji || '👤',
-                message: messageText.trim(),
-                timestamp: chatMessage.timestamp,
-                isSpectator: this.spectators.has(playerId)
-              }
+              type: 'chatMessage',
+              participantId: playerId,
+              participantName: sender?.name || 'Unknown',
+              participantEmoji: sender?.emoji || '👤',
+              message: messageText.trim(),
+              timestamp: chatMessage.timestamp,
+              isSpectator: this.spectators.has(playerId)
             });
           }
           break;
@@ -548,12 +567,11 @@ export class GameSession implements DurableObject {
       await this.saveGameState();
       this.updateRegistryStatus('in-progress');
 
+      // Use flattened camelCase message format
       this.broadcast({
-        type: 'game_started',
-        data: {
-          gameType: this.gameState.type,
-          gameState: this.gameState,
-        },
+        type: 'gameStarted',
+        gameType: this.gameState.type,
+        gameState: this.gameState,
         timestamp: Date.now(),
       });
 
@@ -575,12 +593,12 @@ export class GameSession implements DurableObject {
 
   async updateRegistryStatus(gameStatus: 'waiting' | 'in-progress' | 'finished') {
     if (!this.sessionId) return;
-    
+
     try {
       const registry = this.env.GAME_REGISTRY.get(
         this.env.GAME_REGISTRY.idFromName('singleton')
       );
-      
+
       await registry.fetch(new Request('http://internal/update-game-status', {
         method: 'POST',
         body: JSON.stringify({
@@ -609,7 +627,7 @@ export class GameSession implements DurableObject {
       const registry = this.env.GAME_REGISTRY.get(
         this.env.GAME_REGISTRY.idFromName('singleton')
       );
-      
+
       await registry.fetch(new Request('http://internal/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -628,13 +646,13 @@ export class GameSession implements DurableObject {
       console.error('Failed to register with registry:', error);
     }
   }
-  
+
   private async updateRegistry() {
     try {
       const registry = this.env.GAME_REGISTRY.get(
         this.env.GAME_REGISTRY.idFromName('singleton')
       );
-      
+
       await registry.fetch(new Request(`http://internal/update/${this.sessionId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -657,7 +675,7 @@ export class GameSession implements DurableObject {
       const registry = this.env.GAME_REGISTRY.get(
         this.env.GAME_REGISTRY.idFromName('singleton')
       );
-      
+
       await registry.fetch(new Request(`http://internal/unregister/${this.sessionId}`, {
         method: 'DELETE'
       }));

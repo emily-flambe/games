@@ -2,6 +2,10 @@
  * EverybodyVotesGameModule - Multi-round implementation
  * Simple voting game: Pizza or Burgers? (and more!)
  */
+
+/** @typedef {import('../GameShell.js').Player} Player */
+/** @typedef {import('../GameShell.js').Spectator} Spectator */
+
 class EverybodyVotesGameModule extends GameModule {
     constructor() {
         super();
@@ -973,17 +977,25 @@ class EverybodyVotesGameModule extends GameModule {
      * Handle WebSocket messages
      */
     handleMessage(message) {
-        
         switch (message.type) {
             case 'game_started':
-                if (message.data && message.data.phase) {
-                    this.currentPhase = message.data.phase;
-                    this.question = message.data.question || this.question;
-                    this.options = message.data.options || this.options;
-                    this.currentRound = message.data.currentRound || 1;
-                    this.totalRounds = message.data.totalRounds || 3;
-                    if (message.data.hostId) {
-                        this.isHost = (this.currentPlayerId === message.data.hostId);
+            case 'gameStarted':
+                // Support both old (data wrapper) and new (flat) formats
+                const phase = message.phase || message.data?.phase;
+                const question = message.question || message.data?.question;
+                const options = message.options || message.data?.options;
+                const currentRound = message.currentRound || message.data?.currentRound;
+                const totalRounds = message.totalRounds || message.data?.totalRounds;
+                const hostId = message.hostId || message.gameState?.hostId || message.data?.hostId;
+
+                if (phase) {
+                    this.currentPhase = phase;
+                    this.question = question || this.question;
+                    this.options = options || this.options;
+                    this.currentRound = currentRound || 1;
+                    this.totalRounds = totalRounds || 3;
+                    if (hostId) {
+                        this.isHost = (this.currentPlayerId === hostId);
                     }
                 }
                 this.render();
@@ -1059,15 +1071,18 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'round_results':
+                // Support both old (data wrapper) and new (flat) formats
                 this.currentPhase = 'RESULTS';
-                this.results = message.data.results;
-                this.question = message.data.question;
-                this.currentRound = message.data.currentRound;
-                if (message.data.playerScores) {
-                    this.playerScores = message.data.playerScores;
+                this.results = message.results || message.data?.results;
+                this.question = message.question || message.data?.question;
+                this.currentRound = message.currentRound || message.data?.currentRound;
+                const playerScores = message.playerScores || message.data?.playerScores;
+                const roundResults = message.roundResults || message.data?.roundResults;
+                if (playerScores) {
+                    this.playerScores = playerScores;
                 }
-                if (message.data.roundResults) {
-                    this.roundResults = message.data.roundResults;
+                if (roundResults) {
+                    this.roundResults = roundResults;
                 }
                 this.render();
                 break;
@@ -1075,7 +1090,10 @@ class EverybodyVotesGameModule extends GameModule {
             // Removed round_transition - we now auto-advance after results
                 
             case 'host_assigned':
-                this.isHost = (this.currentPlayerId === message.data.hostId);
+            case 'hostAssigned':
+                // Support both old (data wrapper) and new (flat) formats
+                const assignedHostId = message.hostId || message.data?.hostId;
+                this.isHost = (this.currentPlayerId === assignedHostId);
                 this.render();
                 break;
                 
@@ -1105,17 +1123,23 @@ class EverybodyVotesGameModule extends GameModule {
                 break;
                 
             case 'new_round':
-                if (message.data) {
-                    this.currentPhase = message.data.phase || 'VOTING';
-                    this.question = message.data.question || this.question;
-                    this.options = message.data.options || this.options;
-                    this.currentRound = message.data.currentRound || this.currentRound;
-                    this.totalRounds = message.data.totalRounds || this.totalRounds;
-                    this.myVote = null; // Reset vote for new round
-                    this.myPrediction = null; // Reset prediction for new round
-                    if (message.data.hostId) {
-                        this.isHost = (this.currentPlayerId === message.data.hostId);
-                    }
+                // Support both old (data wrapper) and new (flat) formats
+                const newPhase = message.phase || message.data?.phase || 'VOTING';
+                const newQuestion = message.question || message.data?.question;
+                const newOptions = message.options || message.data?.options;
+                const newCurrentRound = message.currentRound || message.data?.currentRound;
+                const newTotalRounds = message.totalRounds || message.data?.totalRounds;
+                const newHostId = message.hostId || message.data?.hostId;
+
+                this.currentPhase = newPhase;
+                this.question = newQuestion || this.question;
+                this.options = newOptions || this.options;
+                this.currentRound = newCurrentRound || this.currentRound;
+                this.totalRounds = newTotalRounds || this.totalRounds;
+                this.myVote = null; // Reset vote for new round
+                this.myPrediction = null; // Reset prediction for new round
+                if (newHostId) {
+                    this.isHost = (this.currentPlayerId === newHostId);
                 }
                 this.render();
                 break;
