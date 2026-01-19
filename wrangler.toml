@@ -3,6 +3,12 @@ main = "src/index.ts"
 compatibility_date = "2024-12-30"
 workers_dev = true
 preview_urls = true
+account_id = "facf6619808dc039df729531bbb26d1d"
+
+# Custom domain
+[[routes]]
+pattern = "games.emilycogsdill.com"
+custom_domain = true
 
 [dev]
 port = 8777
